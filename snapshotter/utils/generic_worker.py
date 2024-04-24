@@ -129,8 +129,8 @@ class GenericAsyncWorker:
         self.protocol_state_contract_address = settings.protocol_state.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
-        self._status = SnapshotterStatus(projects=[])
-
+        self.status = SnapshotterStatus(projects=[])
+    
     def _notification_callback_result_handler(self, fut: asyncio.Future):
         """
         Handles the result of a callback or notification.
@@ -376,8 +376,8 @@ class GenericAsyncWorker:
                 'Exception uploading snapshot to IPFS for epoch {}: {}, Error: {},'
                 'sending failure notifications', epoch, snapshot, e,
             )
-            self._status.totalMissedSubmissions += 1
-            self._status.consecutiveMissedSubmissions += 1
+            self.status.totalMissedSubmissions += 1
+            self.status.consecutiveMissedSubmissions += 1
             notification_message = SnapshotterReportData(
                 snapshotterIssue=SnapshotterIssue(
                     instanceID=settings.instance_id,
@@ -387,7 +387,7 @@ class GenericAsyncWorker:
                     timeOfReporting=str(time.time()),
                     extra=json.dumps({'issueDetails': f'Error : {e}'}),
                 ),
-                snapshotterStatus=self._status,
+                snapshotterStatus=self.status,
             )
             await send_failure_notifications_async(
                 client=self._client, message=notification_message,
@@ -401,8 +401,8 @@ class GenericAsyncWorker:
                     'Exception submitting snapshot to collector for epoch {}: {}, Error: {},'
                     'sending failure notifications', epoch, snapshot, e,
                 )
-                self._status.totalMissedSubmissions += 1
-                self._status.consecutiveMissedSubmissions += 1
+                self.status.totalMissedSubmissions += 1
+                self.status.consecutiveMissedSubmissions += 1
 
                 notification_message = SnapshotterReportData(
                     snapshotterIssue=SnapshotterIssue(
@@ -413,15 +413,15 @@ class GenericAsyncWorker:
                         timeOfReporting=str(time.time()),
                         extra=json.dumps({'issueDetails': f'Error : {e}'}),
                     ),
-                    snapshotterStatus=self._status,
+                    snapshotterStatus=self.status,
                 )
                 await send_failure_notifications_async(
                     client=self._client, message=notification_message,
                 )
             else:
                 # reset consecutive missed snapshots counter
-                self._status.consecutiveMissedSubmissions = 0
-                self._status.totalSuccessfulSubmissions += 1
+                self.status.consecutiveMissedSubmissions = 0
+                self.status.totalSuccessfulSubmissions += 1
 
         # upload to web3 storage
         if storage_flag:
