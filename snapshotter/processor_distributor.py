@@ -144,7 +144,7 @@ class ProcessorDistributor:
 
             try:
                 snapshotter_address = self._protocol_state_contract.functions.slotSnapshotterMapping(settings.slot_id).call()
-                self._logger.info(f'snapshotter_address: {snapshotter_address}, instance: {settings.instance_id}, slot: {settings.slot_id}')
+                self._logger.info(f'snapshotter_address: {snapshotter_address}, instance: {settings.instance_id}, slot: {settings.slot_id}, contract: {settings.protocol_state.address}')
                 if snapshotter_address != to_checksum_address(settings.instance_id):
                     self._logger.error('Signer Account is not the one configured in slot, exiting!')
                     exit(0)
