@@ -1,0 +1,17 @@
+{
+  "config": [{
+      "project_type": "pairContract_pair_total_reserves",
+      "processor":{
+        "module": "snapshotter.modules.computes.pair_total_reserves",
+        "class_name": "PairTotalReservesProcessor"
+      }
+    },
+    {
+      "project_type": "pairContract_trade_volume",
+        "processor":{
+          "module": "snapshotter.modules.computes.trade_volume",
+          "class_name": "TradeVolumeProcessor"
+        }
+    }
+  ]
+}

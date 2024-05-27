@@ -95,7 +95,7 @@ if [ "$SLACK_REPORTING_URL" ]; then
 fi
 
 if [ "$POWERLOOM_REPORTING_URL" ]; then
-    echo "Found SLACK_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
+    echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
 #fetch current git branch name

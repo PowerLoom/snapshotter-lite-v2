@@ -88,13 +88,13 @@ if [ "$SLACK_REPORTING_URL" ]; then
 fi
 
 if [ "$POWERLOOM_REPORTING_URL" ]; then
-    echo "Found SLACK_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
+    echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
 # setting up git submodules
 git submodule update --init --recursive
 
-cd ./submission-sequencer/ && chmod +x build-docker.sh && ./build-docker.sh;
+cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
 docker build -t powerloom-snapshotter-lite .
