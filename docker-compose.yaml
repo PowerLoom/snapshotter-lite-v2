@@ -1,8 +1,8 @@
 version: '3.9'
 
 services:
-  snapshot-server:
-    image: ghcr.io/powerloom/snapshot-server:latest
+  snapshotter-lite-local-collector:
+    image: ghcr.io/powerloom/snapshotter-lite-local-collector:{IMAGE_TAG}
     expose:
       - 50051
     ports:
