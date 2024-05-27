@@ -188,7 +188,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-new-proto.git --single-branch powerloom --branch feat/new_proto_bidirectional
    ```
     This will clone the repository into a directory named `powerloom`.
   
