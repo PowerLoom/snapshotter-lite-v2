@@ -28,8 +28,8 @@ services:
     command:
       bash -c  "sh server_autofill.sh && sh init_processes.sh"
 
-  snapshotter-lite-new-proto:
-    image: ghcr.io/powerloom/snapshotter-lite-new-proto:${IMAGE_TAG}
+  snapshotter-lite-v2:
+    image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
     volumes:
       - ./logs:/logs
     environment:
