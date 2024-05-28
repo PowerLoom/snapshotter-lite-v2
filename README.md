@@ -184,6 +184,8 @@ There are multiple ways to set up the Snapshotter Lite Node. You can either use 
 However, it is recommended to use the Docker image as it is the easiest and most reliable way to set up the Snapshotter Lite Node.
 
 ### Using Docker
+NOTE: It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal.
+
 1. Install Docker on your machine. You can find the installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
 
 2. Clone this repository using the following command:
@@ -205,8 +207,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
    ```bash
    ./build-dev.sh
    ```
-
-5. When prompted, enter `$SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` (only required for the first time), this will create a `.env` file in the root directory of the project.
+5. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
 
 6. This should start your snapshotter node and you should see something like this in your terminal logs
   ```bash
@@ -220,7 +221,6 @@ However, it is recommended to use the Docker image as it is the easiest and most
   ```
 7. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
-NOTE: It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal.
 
 ### Without Docker
 If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
@@ -241,7 +241,7 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
    ./init.sh
    ```
 
-4. When prompted, enter `$SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` (only required for the first time), this will create a `.env` file in the root directory of the project.
+4. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
 
 5. Your node should start in background and you should start seeing logs in your terminal.
 6. To stop the node, you can run `pkill -f snapshotter` in a new terminal window.
