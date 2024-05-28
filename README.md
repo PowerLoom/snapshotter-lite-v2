@@ -99,7 +99,7 @@ Processors as configured in `config/projects.json` calculate snapshots for each 
 
 The project ID is ultimately generated in the following manner:
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/utils/snapshot_worker.py#L40-L60
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/utils/snapshot_worker.py#L41
 
  The snapshots generated are the fundamental data models on which higher-order aggregates and richer data points are built (By [Full Nodes](https://github.com/PowerLoom/deploy))
 
@@ -133,7 +133,7 @@ Events being tracked by the system event detector are:
 ### Processor Distributor
 The Processor Distributor, defined in [`processor_distributor.py`](snapshotter/processor_distributor.py), acts upon the events received from the System Event Detector and distributes the processing tasks to the appropriate snapshot processors. It is also responsible for acting on `allSnapshottersUpdated`, `DailyTaskCompletedEvent` and `DayStartedEvent` events to manage the snapshot generation process.
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/processor_distributor.py#L300-L345
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/processor_distributor.py#L283
 
 ### RPC Helper
 
@@ -150,9 +150,9 @@ Among many things, the core API allows you to **access the finalized CID as well
 
 The main endpoint implementations can be found as follows:
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/core_api.py#L237-L289
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/core_api.py#L237
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/core_api.py#L293-L340
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/core_api.py#L293
 
 The first endpoint in `GET /last_finalized_epoch/{project_id}` returns the last finalized EpochId for a given project ID and the second one is `GET /data/{epoch_id}/{project_id}/` which can be used to return the actual snapshot data for a given EpochId and ProjectId.
 
