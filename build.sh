@@ -105,11 +105,11 @@ echo "Current branch is ${GIT_BRANCH}";
 
 #if on main git branch, set image_tag to latest or use the branch name
 
-# if [ "$GIT_BRANCH" = "main" ]; then
-export IMAGE_TAG="dockerify";
-# else
-#     export IMAGE_TAG="${GIT_BRANCH}";
-# fi
+if [ "$GIT_BRANCH" = "main" ]; then
+    export IMAGE_TAG="latest";
+else
+    export IMAGE_TAG="${GIT_BRANCH}";
+fi
 
 echo "Building image with tag ${IMAGE_TAG}";
 
