@@ -188,7 +188,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
    ```
     This will clone the repository into a directory named `powerloom`.
   
@@ -227,7 +227,7 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 
 1. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
    ```
     This will clone the repository into a directory named `powerloom`.
   
