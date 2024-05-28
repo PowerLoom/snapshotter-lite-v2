@@ -28,8 +28,8 @@ services:
     command:
       bash -c  "sh server_autofill.sh && sh init_processes.sh"
 
-  snapshotter-lite:
-    image: powerloom-snapshotter-lite
+  snapshotter-lite-v2:
+    image: snapshotter-lite-v2
     expose:
       - 8002
     ports:

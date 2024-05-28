@@ -97,7 +97,7 @@ git submodule update --init --recursive
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
-docker build -t powerloom-snapshotter-lite .
+docker build -t snapshotter-lite-v2 .
 
 echo "building...";
 
