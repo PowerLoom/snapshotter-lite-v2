@@ -1,7 +1,7 @@
 ## Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Overview](#overview)
-    - [Features Unavailable in Snapshotter Lite Node](#features-unavailable-in-snapshotter-lite-node)
+    - [Features Unavailable in Snapshotter Lite v2 Node](#features-unavailable-in-snapshotter-lite-v2-node)
   - [Epoch Generation](#epoch-generation)
   - [Snapshot Generation](#snapshot-generation)
   - [Snapshot Finalization](#snapshot-finalization)
@@ -211,13 +211,16 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
 
 6. This should start your snapshotter node and you should see something like this in your terminal logs
   ```bash
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:17 | INFO | Current block: 2208370| {'module': 'EventDetector'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:18 | DEBUG | Set source chain block time to 12.0| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter enabled: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter slot is set to 1| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter enabled: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:21 | INFO | Snapshotter active: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 0|core-api          | February 5, 2024 > 15:10:22 | INFO | 127.0.0.1:59776 - "GET /health HTTP/1.1" 200 | {} 
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:02 | INFO | Application startup complete. | {}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | INFO | Reporting service pinged successfully| {'module': 'EventDetector'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | INFO | Current block: 6964653| {'module': 'EventDetector'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Set source chain block time to 12.0| {'module': 'ProcessDistributor'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | INFO | Snapshotter active: True| {'module': 'ProcessDistributor'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:06 | INFO | 127.0.0.1:44338 - "GET /health HTTP/1.1" 200 | {}
+
   ```
 7. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
