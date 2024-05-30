@@ -5,7 +5,7 @@ source .env
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "reset to default values...";
     export PROST_RPC_URL="https://rpc-prost1h-proxy.powerloom.io"
-    export PROTOCOL_STATE_CONTRACT="0xa9BBF942006A934116AB91c8f819A6AeA0D546DA"
+    export PROTOCOL_STATE_CONTRACT="0x5aE5516cDC884B54D933A8d552898407cafe9C36"
     export PROST_CHAIN_ID="11165"
 fi
 
