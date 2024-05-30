@@ -203,8 +203,9 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
    ```bash
    ./build.sh
    ```
-   If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following command to start the snapshotter lite node:
+   If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
    ```bash
+   ./bootstrap.sh
    ./build-dev.sh
    ```
 5. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
