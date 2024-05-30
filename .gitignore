@@ -1,3 +1,4 @@
+*.log*
 .env
 .python-version
 __pycache__/
@@ -5,11 +6,10 @@ __pycache__/
 .DS_Store
 screenlog*
 temp/*
+uniswapTokenData
 **/*projects.json
 **/*aggregator.json
 config/*settings.json
 **/*.backup
 .vscode/*
 src
-logs/
-

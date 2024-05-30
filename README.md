@@ -1,7 +1,7 @@
 ## Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Overview](#overview)
-    - [Features Unavailable in Snapshotter Lite Node](#features-unavailable-in-snapshotter-lite-node)
+    - [Features Unavailable in Snapshotter Lite v2 Node](#features-unavailable-in-snapshotter-lite-v2-node)
   - [Epoch Generation](#epoch-generation)
   - [Snapshot Generation](#snapshot-generation)
   - [Snapshot Finalization](#snapshot-finalization)
@@ -99,7 +99,7 @@ Processors as configured in `config/projects.json` calculate snapshots for each 
 
 The project ID is ultimately generated in the following manner:
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/utils/snapshot_worker.py#L40-L60
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/utils/snapshot_worker.py#L41
 
  The snapshots generated are the fundamental data models on which higher-order aggregates and richer data points are built (By [Full Nodes](https://github.com/PowerLoom/deploy))
 
@@ -133,7 +133,7 @@ Events being tracked by the system event detector are:
 ### Processor Distributor
 The Processor Distributor, defined in [`processor_distributor.py`](snapshotter/processor_distributor.py), acts upon the events received from the System Event Detector and distributes the processing tasks to the appropriate snapshot processors. It is also responsible for acting on `allSnapshottersUpdated`, `DailyTaskCompletedEvent` and `DayStartedEvent` events to manage the snapshot generation process.
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/processor_distributor.py#L300-L345
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/processor_distributor.py#L283
 
 ### RPC Helper
 
@@ -150,9 +150,9 @@ Among many things, the core API allows you to **access the finalized CID as well
 
 The main endpoint implementations can be found as follows:
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/core_api.py#L237-L289
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/core_api.py#L237
 
-https://github.com/PowerLoom/snapshotter-lite/blob/79e251b72ae617c70555d9925964c38c4a80c09e/snapshotter/core_api.py#L293-L340
+https://github.com/PowerLoom/snapshotter-lite-v2/blob/2fa7e0922d85b2529ecc4b17c95748cda1cad96f/snapshotter/core_api.py#L293
 
 The first endpoint in `GET /last_finalized_epoch/{project_id}` returns the last finalized EpochId for a given project ID and the second one is `GET /data/{epoch_id}/{project_id}/` which can be used to return the actual snapshot data for a given EpochId and ProjectId.
 
@@ -184,11 +184,13 @@ There are multiple ways to set up the Snapshotter Lite Node. You can either use 
 However, it is recommended to use the Docker image as it is the easiest and most reliable way to set up the Snapshotter Lite Node.
 
 ### Using Docker
+NOTE: It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal.
+
 1. Install Docker on your machine. You can find the installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
    ```
     This will clone the repository into a directory named `powerloom`.
   
@@ -201,33 +203,35 @@ However, it is recommended to use the Docker image as it is the easiest and most
    ```bash
    ./build.sh
    ```
-   If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following command to start the snapshotter lite node:
+   If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
    ```bash
+   ./bootstrap.sh
    ./build-dev.sh
    ```
-
-5. When prompted, enter `$SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` (only required for the first time), this will create a `.env` file in the root directory of the project.
+5. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
 
 6. This should start your snapshotter node and you should see something like this in your terminal logs
   ```bash
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:17 | INFO | Current block: 2208370| {'module': 'EventDetector'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:18 | DEBUG | Set source chain block time to 12.0| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter enabled: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter slot is set to 1| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:20 | INFO | Snapshotter enabled: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 1|snapshotter-lite  | February 5, 2024 > 15:10:21 | INFO | Snapshotter active: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite_1  | 0|core-api          | February 5, 2024 > 15:10:22 | INFO | 127.0.0.1:59776 - "GET /health HTTP/1.1" 200 | {} 
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:02 | INFO | Application startup complete. | {}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | INFO | Reporting service pinged successfully| {'module': 'EventDetector'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | INFO | Current block: 6964653| {'module': 'EventDetector'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Set source chain block time to 12.0| {'module': 'ProcessDistributor'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | INFO | Snapshotter active: True| {'module': 'ProcessDistributor'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
+  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:06 | INFO | 127.0.0.1:44338 - "GET /health HTTP/1.1" 200 | {}
+
   ```
 7. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
-NOTE: It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal.
 
 ### Without Docker
 If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
 
 1. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
    ```
     This will clone the repository into a directory named `powerloom`.
   
@@ -241,7 +245,7 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
    ./init.sh
    ```
 
-4. When prompted, enter `$SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` (only required for the first time), this will create a `.env` file in the root directory of the project.
+4. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
 
 5. Your node should start in background and you should start seeing logs in your terminal.
 6. To stop the node, you can run `pkill -f snapshotter` in a new terminal window.
