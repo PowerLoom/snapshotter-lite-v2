@@ -25,6 +25,11 @@
 				"internalType": "uint256",
 				"name": "slotsPerDay",
 				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "externalStateAddress",
+				"type": "address"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -265,6 +270,25 @@
 		"inputs": [
 			{
 				"indexed": false,
+				"internalType": "address",
+				"name": "sequencerAddress",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "allowed",
+				"type": "bool"
+			}
+		],
+		"name": "SequencersUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
 				"internalType": "uint256",
 				"name": "batchId",
 				"type": "uint256"
@@ -466,25 +490,6 @@
 		"type": "event"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "snapshotterAddress",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "allowed",
-				"type": "bool"
-			}
-		],
-		"name": "masterSnapshottersUpdated",
-		"type": "event"
-	},
-	{
 		"inputs": [],
 		"name": "DailySnapshotQuota",
 		"outputs": [
@@ -650,7 +655,7 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "",
+				"name": "addr",
 				"type": "address"
 			}
 		],
@@ -669,7 +674,7 @@
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "projectType",
 				"type": "string"
 			}
 		],
@@ -682,52 +687,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "slotId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address",
-				"name": "snapshotterAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "timeSlot",
-				"type": "uint256"
-			}
-		],
-		"name": "assignSnapshotterToSlotWithTimeSlot",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256[]",
-				"name": "slotIds",
-				"type": "uint256[]"
-			},
-			{
-				"internalType": "address[]",
-				"name": "snapshotterAddresses",
-				"type": "address[]"
-			},
-			{
-				"internalType": "uint256[]",
-				"name": "timeSlots",
-				"type": "uint256[]"
-			}
-		],
-		"name": "assignSnapshotterToSlotsWithTimeSlot",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -898,30 +857,6 @@
 	{
 		"inputs": [
 			{
-				"internalType": "string",
-				"name": "projectId",
-				"type": "string"
-			},
-			{
-				"internalType": "uint256",
-				"name": "epochId",
-				"type": "uint256"
-			}
-		],
-		"name": "checkDynamicConsensusSnapshot",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "uint256",
 				"name": "slotId",
 				"type": "uint256"
@@ -1035,6 +970,19 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "externalState",
+		"outputs": [
+			{
+				"internalType": "contract IExternalState",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -1048,24 +996,6 @@
 			}
 		],
 		"name": "forceCompleteConsensusAttestations",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "projectId",
-				"type": "string"
-			},
-			{
-				"internalType": "uint256",
-				"name": "epochId",
-				"type": "uint256"
-			}
-		],
-		"name": "forceCompleteConsensusSnapshot",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -1097,7 +1027,20 @@
 	},
 	{
 		"inputs": [],
-		"name": "getMasterSnapshotters",
+		"name": "getEpochManager",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getSequencers",
 		"outputs": [
 			{
 				"internalType": "address[]",
@@ -1204,7 +1147,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "getTotalMasterSnapshotterCount",
+		"name": "getTotalSequencersCount",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -1258,7 +1201,7 @@
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "projectId",
 				"type": "string"
 			}
 		],
@@ -1266,7 +1209,7 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "epochId",
 				"type": "uint256"
 			}
 		],
@@ -1313,44 +1256,6 @@
 				"type": "uint256"
 			},
 			{
-				"internalType": "address",
-				"name": "snapshotterAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "timeSlot",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "rewardPoints",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentStreak",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "currentDaySnapshotCount",
-				"type": "uint256"
-			}
-		],
-		"name": "loadSlotInfo",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "slotId",
-				"type": "uint256"
-			},
-			{
 				"internalType": "uint256",
 				"name": "dayId",
 				"type": "uint256"
@@ -1364,25 +1269,6 @@
 		"name": "loadSlotSubmissions",
 		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "masterSnapshotters",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -1451,12 +1337,12 @@
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "projectId",
 				"type": "string"
 			},
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "epochId",
 				"type": "uint256"
 			}
 		],
@@ -1464,7 +1350,7 @@
 		"outputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "snapshotCid",
 				"type": "string"
 			}
 		],
@@ -1538,7 +1424,7 @@
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "projectId",
 				"type": "string"
 			}
 		],
@@ -1546,7 +1432,7 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "epochId",
 				"type": "uint256"
 			}
 		],
@@ -1664,7 +1550,7 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "slotId",
 				"type": "uint256"
 			}
 		],
@@ -1683,7 +1569,7 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "slotId",
 				"type": "uint256"
 			}
 		],
@@ -1691,7 +1577,7 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "streak",
 				"type": "uint256"
 			}
 		],
@@ -1702,12 +1588,12 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "slotId",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "day",
 				"type": "uint256"
 			}
 		],
@@ -1715,7 +1601,7 @@
 		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "count",
 				"type": "uint256"
 			}
 		],
@@ -1726,12 +1612,12 @@
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "projectId",
 				"type": "string"
 			},
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "epochId",
 				"type": "uint256"
 			}
 		],
@@ -1895,71 +1781,6 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "slotId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "snapshotCid",
-				"type": "string"
-			},
-			{
-				"internalType": "uint256",
-				"name": "epochId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "projectId",
-				"type": "string"
-			},
-			{
-				"components": [
-					{
-						"internalType": "uint256",
-						"name": "slotId",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "deadline",
-						"type": "uint256"
-					},
-					{
-						"internalType": "string",
-						"name": "snapshotCid",
-						"type": "string"
-					},
-					{
-						"internalType": "uint256",
-						"name": "epochId",
-						"type": "uint256"
-					},
-					{
-						"internalType": "string",
-						"name": "projectId",
-						"type": "string"
-					}
-				],
-				"internalType": "struct PowerloomProtocolState.Request",
-				"name": "request",
-				"type": "tuple"
-			},
-			{
-				"internalType": "bytes",
-				"name": "signature",
-				"type": "bytes"
-			}
-		],
-		"name": "submitSnapshot",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "string",
 				"name": "batchCid",
 				"type": "string"
@@ -2007,7 +1828,7 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "slot",
 				"type": "uint256"
 			}
 		],
@@ -2076,6 +1897,29 @@
 	{
 		"inputs": [
 			{
+				"internalType": "enum PowerloomProtocolState.Role",
+				"name": "role",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address[]",
+				"name": "_addresses",
+				"type": "address[]"
+			},
+			{
+				"internalType": "bool[]",
+				"name": "_status",
+				"type": "bool[]"
+			}
+		],
+		"name": "updateAddresses",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "string",
 				"name": "_projectType",
 				"type": "string"
@@ -2133,17 +1977,25 @@
 	{
 		"inputs": [
 			{
-				"internalType": "address[]",
-				"name": "_snapshotters",
-				"type": "address[]"
-			},
-			{
-				"internalType": "bool[]",
-				"name": "_status",
-				"type": "bool[]"
+				"internalType": "address",
+				"name": "_address",
+				"type": "address"
 			}
 		],
-		"name": "updateMasterSnapshotters",
+		"name": "updateEpochManager",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "externalStateAddress",
+				"type": "address"
+			}
+		],
+		"name": "updateExternalStateAddress",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -2206,24 +2058,6 @@
 			}
 		],
 		"name": "updateSnapshotSubmissionWindow",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address[]",
-				"name": "_validators",
-				"type": "address[]"
-			},
-			{
-				"internalType": "bool[]",
-				"name": "_status",
-				"type": "bool[]"
-			}
-		],
-		"name": "updateValidators",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
