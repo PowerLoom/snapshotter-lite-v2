@@ -1,7 +1,7 @@
 ## Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Overview](#overview)
-    - [Features Unavailable in Snapshotter Lite v2 Node](#features-unavailable-in-snapshotter-lite-v2-node)
+    - [Features Unavailable in Snapshotter Lite Node](#features-unavailable-in-snapshotter-lite-node)
   - [Epoch Generation](#epoch-generation)
   - [Snapshot Generation](#snapshot-generation)
   - [Snapshot Finalization](#snapshot-finalization)
@@ -14,6 +14,8 @@
   - [Using Docker](#using-docker)
   - [Without Docker](#without-docker)
 - [Monitoring and Debugging](#monitoring-and-debugging)
+  - [Simulation run logs](#simulation-run-logs)
+  - [Verifying success of simulation run](#verifying-success-of-simulation-run)
   - [Monitoring](#monitoring)
   - [Debugging](#debugging)
 - [For Contributors](#for-contributors)
@@ -251,6 +253,33 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 6. To stop the node, you can run `pkill -f snapshotter` in a new terminal window.
   
 ## Monitoring and Debugging
+
+### Simulation run logs
+
+While running this node for the first time, it performs a couple of dummy submissions to simulate its connections to the relayer and sequencer network. If you notice logs similar to the lines below in the node run logs, your node's simulation run was successful. 
+
+```
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  | June 6, 2024 > 17:30:49 | INFO | ✅ Event processed successfully: request {
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   slotId: 4036
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   deadline: 7747061
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   snapshotCid: "bafkreia4m4icjc4q46rv2ncszplaibeiytce2iqa5qu4dr3wj7w3vwljai"
+```
+
+### Verifying success of simulation run
+
+To verify the success of the same, make use of the utility script bundled within here by running the following on a MacOS/Linux command line terminal.
+
+
+>This will work only after you have set up the node correctly with the right `.env` variables and run it successfully.
+
+
+```bash
+./check_simulation.sh
+
+{"success":true,"submissionCount":2,"lastPing":1717672628,"message":"","nodeVersion":"v0.2.1"}
+```
+
+If you observe `submissionCount` and `lastPing` in the above response to be greater than 0, your node's simulation run was successful.
 
 ### Monitoring
 **TODO** - Enter Node dashboard screenshots and information here
