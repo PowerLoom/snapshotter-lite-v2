@@ -192,13 +192,13 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
   
-3. Change your working directory to the `powerloom` directory:
+3. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
-   cd powerloom
+   cd powerloom-pre-mainnet
    ```
 
 4. Run `build.sh` to start the snapshotter lite node:
@@ -233,13 +233,13 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 
 1. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
   
-2. Change your working directory to the `powerloom` directory:
+2. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
-   cd powerloom
+   cd powerloom-pre-mainnet
    ```
 
 3. Run `init.sh` to start the snapshotter lite node:
