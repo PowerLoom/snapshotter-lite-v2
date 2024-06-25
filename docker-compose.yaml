@@ -4,9 +4,9 @@ services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
     expose:
-      - 50051
+      - ${LOCAL_COLLECTOR_PORT:-50051}
     ports:
-      - 50051:50051
+      - ${LOCAL_COLLECTOR_PORT:-50051}:${LOCAL_COLLECTOR_PORT:-50051}
     volumes:
       - ./shared-volume:/keys
     environment:
@@ -20,6 +20,7 @@ services:
       - PROST_CHAIN_ID=$PROST_CHAIN_ID
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
+      - LOCAL_COLLECTOR_PORT=${LOCAL_COLLECTOR_PORT:-50051}
       - SEQUENCER_ID=$SEQUENCER_ID
       - RELAYER_RENDEZVOUS_POINT=$RELAYER_RENDEZVOUS_POINT
       - CLIENT_RENDEZVOUS_POINT=$CLIENT_RENDEZVOUS_POINT
