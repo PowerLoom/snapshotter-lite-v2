@@ -91,6 +91,10 @@ if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
+if [ "$LOCAL_COLLECTOR_PORT" ]; then
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
+
 # setting up git submodules
 git submodule update --init --recursive
 
