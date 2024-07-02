@@ -4,9 +4,9 @@ services:
   snapshotter-lite-local-collector:
     image: snapshotter-lite-local-collector
     expose:
-      - 50051
+      - ${LOCAL_COLLECTOR_PORT}
     ports:
-      - 50051:50051
+      - ${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}
     volumes:
       - ./shared-volume:/keys
     environment:
