@@ -475,6 +475,11 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
 				"name": "_slotId",
 				"type": "uint256"
 			},
@@ -825,6 +830,11 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
 				"name": "_slotId",
 				"type": "uint256"
 			}
@@ -884,6 +894,11 @@
 	},
 	{
 		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
 			{
 				"internalType": "uint256",
 				"name": "_slotId",
@@ -949,6 +964,11 @@
 	},
 	{
 		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
 			{
 				"internalType": "uint256",
 				"name": "_slotId",
@@ -1703,6 +1723,11 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
 				"name": "slotId",
 				"type": "uint256"
 			},
@@ -1861,6 +1886,11 @@
 	},
 	{
 		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "dmId",
+				"type": "uint256"
+			},
 			{
 				"internalType": "uint256",
 				"name": "_slotId",

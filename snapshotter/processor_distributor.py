@@ -158,6 +158,7 @@ class ProcessorDistributor:
                 self._current_day = self._protocol_state_contract.functions.dayCounter(settings.data_market_id).call()
 
                 task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
+                    settings.data_market_id,
                     settings.slot_id,
                     self._current_day,
                 ).call()
