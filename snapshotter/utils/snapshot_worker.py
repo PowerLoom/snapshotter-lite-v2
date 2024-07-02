@@ -171,6 +171,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             self._submission_window = await get_snapshot_submision_window(
                 rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=self.protocol_state_contract,
+                data_market_id=settings.data_market_id,
             )
 
         self.logger.debug(

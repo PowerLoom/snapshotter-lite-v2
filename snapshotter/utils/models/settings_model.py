@@ -92,6 +92,7 @@ class Settings(BaseModel):
     instance_id: str
     signer_private_key: str
     slot_id: int
+    data_market_id: int
     rpc: RPCConfigFull
     rlimit: RLimit
     reporting: ReportingConfig
@@ -100,6 +101,7 @@ class Settings(BaseModel):
     simulation_submission_url: str
     pair_contract_abi: str
     protocol_state: EventContract
+    data_market: EventContract
     relayer: Relayer
     ipfs: IPFSConfig
     web3storage: Web3Storage

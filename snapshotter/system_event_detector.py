@@ -55,8 +55,12 @@ class EventDetectorProcess(multiprocessing.Process):
 
         self.rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
-        self.contract_abi = read_json_file(
+        self.logic_contract_abi = read_json_file(
             settings.protocol_state.abi,
+            self._logger,
+        )
+        self.data_market_contract_abi = read_json_file(
+            settings.data_market.abi,
             self._logger,
         )
         self._httpx_client = httpx.Client(
@@ -68,30 +72,38 @@ class EventDetectorProcess(multiprocessing.Process):
             ),
         )
 
-        self.contract_address = settings.protocol_state.address
-        self.contract = self.rpc_helper.get_current_node()['web3_client'].eth.contract(
+        self.logic_contract_address = settings.protocol_state.address
+        self.logic_contract = self.rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
-                self.contract_address,
+                self.logic_contract_address,
             ),
-            abi=self.contract_abi,
+            abi=self.logic_contract_abi,
         )
         self._last_reporting_service_ping = 0
 
+        self._logger.info(f'Querying contract {self.logic_contract_address}')
+
+        self.data_market_contract_address = self.logic_contract.functions.dataMarketIdToDataMarket(settings.data_market_id).call()
+        self.data_market_contract = self.rpc_helper.get_current_node()['web3_client'].eth.contract(
+            address=Web3.to_checksum_address(
+                self.data_market_contract_address,
+            ),
+            abi=self.data_market_contract_abi,
+        )
         # event EpochReleased(uint256 indexed epochId, uint256 begin, uint256 end, uint256 timestamp);
         # event DayStartedEvent(uint256 dayId, uint256 timestamp);
         # event DailyTaskCompletedEvent(address snapshotterAddress, uint256 slotId, uint256 dayId, uint256 timestamp);
 
         EVENTS_ABI = {
-            'EpochReleased': self.contract.events.EpochReleased._get_event_abi(),
-            'DayStartedEvent': self.contract.events.DayStartedEvent._get_event_abi(),
-            'DailyTaskCompletedEvent': self.contract.events.DailyTaskCompletedEvent._get_event_abi(),
+            'EpochReleased': self.data_market_contract.events.EpochReleased._get_event_abi(),
+            'DayStartedEvent': self.data_market_contract.events.DayStartedEvent._get_event_abi(),
+            'DailyTaskCompletedEvent': self.data_market_contract.events.DailyTaskCompletedEvent._get_event_abi(),
         }
 
         EVENT_SIGS = {
             'EpochReleased': 'EpochReleased(uint256,uint256,uint256,uint256)',
             'DayStartedEvent': 'DayStartedEvent(uint256,uint256)',
             'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,uint256,uint256,uint256)',
-
         }
 
         self.event_sig, self.event_abi = get_event_sig_and_abi(
@@ -152,7 +164,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
         events_log = await self.rpc_helper.get_events_logs(
             **{
-                'contract_address': self.contract_address,
+                'contract_address': self.data_market_contract_address,
                 'to_block': to_block,
                 'from_block': from_block,
                 'topics': [self.event_sig],
