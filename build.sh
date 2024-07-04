@@ -102,6 +102,13 @@ if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
+if [ -z "$CORE_API_PORT" ]; then
+    export CORE_API_PORT=8002;
+    echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
+else
+    echo "Found CORE_API_PORT ${CORE_API_PORT}";
+fi
+
 #fetch current git branch name
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 

@@ -31,6 +31,10 @@ services:
 
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
+    expose:
+      - ${CORE_API_PORT}
+    ports:
+      - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./logs:/logs
     environment:

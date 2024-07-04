@@ -95,6 +95,13 @@ if [ "$LOCAL_COLLECTOR_PORT" ]; then
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
+if [ -z "$CORE_API_PORT" ]; then
+    export CORE_API_PORT=8002;
+    echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
+else
+    echo "Found CORE_API_PORT ${CORE_API_PORT}";
+fi
+
 # setting up git submodules
 git submodule update --init --recursive
 git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main

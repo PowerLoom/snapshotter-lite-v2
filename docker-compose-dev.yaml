@@ -31,10 +31,10 @@ services:
 
   snapshotter-lite-v2:
     image: snapshotter-lite-v2
-    # expose:
-    #   - 8002
-    # ports:
-    #   - 8002:8002
+    expose:
+      - ${CORE_API_PORT}
+    ports:
+      - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./snapshotter:/snapshotter
       - ./config:/config
