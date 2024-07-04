@@ -82,6 +82,10 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
+if [ "$LOCAL_COLLECTOR_PORT" ]; then
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
+
 if [ "$RELAYER_HOST" ]; then
     echo "Found RELAYER_HOST ${RELAYER_HOST}";
 fi
@@ -96,6 +100,13 @@ fi
 
 if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
+fi
+
+if [ -z "$CORE_API_PORT" ]; then
+    export CORE_API_PORT=8002;
+    echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
+else
+    echo "Found CORE_API_PORT ${CORE_API_PORT}";
 fi
 
 #fetch current git branch name
