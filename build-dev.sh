@@ -91,7 +91,10 @@ if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
-if [ "$LOCAL_COLLECTOR_PORT" ]; then
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
