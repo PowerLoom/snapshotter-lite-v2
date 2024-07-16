@@ -82,9 +82,6 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
-if [ "$LOCAL_COLLECTOR_PORT" ]; then
-    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
-fi
 
 if [ "$RELAYER_HOST" ]; then
     echo "Found RELAYER_HOST ${RELAYER_HOST}";
