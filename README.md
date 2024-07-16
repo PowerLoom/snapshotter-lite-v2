@@ -276,7 +276,7 @@ To verify the success of the same, make use of the utility script bundled within
 ```bash
 ./check_simulation.sh
 
-{"success":true,"submissionCount":2,"lastPing":1717672628,"message":"","nodeVersion":"v0.2.1"}
+{"success":true,"submissionCount":2,"lastPing":1717672628,"message":"","nodeVersion":"v1.1.0"}
 ```
 
 If you observe `submissionCount` and `lastPing` in the above response to be greater than 0, your node's simulation run was successful.
