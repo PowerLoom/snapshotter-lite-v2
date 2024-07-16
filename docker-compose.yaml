@@ -27,7 +27,7 @@ services:
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
     command:
-      bash -c  "sh server_autofill.sh && sh init_processes.sh"
+      bash -c  "bash server_autofill.sh && bash init_processes.sh"
 
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
@@ -59,7 +59,7 @@ services:
       retries: 3
       start_period: 30s
     command:
-      bash -c "sh snapshotter_autofill.sh && sh init_docker.sh"
+      bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]
