@@ -16,7 +16,6 @@
 - [Monitoring and Debugging](#monitoring-and-debugging)
   - [Simulation run logs](#simulation-run-logs)
   - [Verifying success of simulation run](#verifying-success-of-simulation-run)
-  - [Monitoring](#monitoring)
   - [Debugging](#debugging)
 - [For Contributors](#for-contributors)
 - [Case Studies](#case-studies)
@@ -281,8 +280,6 @@ To verify the success of the same, make use of the utility script bundled within
 
 If you observe `submissionCount` and `lastPing` in the above response to be greater than 0, your node's simulation run was successful.
 
-### Monitoring
-**TODO** - Enter Node dashboard screenshots and information here
 
 ### Debugging
 Usually the easiest way to fix node related issues is to restart the node. If you're facing issues with the node, you can try going through the logs present in the `logs` directory. If you're unable to find the issue, you can reach out to us on [Discord](https://powerloom.io/discord) and we will be happy to help you out.
