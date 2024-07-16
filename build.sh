@@ -41,7 +41,7 @@ source .env
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "reset to default values...";
     export PROST_RPC_URL="https://rpc-prost1h-proxy.powerloom.io"
-    export PROTOCOL_STATE_CONTRACT="0x1996e00549a7b664E927F872342cE66D2545869c"
+    export PROTOCOL_STATE_CONTRACT="0x10c5E2ee14006B3860d4FdF6B173A30553ea6333"
     export PROST_CHAIN_ID="11165"
 fi
 
@@ -82,6 +82,7 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
+
 if [ "$RELAYER_HOST" ]; then
     echo "Found RELAYER_HOST ${RELAYER_HOST}";
 fi
@@ -98,6 +99,20 @@ if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
+if [ -z "$CORE_API_PORT" ]; then
+    export CORE_API_PORT=8002;
+    echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
+else
+    echo "Found CORE_API_PORT ${CORE_API_PORT}";
+fi
+
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
+
 #fetch current git branch name
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
@@ -105,10 +120,11 @@ echo "Current branch is ${GIT_BRANCH}";
 
 #if on main git branch, set image_tag to latest or use the branch name
 
-if [ "$GIT_BRANCH" = "main" ]; then
-    export IMAGE_TAG="latest";
+
+if [ "$GIT_BRANCH" = "dockerify" ]; then
+    export IMAGE_TAG="dockerify"
 else
-    export IMAGE_TAG="${GIT_BRANCH}";
+    export IMAGE_TAG="latest"
 fi
 
 echo "Building image with tag ${IMAGE_TAG}";

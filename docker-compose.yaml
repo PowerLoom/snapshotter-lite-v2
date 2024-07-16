@@ -4,9 +4,9 @@ services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
     expose:
-      - 50051
+      - ${LOCAL_COLLECTOR_PORT}
     ports:
-      - 50051:50051
+      - ${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}
     volumes:
       - ./shared-volume:/keys
     environment:
@@ -23,13 +23,18 @@ services:
       - SEQUENCER_ID=$SEQUENCER_ID
       - RELAYER_RENDEZVOUS_POINT=$RELAYER_RENDEZVOUS_POINT
       - CLIENT_RENDEZVOUS_POINT=$CLIENT_RENDEZVOUS_POINT
+      - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
     command:
-      bash -c  "sh server_autofill.sh && sh init_processes.sh"
+      bash -c  "bash server_autofill.sh && bash init_processes.sh"
 
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
+    expose:
+      - ${CORE_API_PORT}
+    ports:
+      - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./logs:/logs
     environment:
@@ -54,7 +59,7 @@ services:
       retries: 3
       start_period: 30s
     command:
-      bash -c "sh snapshotter_autofill.sh && sh init_docker.sh"
+      bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]

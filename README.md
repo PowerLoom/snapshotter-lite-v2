@@ -1,7 +1,7 @@
 ## Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Overview](#overview)
-    - [Features Unavailable in Snapshotter Lite v2 Node](#features-unavailable-in-snapshotter-lite-v2-node)
+    - [Features Unavailable in Snapshotter Lite Node](#features-unavailable-in-snapshotter-lite-node)
   - [Epoch Generation](#epoch-generation)
   - [Snapshot Generation](#snapshot-generation)
   - [Snapshot Finalization](#snapshot-finalization)
@@ -14,7 +14,8 @@
   - [Using Docker](#using-docker)
   - [Without Docker](#without-docker)
 - [Monitoring and Debugging](#monitoring-and-debugging)
-  - [Monitoring](#monitoring)
+  - [Simulation run logs](#simulation-run-logs)
+  - [Verifying success of simulation run](#verifying-success-of-simulation-run)
   - [Debugging](#debugging)
 - [For Contributors](#for-contributors)
 - [Case Studies](#case-studies)
@@ -190,13 +191,13 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
   
-3. Change your working directory to the `powerloom` directory:
+3. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
-   cd powerloom
+   cd powerloom-pre-mainnet
    ```
 
 4. Run `build.sh` to start the snapshotter lite node:
@@ -231,13 +232,13 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 
 1. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
   
-2. Change your working directory to the `powerloom` directory:
+2. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
-   cd powerloom
+   cd powerloom-pre-mainnet
    ```
 
 3. Run `init.sh` to start the snapshotter lite node:
@@ -252,8 +253,33 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
   
 ## Monitoring and Debugging
 
-### Monitoring
-**TODO** - Enter Node dashboard screenshots and information here
+### Simulation run logs
+
+While running this node for the first time, it performs a couple of dummy submissions to simulate its connections to the relayer and sequencer network. If you notice logs similar to the lines below in the node run logs, your node's simulation run was successful. 
+
+```
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  | June 6, 2024 > 17:30:49 | INFO | ✅ Event processed successfully: request {
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   slotId: 4036
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   deadline: 7747061
+snapshotter-lite-new-proto-snapshotter-lite-v2-1               | 1|snapshotter-lite  |   snapshotCid: "bafkreia4m4icjc4q46rv2ncszplaibeiytce2iqa5qu4dr3wj7w3vwljai"
+```
+
+### Verifying success of simulation run
+
+To verify the success of the same, make use of the utility script bundled within here by running the following on a MacOS/Linux command line terminal.
+
+
+>This will work only after you have set up the node correctly with the right `.env` variables and run it successfully.
+
+
+```bash
+./check_simulation.sh
+
+{"success":true,"submissionCount":2,"lastPing":1717672628,"message":"","nodeVersion":"v1.1.0"}
+```
+
+If you observe `submissionCount` and `lastPing` in the above response to be greater than 0, your node's simulation run was successful.
+
 
 ### Debugging
 Usually the easiest way to fix node related issues is to restart the node. If you're facing issues with the node, you can try going through the logs present in the `logs` directory. If you're unable to find the issue, you can reach out to us on [Discord](https://powerloom.io/discord) and we will be happy to help you out.

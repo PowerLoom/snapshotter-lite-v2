@@ -4,9 +4,9 @@ services:
   snapshotter-lite-local-collector:
     image: snapshotter-lite-local-collector
     expose:
-      - 50051
+      - ${LOCAL_COLLECTOR_PORT}
     ports:
-      - 50051:50051
+      - ${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}
     volumes:
       - ./shared-volume:/keys
     environment:
@@ -22,18 +22,19 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - SEQUENCER_ID=$SEQUENCER_ID
       - RELAYER_RENDEZVOUS_POINT=$RELAYER_RENDEZVOUS_POINT
+      - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
       - CLIENT_RENDEZVOUS_POINT=$CLIENT_RENDEZVOUS_POINT
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
     command:
-      bash -c  "sh server_autofill.sh && sh init_processes.sh"
+      bash -c  "bash server_autofill.sh && bash init_processes.sh"
 
   snapshotter-lite-v2:
     image: snapshotter-lite-v2
     expose:
-      - 8002
+      - ${CORE_API_PORT}
     ports:
-      - 8002:8002
+      - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./snapshotter:/snapshotter
       - ./config:/config
@@ -60,7 +61,7 @@ services:
       retries: 3
       start_period: 30s
     command:
-      bash -c "sh snapshotter_autofill.sh && sh init_docker.sh"
+      bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]
