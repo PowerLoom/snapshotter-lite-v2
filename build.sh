@@ -109,6 +109,13 @@ else
     echo "Found CORE_API_PORT ${CORE_API_PORT}";
 fi
 
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
+
 #fetch current git branch name
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
