@@ -107,7 +107,15 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main
+# check if snapshotter-lite-local-collector exists
+if [ -d "./snapshotter-lite-local-collector" ]; then
+    echo "snapshotter-lite-local-collector exists, do you want to delete and clone a fresh one? (y/n)";
+    read response;
+    if [ "$response" == "y" ]; then
+        rm -rf ./snapshotter-lite-local-collector
+        git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main
+    fi
+fi
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
