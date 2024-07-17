@@ -36,6 +36,8 @@ if [ ! -f .env ]; then
 
 fi
 
+./_override_defaults.sh
+
 source .env
 
 echo "testing before build...";
@@ -91,7 +93,10 @@ if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
 
-if [ "$LOCAL_COLLECTOR_PORT" ]; then
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
@@ -104,7 +109,15 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main
+# check if snapshotter-lite-local-collector exists
+if [ -d "./snapshotter-lite-local-collector" ]; then
+    echo "snapshotter-lite-local-collector exists, do you want to delete and clone a fresh one? (y/n)";
+    read response;
+    if [ "$response" == "y" ]; then
+        rm -rf ./snapshotter-lite-local-collector
+        git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main
+    fi
+fi
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
