@@ -36,6 +36,8 @@ if [ ! -f .env ]; then
 
 fi
 
+./_override_defaults.sh
+
 source .env
 
 echo "testing before build...";
