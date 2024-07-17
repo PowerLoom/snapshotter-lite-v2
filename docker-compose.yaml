@@ -37,6 +37,7 @@ services:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./logs:/logs
+      - ./.env:/.env
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
