@@ -36,6 +36,7 @@ if [ ! -f .env ]; then
 
 fi
 
+source .env
 
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "reset to default values...";
@@ -47,9 +48,6 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
     export CLIENT_RENDEZVOUS_POINT="POP_Client_simulation_test_alpha"
 fi
 
-
-
-source .env
 
 echo "testing before build...";
 
