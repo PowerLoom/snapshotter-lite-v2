@@ -71,7 +71,7 @@ export ipfs_api_key="${IPFS_API_KEY:-}"
 export ipfs_api_secret="${IPFS_API_SECRET:-}"
 export web3_storage_token="${WEB3_STORAGE_TOKEN:-}"
 export relayer_host="${RELAYER_HOST:-https://relayer-nms-testnet-public.powerloom.io}"
-
+export local_collector_port="${LOCAL_COLLECTOR_PORT:-50051}"
 export slack_reporting_url="${SLACK_REPORTING_URL:-}"
 export powerloom_reporting_url="${POWERLOOM_REPORTING_URL:-}"
 
@@ -119,5 +119,7 @@ sed -i'.backup' "s#https://powerloom-reporting-url#$powerloom_reporting_url#" co
 
 sed -i'.backup' "s#signer-account-private-key#$SIGNER_ACCOUNT_PRIVATE_KEY#" config/settings.json
 sed -i'.backup' "s#https://relayer-url#$relayer_host#" config/settings.json
+
+sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.json
 
 echo 'settings has been populated!'

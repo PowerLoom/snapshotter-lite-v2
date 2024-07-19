@@ -543,7 +543,7 @@ class GenericAsyncWorker:
     async def _init_grpc(self):
         self._grpc_channel = Channel(
             host='snapshotter-lite-local-collector',
-            port=50051,
+            port=settings.local_collector_port,
             ssl=False,
         )
         self._grpc_stub = SubmissionStub(self._grpc_channel)
