@@ -77,12 +77,14 @@ class EventBase(BaseModel):
 
 
 class EpochReleasedEvent(EventBase):
+    dataMarket: str
     epochId: int
     begin: int
     end: int
 
 
 class SnapshotFinalizedEvent(EventBase):
+    dataMarket: str
     epochId: int
     epochEnd: int
     projectId: str
@@ -90,22 +92,19 @@ class SnapshotFinalizedEvent(EventBase):
 
 
 class SnapshottersUpdatedEvent(EventBase):
+    dataMarket: str
     snapshotterAddress: str
     allowed: bool
 
 
 class DayStartedEvent(EventBase):
+    dataMarket: str
     dayId: int
 
 
 class DailyTaskCompletedEvent(EventBase):
+    dataMarket: str
     dayId: int
-
-
-class SnapshotSubmittedEvent(EventBase):
-    snapshotCid: str
-    epochId: int
-    projectId: str
 
 
 class ProjectSpecificState(BaseModel):

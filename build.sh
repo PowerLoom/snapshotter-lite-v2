@@ -86,6 +86,9 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
+if [ "$DATA_MARKET_ADDRESS" ]; then
+    echo "Found DATA_MARKET_ADDRESS ${DATA_MARKET_ADDRESS}";
+fi
 
 if [ "$RELAYER_HOST" ]; then
     echo "Found RELAYER_HOST ${RELAYER_HOST}";

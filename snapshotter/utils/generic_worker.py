@@ -474,7 +474,7 @@ class GenericAsyncWorker:
         self._anchor_chain_id = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.chain_id
         self._keccak_hash = lambda x: sha3.keccak_256(x).digest()
         self._domain_separator = make_domain(
-            name='PowerloomProtocolContract', version='0.1', chainId=self._anchor_chain_id,
+            name='PowerloomDataMarket', version='0.1', chainId=self._anchor_chain_id,
             verifyingContract=self.protocol_state_contract_address,
         )
         self._private_key = settings.signer_private_key

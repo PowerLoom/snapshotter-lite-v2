@@ -26,6 +26,7 @@ services:
       - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
+      - DATA_MARKET_ADDRESS=$DATA_MARKET_ADDRESS
     command:
       bash -c  "bash server_autofill.sh && bash init_processes.sh"
 
@@ -53,6 +54,7 @@ services:
       - POWERLOOM_REPORTING_URL=$POWERLOOM_REPORTING_URL
       - WEB3_STORAGE_TOKEN=$WEB3_STORAGE_TOKEN
       - NAMESPACE=$NAMESPACE
+      - DATA_MARKET_ADDRESS=$DATA_MARKET_ADDRESS
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 10s
