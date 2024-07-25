@@ -112,7 +112,7 @@ class ProcessorDistributor:
                 abi=protocol_abi,
             )
             try:
-                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME().call()
+                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(settings.data_market).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for source chain block time: {}',
@@ -123,7 +123,7 @@ class ProcessorDistributor:
                 self._logger.debug('Set source chain block time to {}', self._source_chain_block_time)
 
             try:
-                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE().call()
+                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(settings.data_market).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for epoch size: {}',
@@ -133,7 +133,7 @@ class ProcessorDistributor:
                 self._epoch_size = epoch_size
 
             try:
-                slots_per_day = self._protocol_state_contract.functions.SLOTS_PER_DAY().call()
+                slots_per_day = self._protocol_state_contract.functions.SLOTS_PER_DAY(settings.data_market).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for slots per day: {}',
@@ -155,9 +155,10 @@ class ProcessorDistributor:
                 exit(0)
 
             try:
-                self._current_day = self._protocol_state_contract.functions.dayCounter().call()
+                self._current_day = self._protocol_state_contract.functions.dayCounter(settings.data_market, settings.data_market).call()
 
                 task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
+                    settings.data_market,
                     settings.slot_id,
                     self._current_day,
                 ).call()

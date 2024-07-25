@@ -27,6 +27,11 @@ if [ -z "$PROTOCOL_STATE_CONTRACT" ]; then
     exit 1;
 fi
 
+if [ -z "$DATA_MARKET_ADDRESS" ]; then
+    echo "DATA_MARKET_ADDRESS not found, please set this in your .env!";
+    exit 1;
+fi
+
 if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
     echo "SIGNER_ACCOUNT_PRIVATE_KEY not found, please set this in your .env!";
     exit 1;
@@ -88,6 +93,7 @@ echo "Using Prost RPC URL: ${PROST_RPC_URL}"
 echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
 echo "Using protocol state contract: ${PROTOCOL_STATE_CONTRACT}"
+echo "Using data market contract:" ${DATA_MARKET_ADDRESS}
 echo "Using slack reporting url: ${slack_reporting_url}"
 echo "Using powerloom reporting url: ${powerloom_reporting_url}"
 echo "Using web3 storage token: ${web3_storage_token}"
@@ -112,6 +118,7 @@ sed -i'.backup' "s#ipfs-reader-key#$ipfs_api_key#" config/settings.json
 sed -i'.backup' "s#ipfs-reader-secret#$ipfs_api_secret#" config/settings.json
 
 sed -i'.backup' "s#protocol-state-contract#$PROTOCOL_STATE_CONTRACT#" config/settings.json
+sed -i'.backup' "s#data-market-address#$DATA_MARKET_ADDRESS#" config/settings.json
 
 sed -i'.backup' "s#https://slack-reporting-url#$slack_reporting_url#" config/settings.json
 

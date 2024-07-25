@@ -6,6 +6,7 @@ from tenacity import retry
 from tenacity import retry_if_exception_type
 from tenacity import stop_after_attempt
 from tenacity import wait_random_exponential
+from snapshotter.settings.config import settings
 
 from snapshotter.utils.default_logger import logger
 
@@ -79,8 +80,8 @@ async def w3_get_and_cache_finalized_cid(
         Tuple[str, int]: The CID and epoch ID if the consensus status is True, or the null value and epoch ID if the consensus status is False.
     """
     tasks = [
-        state_contract_obj.functions.snapshotStatus(project_id, epoch_id),
-        state_contract_obj.functions.maxSnapshotsCid(project_id, epoch_id),
+        state_contract_obj.functions.snapshotStatus(settings.data_market, project_id, epoch_id),
+        state_contract_obj.functions.maxSnapshotsCid(settings.data_market, project_id, epoch_id),
     ]
 
     [consensus_status, cid] = await rpc_helper.web3_call(tasks)
@@ -105,7 +106,7 @@ async def get_project_last_finalized_cid_and_epoch(state_contract_obj, rpc_helpe
     """
 
     tasks = [
-        state_contract_obj.functions.lastFinalizedSnapshot(project_id),
+        state_contract_obj.functions.lastFinalizedSnapshot(settings.data_market, project_id),
     ]
 
     [last_finalized_epoch] = await rpc_helper.web3_call(tasks)
@@ -136,7 +137,7 @@ async def get_project_first_epoch(state_contract_obj, rpc_helper, project_id):
         int: The first epoch for the given project ID.
     """
     tasks = [
-        state_contract_obj.functions.projectFirstEpochId(project_id),
+        state_contract_obj.functions.projectFirstEpochId(settings.data_market, project_id),
     ]
 
     [first_epoch] = await rpc_helper.web3_call(tasks)
@@ -234,7 +235,7 @@ async def get_source_chain_id(state_contract_obj, rpc_helper):
         int: The source chain ID.
     """
     tasks = [
-        state_contract_obj.functions.SOURCE_CHAIN_ID(),
+        state_contract_obj.functions.SOURCE_CHAIN_ID(settings.data_market),
     ]
 
     [source_chain_id] = await rpc_helper.web3_call(tasks)
@@ -254,7 +255,7 @@ async def get_snapshot_submision_window(state_contract_obj, rpc_helper):
         submission_window (int): The snapshot submission window.
     """
     tasks = [
-        state_contract_obj.functions.snapshotSubmissionWindow(),
+        state_contract_obj.functions.snapshotSubmissionWindow(settings.data_market),
     ]
 
     [submission_window] = await rpc_helper.web3_call(tasks)
@@ -274,7 +275,7 @@ async def get_source_chain_epoch_size(state_contract_obj, rpc_helper):
         int: The epoch size of the source chain.
     """
     tasks = [
-        state_contract_obj.functions.EPOCH_SIZE(),
+        state_contract_obj.functions.EPOCH_SIZE(settings.data_market),
     ]
 
     [source_chain_epoch_size] = await rpc_helper.web3_call(tasks)
@@ -294,7 +295,7 @@ async def get_source_chain_block_time(state_contract_obj, rpc_helper):
         int: Block time of the source chain.
     """
     tasks = [
-        state_contract_obj.functions.SOURCE_CHAIN_BLOCK_TIME(),
+        state_contract_obj.functions.SOURCE_CHAIN_BLOCK_TIME(settings.data_market),
     ]
 
     [source_chain_block_time] = await rpc_helper.web3_call(tasks)

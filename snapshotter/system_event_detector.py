@@ -88,9 +88,9 @@ class EventDetectorProcess(multiprocessing.Process):
         }
 
         EVENT_SIGS = {
-            'EpochReleased': 'EpochReleased(uint256,uint256,uint256,uint256)',
-            'DayStartedEvent': 'DayStartedEvent(uint256,uint256)',
-            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,uint256,uint256,uint256)',
+            'EpochReleased': 'EpochReleased(address,uint256,uint256,uint256,uint256)',
+            'DayStartedEvent': 'DayStartedEvent(address,uint256,uint256)',
+            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,address,uint256,uint256,uint256)',
 
         }
 
@@ -115,6 +115,7 @@ class EventDetectorProcess(multiprocessing.Process):
             current_block_number = await self._source_rpc_helper.get_current_block_number()
 
             event = EpochReleasedEvent(
+                dataMarket: settings.data_market,
                 begin=current_block_number - 9,
                 end=current_block_number,
                 epochId=0,
@@ -167,6 +168,7 @@ class EventDetectorProcess(multiprocessing.Process):
         for log in events_log:
             if log.event == 'EpochReleased':
                 event = EpochReleasedEvent(
+                    dataMarket=log.args.dataMarket,
                     begin=log.args.begin,
                     end=log.args.end,
                     epochId=log.args.epochId,
@@ -177,6 +179,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
             elif log.event == 'DayStartedEvent':
                 event = DayStartedEvent(
+                    dataMarket=log.args.dataMarket,
                     dayId=log.args.dayId,
                     timestamp=log.args.timestamp,
                 )
@@ -185,6 +188,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 if log.args.snapshotterAddress == to_checksum_address(settings.instance_id) and\
                         log.args.slotId == settings.slot_id:
                     event = DailyTaskCompletedEvent(
+                        dataMarket=log.args.dataMarket,
                         dayId=log.args.dayId,
                         timestamp=log.args.timestamp,
                     )
