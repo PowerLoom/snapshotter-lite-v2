@@ -106,6 +106,7 @@ class Settings(BaseModel):
     web3storage: Web3Storage
     anchor_chain_rpc: RPCConfigBase
     node_version: str
+    data_market: str
 
 
 # Projects related models
