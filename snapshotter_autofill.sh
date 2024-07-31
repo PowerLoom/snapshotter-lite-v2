@@ -102,7 +102,7 @@ echo "Using powerloom reporting url: ${powerloom_reporting_url}"
 echo "Using web3 storage token: ${web3_storage_token}"
 echo "Using relayer host: ${relayer_host}"
 echo "Using telegram reporting url: ${telegram_reporting_url}"
-echo "Using telegram chat id: ${telegram_chat_id}
+echo "Using telegram chat id: ${telegram_chat_id}"
 
 sed -i'.backup' "s#relevant-namespace#$namespace#" config/settings.json
 
