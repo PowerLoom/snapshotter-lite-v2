@@ -50,7 +50,15 @@ if [ "$SLACK_REPORTING_URL" ]; then
 fi
 
 if [ "$POWERLOOM_REPORTING_URL" ]; then
-    echo "Found SLACK_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
+    echo "Found POWERLOOM_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
+fi
+
+if [ "$TELEGRAM_REPORTING_URL" ]; then
+    echo "Found TELEGRAM_REPORTING_URL ${TELEGRAM_REPORTING_URL}";
+fi
+
+if [ "$TELEGRAM_CHAT_ID" ]; then
+    echo "Found TELEGRAM_CHAT_ID ${TELEGRAM_CHAT_ID}";
 fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then
@@ -74,7 +82,8 @@ export relayer_host="${RELAYER_HOST:-https://relayer-nms-testnet-public.powerloo
 export local_collector_port="${LOCAL_COLLECTOR_PORT:-50051}"
 export slack_reporting_url="${SLACK_REPORTING_URL:-}"
 export powerloom_reporting_url="${POWERLOOM_REPORTING_URL:-}"
-
+export telegram_reporting_url="${TELEGRAM_REPORTING_URL:-}"
+export telegram_chat_id="${TELEGRAM_CHAT_ID:-}"
 
 
 # If IPFS_URL is empty, clear IPFS API key and secret
@@ -92,6 +101,8 @@ echo "Using slack reporting url: ${slack_reporting_url}"
 echo "Using powerloom reporting url: ${powerloom_reporting_url}"
 echo "Using web3 storage token: ${web3_storage_token}"
 echo "Using relayer host: ${relayer_host}"
+echo "Using telegram reporting url: ${telegram_reporting_url}"
+echo "Using telegram chat id: ${telegram_chat_id}
 
 sed -i'.backup' "s#relevant-namespace#$namespace#" config/settings.json
 
@@ -121,5 +132,8 @@ sed -i'.backup' "s#signer-account-private-key#$SIGNER_ACCOUNT_PRIVATE_KEY#" conf
 sed -i'.backup' "s#https://relayer-url#$relayer_host#" config/settings.json
 
 sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.json
+
+sed -i'.backup' "s#https://telegram-reporting-url#$telegram_reporting_url#" config/settings.json
+sed -i'.backup' "s#telegram-chat-id#$telegram_chat_id#" config/settings.json
 
 echo 'settings has been populated!'
