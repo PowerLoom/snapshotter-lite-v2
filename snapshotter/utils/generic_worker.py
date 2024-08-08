@@ -19,6 +19,7 @@ from eth_utils import big_endian_to_int
 from grpclib.client import Channel
 from httpx import AsyncClient
 from httpx import AsyncHTTPTransport
+from httpx import Client
 from httpx import Limits
 from httpx import Timeout
 from ipfs_cid import cid_sha256_hash
@@ -34,6 +35,7 @@ from web3 import Web3
 from snapshotter.settings.config import settings
 from snapshotter.utils.callback_helpers import misc_notification_callback_result_handler
 from snapshotter.utils.callback_helpers import send_failure_notifications_async
+from snapshotter.utils.callback_helpers import send_failure_notifications_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import SnapshotterIssue
@@ -130,7 +132,7 @@ class GenericAsyncWorker:
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
         self.status = SnapshotterStatus(projects=[])
-    
+
     def _notification_callback_result_handler(self, fut: asyncio.Future):
         """
         Handles the result of a callback or notification.
@@ -248,6 +250,28 @@ class GenericAsyncWorker:
                 '❌ Event processing failed: {}', epoch,
             )
             self.logger.info('Please check your config and if issue persists please reach out to the team!')
+            self.status.totalMissedSubmissions += 1
+            self.status.consecutiveMissedSubmissions += 1
+            notification_message = SnapshotterReportData(
+                snapshotterIssue=SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch.epochId),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({
+                        'issueDetails': f'Error : {e}',
+                    }),
+                ),
+                snapshotterStatus=self.status,
+            )
+            sync_client = Client(
+                timeout=Timeout(timeout=5.0),
+                follow_redirects=False,
+            )
+            send_failure_notifications_sync(
+                client=sync_client, message=notification_message,
+            )
             sys.exit(1)
 
     @asynccontextmanager

@@ -137,6 +137,16 @@ class EventDetectorProcess(multiprocessing.Process):
                 '❌ Dummy Event processing failed! Error: {}', e,
             )
             self._logger.info("Please check your config and if issue persists please reach out to the team!")
+            notification_message = EpochProcessingIssue(
+                instanceID=settings.instance_id,
+                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                timeOfReporting=str(time.time()),
+                extra=json.dumps({'issueDetails': f'Error : {e}'})
+            )
+            send_epoch_processing_failure_notification_sync(
+                client=self._httpx_client, 
+                message=notification_message
+            )
             sys.exit(1)
 
     async def get_events(self, from_block: int, to_block: int):
