@@ -49,6 +49,10 @@ if [ "$SLACK_REPORTING_URL" ]; then
     echo "Found SLACK_REPORTING_URL ${SLACK_REPORTING_URL}";
 fi
 
+if [ "$DATA_MARKET_CONTRACT" ]; then
+    echo "Found DATA_MARKET_CONTRACT ${DATA_MARKET_CONTRACT}";
+fi
+
 if [ "$POWERLOOM_REPORTING_URL" ]; then
     echo "Found SLACK_REPORTING_URL ${POWERLOOM_REPORTING_URL}";
 fi
@@ -88,6 +92,7 @@ echo "Using Prost RPC URL: ${PROST_RPC_URL}"
 echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
 echo "Using protocol state contract: ${PROTOCOL_STATE_CONTRACT}"
+echo "Using data market contract: ${DATA_MARKET_CONTRACT}"
 echo "Using slack reporting url: ${slack_reporting_url}"
 echo "Using powerloom reporting url: ${powerloom_reporting_url}"
 echo "Using web3 storage token: ${web3_storage_token}"
@@ -112,7 +117,7 @@ sed -i'.backup' "s#ipfs-reader-key#$ipfs_api_key#" config/settings.json
 sed -i'.backup' "s#ipfs-reader-secret#$ipfs_api_secret#" config/settings.json
 
 sed -i'.backup' "s#protocol-state-contract#$PROTOCOL_STATE_CONTRACT#" config/settings.json
-
+sed -i'.backup' "s#data-market-contract#$DATA_MARKET_CONTRACT#" config/settings.json
 sed -i'.backup' "s#https://slack-reporting-url#$slack_reporting_url#" config/settings.json
 
 sed -i'.backup' "s#https://powerloom-reporting-url#$powerloom_reporting_url#" config/settings.json

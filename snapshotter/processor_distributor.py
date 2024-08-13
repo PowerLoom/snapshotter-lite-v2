@@ -56,7 +56,6 @@ class ProcessorDistributor:
         self._rpc_helper = None
         self._source_chain_id = None
         self._projects_list = None
-
         self._initialized = False
         self._upcoming_project_changes = defaultdict(list)
         self._project_type_config_mapping = dict()
@@ -112,7 +111,7 @@ class ProcessorDistributor:
                 abi=protocol_abi,
             )
             try:
-                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME().call()
+                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for source chain block time: {}',
@@ -123,7 +122,7 @@ class ProcessorDistributor:
                 self._logger.debug('Set source chain block time to {}', self._source_chain_block_time)
 
             try:
-                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE().call()
+                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for epoch size: {}',
@@ -131,16 +130,6 @@ class ProcessorDistributor:
                 )
             else:
                 self._epoch_size = epoch_size
-
-            try:
-                slots_per_day = self._protocol_state_contract.functions.SLOTS_PER_DAY().call()
-            except Exception as e:
-                self._logger.error(
-                    'Exception in querying protocol state for slots per day: {}',
-                    e,
-                )
-            else:
-                self._slots_per_day = slots_per_day
 
             try:
                 snapshotter_address = self._protocol_state_contract.functions.slotSnapshotterMapping(settings.slot_id).call()
@@ -197,16 +186,19 @@ class ProcessorDistributor:
             self._source_chain_epoch_size = await get_source_chain_epoch_size(
                 rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
 
             self._source_chain_id = await get_source_chain_id(
                 rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
 
             submission_window = await get_snapshot_submision_window(
                 rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
             self._submission_window = submission_window
 
