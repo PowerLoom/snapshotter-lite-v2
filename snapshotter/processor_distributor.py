@@ -144,10 +144,10 @@ class ProcessorDistributor:
                 exit(0)
 
             try:
-                self._current_day = self._protocol_state_contract.functions.dayCounter(settings.data_market).call()
+                self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.data_market)).call()
 
                 task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
-                    settings.data_market,
+                    Web3.to_checksum_address(settings.data_market),
                     settings.slot_id,
                     self._current_day,
                 ).call()

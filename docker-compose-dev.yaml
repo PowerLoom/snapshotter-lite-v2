@@ -26,6 +26,7 @@ services:
       - CLIENT_RENDEZVOUS_POINT=$CLIENT_RENDEZVOUS_POINT
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
+      - DATA_MARKET_CONTRACT=$DATA_MARKET_CONTRACT
     command:
       bash -c  "bash server_autofill.sh && bash init_processes.sh"
 
