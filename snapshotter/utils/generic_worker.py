@@ -242,7 +242,7 @@ class GenericAsyncWorker:
             await self._send_submission_to_collector(snapshot_cid=snapshot_cid, epoch_id=epoch.epochId, project_id=f'{project_id}|{settings.node_version}')
         except Exception as e:
             self.logger.error(
-                '❌ Event processing failed: {}', epoch,
+                '❌ Simulation snapshot generation failed: {}', epoch,
             )
             self.logger.info('Please check your config and if issue persists please reach out to the team!')
             sys.exit(1)
@@ -316,12 +316,12 @@ class GenericAsyncWorker:
 
                     if 'Success' in response.message:
                         self.logger.info(
-                            '✅ Event processed successfully: {}!', msg,
+                            '✅ Simulation snapshot submitted successfully: {}!', msg,
                         )
                     else:
-                        raise Exception(f'Failed to send simulation message, got response: {response.message}')
+                        raise Exception(f'Failed to send simulation snapshot, got response: {response.message}')
                 except:
-                    raise Exception(f'Failed to send simulation message: {msg}')
+                    raise Exception(f'Failed to send simulation snapshot: {msg}')
         else:
             try:
                 async with self.open_stream() as stream:
