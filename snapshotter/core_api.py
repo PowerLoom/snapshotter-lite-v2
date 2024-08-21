@@ -196,7 +196,7 @@ async def get_project_last_finalized_epoch_info(
         while not epoch_finalized and epoch_id >= 0:
             # get finalization status
             [epoch_finalized_contract] = await request.app.state.anchor_rpc_helper.web3_call(
-                [request.app.state.protocol_state_contract.functions.snapshotStatus(project_id, epoch_id)],
+                [request.app.state.protocol_state_contract.functions.snapshotStatus(settings.data_market, project_id, epoch_id)],
             )
             if epoch_finalized_contract[0]:
                 epoch_finalized = True
