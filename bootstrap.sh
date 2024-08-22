@@ -1,11 +1,11 @@
 source .env
 
-echo "setting up codebase...";
+echo "setting up codebase..."
 
-rm -rf snapshotter-lite-local-collector;
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git;
-cd ./snapshotter-lite-local-collector;
-git checkout simulation_node_bi;
-cd ..;
+rm -rf snapshotter-lite-local-collector
+git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git
+cd ./snapshotter-lite-local-collector
+git checkout feat/trusted-relayers
+cd ..
 
-echo "bootstrapping complete!";
+echo "bootstrapping complete!"

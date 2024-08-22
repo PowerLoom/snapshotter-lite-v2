@@ -38,17 +38,6 @@ fi
 
 source .env
 
-if [ -z "$OVERRIDE_DEFAULTS" ]; then
-    echo "reset to default values...";
-    export PROST_RPC_URL="https://rpc-prost1h-proxy.powerloom.io"
-    export PROTOCOL_STATE_CONTRACT="0x10c5E2ee14006B3860d4FdF6B173A30553ea6333"
-    export PROST_CHAIN_ID="11165"
-    export SEQUENCER_ID="QmdJbNsbHpFseUPKC9vLt4vMsfdxA4dyHPzsAWuzYz3Yxx"
-    export RELAYER_RENDEZVOUS_POINT="Relayer_POP_test_simulation_phase_1"
-    export CLIENT_RENDEZVOUS_POINT="POP_Client_simulation_test_alpha"
-fi
-
-
 echo "testing before build...";
 
 if [ -z "$SOURCE_RPC_URL" ]; then
@@ -86,9 +75,6 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
-if [ "$RELAYER_HOST" ]; then
-    echo "Found RELAYER_HOST ${RELAYER_HOST}";
-fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
@@ -118,17 +104,6 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
-# check if snapshotter-lite-local-collector exists
-# if [ -d "./snapshotter-lite-local-collector" ]; then
-#     echo "snapshotter-lite-local-collector exists, do you want to delete and clone a fresh one? (y/n)";
-#     read response;
-#     if [ "$response" == "y" ]; then
-#         rm -rf ./snapshotter-lite-local-collector
-        
-#     fi
-# fi
-rm -rf snapshotter-lite-local-collector
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch fix/generate-new-p2pid
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
