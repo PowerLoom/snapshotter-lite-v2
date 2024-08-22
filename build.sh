@@ -85,10 +85,6 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
 fi
 
 
-if [ "$RELAYER_HOST" ]; then
-    echo "Found RELAYER_HOST ${RELAYER_HOST}";
-fi
-
 if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
 fi
