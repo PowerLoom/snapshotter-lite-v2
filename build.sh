@@ -42,7 +42,7 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "setting default values...";
     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
     export PROTOCOL_STATE_CONTRACT="0xE88E5f64AEB483d7057645326AdDFA24A3B312DF"
-    export DATA_MARKET_CONTRACT="0xB37AAFDEd58846AF0B1Bcdda80669CfcFFDF1f26"
+    export DATA_MARKET_CONTRACT="0x0C2E22fe7526fAeF28E7A58c84f8723dEFcE200c"
     export PROST_CHAIN_ID="11169"
 fi
 
