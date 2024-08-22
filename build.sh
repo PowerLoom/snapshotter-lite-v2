@@ -36,9 +36,16 @@ if [ ! -f .env ]; then
 
 fi
 
-./_override_defaults.sh
-
 source .env
+
+if [ -z "$OVERRIDE_DEFAULTS" ]; then
+    echo "setting default values...";
+    export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
+    export PROTOCOL_STATE_CONTRACT="0xE88E5f64AEB483d7057645326AdDFA24A3B312DF"
+    export DATA_MARKET_CONTRACT="0xB37AAFDEd58846AF0B1Bcdda80669CfcFFDF1f26"
+    export PROST_CHAIN_ID="11169"
+fi
+
 
 echo "testing before build...";
 
@@ -77,10 +84,6 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
-
-if [ "$RELAYER_HOST" ]; then
-    echo "Found RELAYER_HOST ${RELAYER_HOST}";
-fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";

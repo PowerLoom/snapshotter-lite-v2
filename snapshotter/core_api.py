@@ -104,7 +104,7 @@ async def get_current_epoch(
     """
     try:
         [current_epoch_data] = await request.app.state.anchor_rpc_helper.web3_call(
-            [request.app.state.protocol_state_contract.functions.currentEpoch()],
+            [request.app.state.protocol_state_contract.functions.currentEpoch(Web3.to_checksum_address(settings.data_market))],
         )
         current_epoch = {
             'begin': current_epoch_data[0],
@@ -145,7 +145,7 @@ async def get_epoch_info(
     """
     try:
         [epoch_info_data] = await request.app.state.anchor_rpc_helper.web3_call(
-            [request.app.state.protocol_state_contract.functions.epochInfo(epoch_id)],
+            [request.app.state.protocol_state_contract.functions.epochInfo(Web3.to_checksum_address(settings.data_market), epoch_id)],
         )
         epoch_info = {
             'timestamp': epoch_info_data[0],
@@ -190,13 +190,13 @@ async def get_project_last_finalized_epoch_info(
         # find from contract
         epoch_finalized = False
         [cur_epoch] = await request.app.state.anchor_rpc_helper.web3_call(
-            [request.app.state.protocol_state_contract.functions.currentEpoch()],
+            [request.app.state.protocol_state_contract.functions.currentEpoch(Web3.to_checksum_address(settings.data_market))],
         )
         epoch_id = int(cur_epoch[2])
         while not epoch_finalized and epoch_id >= 0:
             # get finalization status
             [epoch_finalized_contract] = await request.app.state.anchor_rpc_helper.web3_call(
-                [request.app.state.protocol_state_contract.functions.snapshotStatus(project_id, epoch_id)],
+                [request.app.state.protocol_state_contract.functions.snapshotStatus(settings.data_market, project_id, epoch_id)],
             )
             if epoch_finalized_contract[0]:
                 epoch_finalized = True
@@ -210,7 +210,7 @@ async def get_project_last_finalized_epoch_info(
                         'message': f'Unable to find last finalized epoch for project {project_id}',
                     }
         [epoch_info_data] = await request.app.state.anchor_rpc_helper.web3_call(
-            [request.app.state.protocol_state_contract.functions.epochInfo(project_last_finalized_epoch)],
+            [request.app.state.protocol_state_contract.functions.epochInfo(Web3.to_checksum_address(settings.data_market), project_last_finalized_epoch)],
         )
         epoch_info = {
             'epochId': project_last_finalized_epoch,
@@ -313,6 +313,7 @@ async def get_finalized_cid_for_project_id_epoch_id(
     try:
         data = await get_project_finalized_cid(
             request.app.state.protocol_state_contract,
+            settings.data_market,
             request.app.state.anchor_rpc_helper,
             epoch_id,
             project_id,
@@ -371,7 +372,7 @@ async def get_task_status_post(
     try:
 
         [last_finalized_epoch] = await request.app.state.anchor_rpc_helper.web3_call(
-            [request.app.state.protocol_state_contract.functions.lastFinalizedSnapshot(project_id)],
+            [request.app.state.protocol_state_contract.functions.lastFinalizedSnapshot(Web3.to_checksum_address(settings.data_market), project_id)],
         )
 
     except Exception as e:

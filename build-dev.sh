@@ -36,8 +36,6 @@ if [ ! -f .env ]; then
 
 fi
 
-./_override_defaults.sh
-
 source .env
 
 echo "testing before build...";
@@ -77,9 +75,6 @@ if [ "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
 fi
 
-if [ "$RELAYER_HOST" ]; then
-    echo "Found RELAYER_HOST ${RELAYER_HOST}";
-fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
@@ -109,15 +104,6 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
-# check if snapshotter-lite-local-collector exists
-if [ -d "./snapshotter-lite-local-collector" ]; then
-    echo "snapshotter-lite-local-collector exists, do you want to delete and clone a fresh one? (y/n)";
-    read response;
-    if [ "$response" == "y" ]; then
-        rm -rf ./snapshotter-lite-local-collector
-        git clone https://github.com/PowerLoom/snapshotter-lite-local-collector/ snapshotter-lite-local-collector --single-branch --branch main
-    fi
-fi
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 

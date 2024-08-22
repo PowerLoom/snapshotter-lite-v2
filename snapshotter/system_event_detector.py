@@ -88,7 +88,7 @@ class EventDetectorProcess(multiprocessing.Process):
         }
 
         EVENT_SIGS = {
-            'EpochReleased': 'EpochReleased(uint256,uint256,uint256,uint256)',
+            'EpochReleased': 'EpochReleased(address,uint256,uint256,uint256,uint256)',
             'DayStartedEvent': 'DayStartedEvent(uint256,uint256)',
             'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,uint256,uint256,uint256)',
 
@@ -103,6 +103,8 @@ class EventDetectorProcess(multiprocessing.Process):
         self._initialized = False
 
     async def init(self):
+        self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping...')
+        await asyncio.sleep(20)
         await self.processor_distributor.init()
         await self._init_check_and_report()
         await asyncio.sleep(120)
@@ -164,14 +166,16 @@ class EventDetectorProcess(multiprocessing.Process):
         latest_epoch_id = - 1
         for log in events_log:
             if log.event == 'EpochReleased':
-                event = EpochReleasedEvent(
-                    begin=log.args.begin,
-                    end=log.args.end,
-                    epochId=log.args.epochId,
-                    timestamp=log.args.timestamp,
-                )
-                latest_epoch_id = max(latest_epoch_id, log.args.epochId)
-                events.append((log.event, event))
+                self._logger.info(f"EpochReleased: {log.args.dataMarketAddress}!")
+                if log.args.dataMarketAddress == settings.data_market:
+                    event = EpochReleasedEvent(
+                        begin=log.args.begin,
+                        end=log.args.end,
+                        epochId=log.args.epochId,
+                        timestamp=log.args.timestamp,
+                    )
+                    latest_epoch_id = max(latest_epoch_id, log.args.epochId)
+                    events.append((log.event, event))
 
             elif log.event == 'DayStartedEvent':
                 event = DayStartedEvent(
