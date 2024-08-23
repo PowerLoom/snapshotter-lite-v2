@@ -127,19 +127,35 @@ fi
 
 echo "Building image with tag ${IMAGE_TAG}";
 
+# Get the first command line argument
+# Check if the first command line argument exists, and if not, assign it a default value
+if [ -z "$1" ]; then
+    ARG1="no_collector"
+else
+    ARG1="yes_collector"
+fi
+
+if [ "$ARG1" = "no_collector" ]; then
+    COMPOSE_FILE="docker-compose-no-collector.yaml"
+else
+    COMPOSE_FILE="docker-compose.yaml"
+fi
+
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker';
-    docker compose pull;
+    # assign docker compose file according to $ARG1
+    
+    docker compose -f "$COMPOSE_FILE" pull
     if [ "$IPFS_URL" ]; then
-        docker compose --profile ipfs up -V --abort-on-container-exit
+        docker compose -f "$COMPOSE_FILE" --profile ipfs up -V --abort-on-container-exit
     else
-        docker compose up --no-deps -V --abort-on-container-exit
+        docker compose -f "$COMPOSE_FILE" up --no-deps -V --abort-on-container-exit
     fi
 else
-    docker-compose pull;
+    docker-compose -f "$COMPOSE_FILE" pull
     if [ "$IPFS_URL" ]; then
-        docker-compose --profile ipfs up -V --abort-on-container-exit
+        docker-compose -f "$COMPOSE_FILE" --profile ipfs up -V --abort-on-container-exit
     else
-        docker-compose up --no-deps -V --abort-on-container-exit
+        docker-compose -f "$COMPOSE_FILE" up --no-deps -V --abort-on-container-exit
     fi
 fi
