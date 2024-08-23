@@ -13,8 +13,8 @@ from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.generic_worker import GenericAsyncWorker
 from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshotterReportData
+from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 
 
@@ -178,6 +178,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             self._submission_window = await get_snapshot_submision_window(
                 rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=self.protocol_state_contract,
+                data_market=settings.data_market,
             )
 
         self.logger.debug(

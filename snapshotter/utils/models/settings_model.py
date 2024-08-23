@@ -104,6 +104,7 @@ class Settings(BaseModel):
     simulation_submission_url: str
     pair_contract_abi: str
     protocol_state: EventContract
+    data_market: str
     relayer: Relayer
     ipfs: IPFSConfig
     web3storage: Web3Storage

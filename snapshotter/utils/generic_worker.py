@@ -247,7 +247,7 @@ class GenericAsyncWorker:
             await self._send_submission_to_collector(snapshot_cid=snapshot_cid, epoch_id=epoch.epochId, project_id=f'{project_id}|{settings.node_version}')
         except Exception as e:
             self.logger.error(
-                '❌ Event processing failed: {}', epoch,
+                '❌ Simulation snapshot generation failed: {}', epoch,
             )
             self.logger.info('Please check your config and if issue persists please reach out to the team!')
             self.status.totalMissedSubmissions += 1
@@ -343,12 +343,12 @@ class GenericAsyncWorker:
 
                     if 'Success' in response.message:
                         self.logger.info(
-                            '✅ Event processed successfully: {}!', msg,
+                            '✅ Simulation snapshot submitted successfully: {}!', msg,
                         )
                     else:
-                        raise Exception(f'Failed to send simulation message, got response: {response.message}')
+                        raise Exception(f'Failed to send simulation snapshot, got response: {response.message}')
                 except:
-                    raise Exception(f'Failed to send simulation message: {msg}')
+                    raise Exception(f'Failed to send simulation snapshot: {msg}')
         else:
             try:
                 async with self.open_stream() as stream:
@@ -596,7 +596,11 @@ class GenericAsyncWorker:
         # TODO: combine these into a single call
         try:
             source_block_time = await self._anchor_rpc_helper.web3_call(
-                [self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME()],
+                [
+                    self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                    Web3.to_checksum_address(settings.data_market),
+                    ),
+                ],
             )
         except Exception as e:
             self.logger.exception(
@@ -609,7 +613,7 @@ class GenericAsyncWorker:
             self.logger.debug('Set source chain block time to {}', self._source_chain_block_time)
         try:
             epoch_size = await self._anchor_rpc_helper.web3_call(
-                [self.protocol_state_contract.functions.EPOCH_SIZE()],
+                [self.protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market))],
             )
         except Exception as e:
             self.logger.exception(
