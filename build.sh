@@ -143,26 +143,26 @@ else
 fi
 
 if [ "$ARG1" = "no_collector" ]; then
-    COMPOSE_FILE="docker-compose-no-collector.yaml"
+    COLLECTOR_PROFILE_STRING=""
 else
-    COMPOSE_FILE="docker-compose.yaml"
+    COLLECTOR_PROFILE_STRING="--profile local-collector"
 fi
 
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker';
     # assign docker compose file according to $ARG1
     
-    docker compose -f "$COMPOSE_FILE" pull
-    if [ "$IPFS_URL" ]; then
-        docker compose -f "$COMPOSE_FILE" --profile ipfs up -V --abort-on-container-exit
+    docker compose -f docker-compose.yaml pull
+    if [ -n "$IPFS_URL" ]; then
+        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     else
-        docker compose -f "$COMPOSE_FILE" up --no-deps -V --abort-on-container-exit
+        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     fi
 else
-    docker-compose -f "$COMPOSE_FILE" pull
-    if [ "$IPFS_URL" ]; then
-        docker-compose -f "$COMPOSE_FILE" --profile ipfs up -V --abort-on-container-exit
+    docker-compose -f docker-compose.yaml pull
+    if [ -n "$IPFS_URL" ]; then
+        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     else
-        docker-compose -f "$COMPOSE_FILE" up --no-deps -V --abort-on-container-exit
+        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     fi
 fi
