@@ -130,21 +130,21 @@ echo "Building image with tag ${IMAGE_TAG}";
 # Get the first command line argument
 # Check if the first command line argument exists, and if not, assign it a default value
 if [ -z "$1" ]; then
-    ARG1="no_collector"
-else
     ARG1="yes_collector"
+else
+    ARG1="no_collector"
 fi
 
-if [ "$ARG1" = "no_collector" ]; then
-    COLLECTOR_PROFILE_STRING=""
-else
+if [ "$ARG1" = "yes_collector" ]; then
     COLLECTOR_PROFILE_STRING="--profile local-collector"
+else
+    COLLECTOR_PROFILE_STRING=""
 fi
 
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker';
     # assign docker compose file according to $ARG1
-    
+
     docker compose -f docker-compose.yaml pull
     if [ -n "$IPFS_URL" ]; then
         docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
