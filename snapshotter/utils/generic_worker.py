@@ -547,7 +547,7 @@ class GenericAsyncWorker:
 
     async def _init_grpc(self):
         self._grpc_channel = Channel(
-            host='snapshotter-lite-local-collector',
+            host='host.docker.internal',
             port=settings.local_collector_port,
             ssl=False,
         )
