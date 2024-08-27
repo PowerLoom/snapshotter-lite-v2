@@ -216,6 +216,11 @@ class GenericAsyncWorker:
         snapshot_cid = await _ipfs_writer_client.add_bytes(snapshot)
         return snapshot_cid
 
+    @tenacity.retry(
+        wait=tenacity.wait_random_exponential(multiplier=1, max=60),
+        stop=tenacity.stop_after_attempt(3),
+        retry=tenacity.retry_if_exception_type(Exception),
+    )
     async def _submit_to_snap_api_and_check(self, project_id: str, epoch: SnapshotProcessMessage, snapshot: BaseModel):
         """
         Submits the given snapshot to the SNAP API and checks if the submission was successful.
