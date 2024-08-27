@@ -150,16 +150,19 @@ fi
 
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker';
-    # assign docker compose file according to $ARG1
-    
-    docker compose -f docker-compose.yaml pull
+    # pull docker images only if local collector is enabled, reduces redundant pulls in case of multi node setup
+    if COLLECTOR_PROFILE_STRING="--profile local-collector"; then
+        docker compose -f docker-compose.yaml pull
+    fi
     if [ -n "$IPFS_URL" ]; then
         docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     else
         docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     fi
 else
-    docker-compose -f docker-compose.yaml pull
+if COLLECTOR_PROFILE_STRING="--profile local-collector"; then
+        docker-compose -f docker-compose.yaml pull
+    fi
     if [ -n "$IPFS_URL" ]; then
         docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
     else
