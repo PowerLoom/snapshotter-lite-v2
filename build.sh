@@ -137,9 +137,9 @@ echo "Building image with tag ${IMAGE_TAG}";
 # Get the first command line argument
 # Check if the first command line argument exists, and if not, assign it a default value
 if [ -z "$1" ]; then
-    ARG1="no_collector"
-else
     ARG1="yes_collector"
+else
+    ARG1="no_collector"
 fi
 
 if [ "$ARG1" = "no_collector" ]; then
