@@ -60,6 +60,8 @@ services:
       start_period: 30s
     command:
       bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]
