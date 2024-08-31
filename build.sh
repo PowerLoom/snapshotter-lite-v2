@@ -111,6 +111,21 @@ else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
+# check if ufw command exists
+if [ -x "$(command -v ufw)" ]; then
+    ufw allow $LOCAL_COLLECTOR_PORT
+    if [ $? -eq 0 ]; then
+        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT}"
+    else
+            echo "firewall allow rule not added for local collector port ${LOCAL_COLLECTOR_PORT}.\n \
+        Please attempt to add it manually with: sudo ufw allow ${LOCAL_COLLECTOR_PORT} \n \
+        Or 
+        Then run ./build.sh again.\n"
+        # exit script if ufw rule not added
+        exit 1
+    fi
+fi
+
 #fetch current git branch name
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
