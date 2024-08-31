@@ -589,7 +589,7 @@ class GenericAsyncWorker:
 
     async def _init_grpc(self):
         self._grpc_channel = Channel(
-            host='127.0.0.1',
+            host='host.docker.internal',
             port=settings.local_collector_port,
             ssl=False,
         )

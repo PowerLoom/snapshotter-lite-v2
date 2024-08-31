@@ -4,8 +4,8 @@ services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
     profiles: ["local-collector"]
-    # expose:
-    #   - ${LOCAL_COLLECTOR_PORT}
+    expose:
+      - ${LOCAL_COLLECTOR_PORT}
     ports:
       - "127.0.0.1:${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}"
     volumes:
