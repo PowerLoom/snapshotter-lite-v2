@@ -45,12 +45,16 @@ fi
 
 source .env
 
+BASE_SUBNET=$((SLOT_ID % 256))
+
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "setting default values...";
     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
     export PROTOCOL_STATE_CONTRACT="0xE88E5f64AEB483d7057645326AdDFA24A3B312DF"
     export DATA_MARKET_CONTRACT="0x0C2E22fe7526fAeF28E7A58c84f8723dEFcE200c"
     export PROST_CHAIN_ID="11169"
+    export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
+    export DOCKER_NETWORK_SUBNET="172.16.${BASE_SUBNET}.0/23"
 fi
 
 
@@ -72,7 +76,15 @@ if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
     exit 1;
 fi
 
-echo "Found SOURCE RPC URL ${SOURCE_RPC_URL}";
+if [ -z "$DOCKER_NETWORK_SUBNET" ]; then
+    echo "DOCKER_NETWORK_SUBNET not found, please set this in your .env!";
+    exit 1;
+fi
+
+echo "DOCKER NETWORK SUBNET: ${DOCKER_NETWORK_SUBNET}"
+echo "DOCKER NETWORK NAME: ${DOCKER_NETWORK_NAME}"
+
+echo "Found SOURCE RPC URL ${SOURCE_RPC_URL}"
 
 echo "Found SIGNER ACCOUNT ADDRESS ${SIGNER_ACCOUNT_ADDRESS}";
 
@@ -121,9 +133,9 @@ fi
 
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
-    ufw allow $LOCAL_COLLECTOR_PORT
+    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
     if [ $? -eq 0 ]; then
-        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT}"
+        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
     else
             echo "firewall allow rule not added for local collector port ${LOCAL_COLLECTOR_PORT}.\n \
         Please attempt to add it manually with: sudo ufw allow ${LOCAL_COLLECTOR_PORT} \n \
