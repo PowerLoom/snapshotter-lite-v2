@@ -27,6 +27,8 @@ services:
       - BLOCK_TIME=$BLOCK_TIME
     command:
       bash -c  "bash server_autofill.sh && bash init_processes.sh"
+    networks:
+      - custom_network
 
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
@@ -62,6 +64,8 @@ services:
       bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - custom_network
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]
@@ -80,3 +84,12 @@ services:
     #command:
     #   ["daemon", "--migrate=true", "--agent-version-suffix=docker"]
     restart: on-failure
+    networks:
+      - custom_network
+networks:
+  custom_network:
+    name: ${DOCKER_NETWORK_NAME}
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DOCKER_NETWORK_SUBNET}
