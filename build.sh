@@ -56,6 +56,7 @@ fi
 
 echo "testing before build...";
 
+
 if [ -z "$SOURCE_RPC_URL" ]; then
     echo "RPC URL not found, please set this in your .env!";
     exit 1;
@@ -116,6 +117,18 @@ if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
 else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
+
+# check if addition of a ufw allow rule on local collector port works
+ufw allow $LOCAL_COLLECTOR_PORT
+if [ $? -eq 0 ]; then
+    echo "ufw allow rule added for port ${LOCAL_COLLECTOR_PORT}"
+else
+        echo "ufw allow rule not added for port ${LOCAL_COLLECTOR_PORT}.\n \
+    Please attempt to add it manually with: sudo ufw allow ${LOCAL_COLLECTOR_PORT} \n \
+    Then run ./build.sh again.\n"
+    # exit script if ufw rule not added
+    exit 1
 fi
 
 #fetch current git branch name
