@@ -7,7 +7,7 @@ services:
     expose:
       - ${LOCAL_COLLECTOR_PORT}
     ports:
-      - "127.0.0.1:${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}"
+      - ${LOCAL_COLLECTOR_PORT}:${LOCAL_COLLECTOR_PORT}
     volumes:
       - ./shared-volume:/keys
     environment:
