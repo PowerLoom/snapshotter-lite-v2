@@ -192,7 +192,7 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
    git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
-  
+
 3. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
    cd powerloom-pre-mainnet
@@ -233,7 +233,7 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
    git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
     This will clone the repository into a directory named `powerloom`.
-  
+
 2. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
    cd powerloom-pre-mainnet
@@ -248,8 +248,16 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 
 5. Your node should start in background and you should start seeing logs in your terminal.
 6. To stop the node, you can run `pkill -f snapshotter` in a new terminal window.
-  
+
 ## Monitoring and Debugging
+
+### Monitoring
+
+To enable Telegram reporting for snapshotter issues:
+1. Open the conversation with [@PowerloomReportingBot](https://t.me/PowerloomReportingBot) in the Telegram App and start a conversation.
+2. Start the bot by typing the `/start` command in the chat. You will receive a response containing your `Chat ID` for the bot.
+3. Enter the `Chat ID` when prompted on node startup.
+4. You will now receive an error report whenever your node fails to process an epoch or snapshot.
 
 ### Debugging
 Usually the easiest way to fix node related issues is to restart the node. If you're facing issues with the node, you can try going through the logs present in the `logs` directory. If you're unable to find the issue, you can reach out to us on [Discord](https://powerloom.io/discord) and we will be happy to help you out.

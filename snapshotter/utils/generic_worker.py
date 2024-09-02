@@ -19,6 +19,7 @@ from eth_utils import big_endian_to_int
 from grpclib.client import Channel
 from httpx import AsyncClient
 from httpx import AsyncHTTPTransport
+from httpx import Client
 from httpx import Limits
 from httpx import Timeout
 from ipfs_cid import cid_sha256_hash
@@ -34,10 +35,13 @@ from web3 import Web3
 from snapshotter.settings.config import settings
 from snapshotter.utils.callback_helpers import misc_notification_callback_result_handler
 from snapshotter.utils.callback_helpers import send_failure_notifications_async
+from snapshotter.utils.callback_helpers import send_failure_notifications_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import SnapshotterIssue
+from snapshotter.utils.models.data_models import SnapshotterReportData
 from snapshotter.utils.models.data_models import SnapshotterReportState
+from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotSubmittedMessage
 from snapshotter.utils.models.message_models import SnapshotSubmittedMessageLite
@@ -127,6 +131,7 @@ class GenericAsyncWorker:
         self.protocol_state_contract_address = settings.protocol_state.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
+        self.status = SnapshotterStatus(projects=[])
 
     def _notification_callback_result_handler(self, fut: asyncio.Future):
         """
@@ -250,6 +255,28 @@ class GenericAsyncWorker:
                 '❌ Simulation snapshot generation failed: {}', epoch,
             )
             self.logger.info('Please check your config and if issue persists please reach out to the team!')
+            self.status.totalMissedSubmissions += 1
+            self.status.consecutiveMissedSubmissions += 1
+            notification_message = SnapshotterReportData(
+                snapshotterIssue=SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch.epochId),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({
+                        'issueDetails': f'Error : {e}',
+                    }),
+                ),
+                snapshotterStatus=self.status,
+            )
+            sync_client = Client(
+                timeout=Timeout(timeout=5.0),
+                follow_redirects=False,
+            )
+            send_failure_notifications_sync(
+                client=sync_client, message=notification_message,
+            )
             sys.exit(1)
 
     @asynccontextmanager
@@ -378,13 +405,18 @@ class GenericAsyncWorker:
                 'Exception uploading snapshot to IPFS for epoch {}: {}, Error: {},'
                 'sending failure notifications', epoch, snapshot, e,
             )
-            notification_message = SnapshotterIssue(
-                instanceID=settings.instance_id,
-                issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                projectID=project_id,
-                epochId=str(epoch.epochId),
-                timeOfReporting=str(time.time()),
-                extra=json.dumps({'issueDetails': f'Error : {e}'}),
+            self.status.totalMissedSubmissions += 1
+            self.status.consecutiveMissedSubmissions += 1
+            notification_message = SnapshotterReportData(
+                snapshotterIssue=SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch.epochId),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({'issueDetails': f'Error : {e}'}),
+                ),
+                snapshotterStatus=self.status,
             )
             await send_failure_notifications_async(
                 client=self._client, message=notification_message,
@@ -398,17 +430,27 @@ class GenericAsyncWorker:
                     'Exception submitting snapshot to collector for epoch {}: {}, Error: {},'
                     'sending failure notifications', epoch, snapshot, e,
                 )
-                notification_message = SnapshotterIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                    projectID=project_id,
-                    epochId=str(epoch.epochId),
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {e}'}),
+                self.status.totalMissedSubmissions += 1
+                self.status.consecutiveMissedSubmissions += 1
+
+                notification_message = SnapshotterReportData(
+                    snapshotterIssue=SnapshotterIssue(
+                        instanceID=settings.instance_id,
+                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                        projectID=project_id,
+                        epochId=str(epoch.epochId),
+                        timeOfReporting=str(time.time()),
+                        extra=json.dumps({'issueDetails': f'Error : {e}'}),
+                    ),
+                    snapshotterStatus=self.status,
                 )
                 await send_failure_notifications_async(
                     client=self._client, message=notification_message,
                 )
+            else:
+                # reset consecutive missed snapshots counter
+                self.status.consecutiveMissedSubmissions = 0
+                self.status.totalSuccessfulSubmissions += 1
 
         # upload to web3 storage
         if storage_flag:
@@ -559,7 +601,11 @@ class GenericAsyncWorker:
         # TODO: combine these into a single call
         try:
             source_block_time = await self._anchor_rpc_helper.web3_call(
-                [self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.data_market))],
+                [
+                    self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                    Web3.to_checksum_address(settings.data_market),
+                    ),
+                ],
             )
         except Exception as e:
             self.logger.exception(

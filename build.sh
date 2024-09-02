@@ -34,6 +34,13 @@ if [ ! -f .env ]; then
         sed -i'.backup' "s#<slot-id>#$SLOT_ID#" .env
     fi
 
+    # ask user for TELEGRAM_CHAT_ID and replace it in .env
+    if [ -z "$TELEGRAM_CHAT_ID" ]; then
+        echo "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): ";
+        read TELEGRAM_CHAT_ID;
+        sed -i'.backup' "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" .env
+    fi
+
 fi
 
 source .env
