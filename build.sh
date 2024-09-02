@@ -132,6 +132,8 @@ fi
 
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
+    # delete old blanket allow rule
+    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
     ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
     if [ $? -eq 0 ]; then
         echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
@@ -143,6 +145,9 @@ Then run ./build.sh again."
         # exit script if ufw rule not added
         exit 1
     fi
+else
+    echo "ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}. \
+If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
 fi
 
 #fetch current git branch name
