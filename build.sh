@@ -130,8 +130,8 @@ if [ -x "$(command -v ufw)" ]; then
         echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
     else
             echo "firewall allow rule not added for local collector port ${LOCAL_COLLECTOR_PORT}.\n \
-        Please attempt to add it manually with: sudo ufw allow ${LOCAL_COLLECTOR_PORT} \n \
-        Or 
+        Please attempt to add it manually with the following command:\n \
+        sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \n \
         Then run ./build.sh again.\n"
         # exit script if ufw rule not added
         exit 1
