@@ -134,4 +134,4 @@ sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.
 sed -i'.backup' "s#https://telegram-reporting-url#$telegram_reporting_url#" config/settings.json
 sed -i'.backup' "s#telegram-chat-id#$telegram_chat_id#" config/settings.json
 
-echo 'settings has been populated!'
+echo 'settings have been populated!'
