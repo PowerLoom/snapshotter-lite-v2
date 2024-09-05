@@ -16,7 +16,9 @@ RUN cp config/projects.example.json config/projects.json
 RUN cp config/settings.example.json config/settings.json
 
 # Make the shell scripts executable
-RUN chmod +x ./snapshotter_autofill.sh ./init_docker.sh
+RUN chmod +x ./snapshotter_autofill.sh ./docker-entrypoint.sh
 
 # Start the application using PM2
 # CMD pm2 start pm2.config.js && pm2 logs --lines 100
+
+ENTRYPOINT ["/bin/bash", "-c", "./docker-entrypoint.sh"]

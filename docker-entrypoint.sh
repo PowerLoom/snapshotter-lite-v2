@@ -1,3 +1,6 @@
+# Initializing settings...
+./snapshotter_autofill.sh
+
 # setting up git submodules
 git submodule update --init --recursive
 
