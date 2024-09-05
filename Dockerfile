@@ -12,6 +12,9 @@ RUN poetry install --no-dev --no-root
 # Copy the rest of the application's files
 COPY . .
 
+RUN cp config/projects.example.json config/projects.json
+RUN cp config/settings.example.json config/settings.json
+
 # Make the shell scripts executable
 RUN chmod +x ./snapshotter_autofill.sh ./init_docker.sh
 

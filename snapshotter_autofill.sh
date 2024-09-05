@@ -72,9 +72,6 @@ if [ "$NAMESPACE" ]; then
     echo "Found NAMESPACE ${NAMESPACE}";
 fi
 
-cp config/projects.example.json config/projects.json
-cp config/settings.example.json config/settings.json
-
 
 export namespace="${NAMESPACE:-namespace_hash}"
 export ipfs_url="${IPFS_URL:-}"
