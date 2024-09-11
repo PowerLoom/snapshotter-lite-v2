@@ -9,6 +9,7 @@ from snapshotter.utils.models.data_models import EpochProcessingIssue
 from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterStatus
 
+
 class TxLogsModel(BaseModel):
     logIndex: str
     blockNumber: str
