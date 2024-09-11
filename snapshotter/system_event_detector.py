@@ -146,20 +146,8 @@ class EventDetectorProcess(multiprocessing.Process):
                 '❌ Dummy Event processing failed! Error: {}', e,
             )
             self._logger.info("Please check your config and if issue persists please reach out to the team!")
-            notification_message = TelegramEpochProcessingReportMessage(
-                chatId=settings.reporting.telegram_chat_id,
-                slotId=settings.slot_id,
-                issue=EpochProcessingIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {e}'})
-                ),
-            )
-
-            send_telegram_notification_sync(
-                client=self._telegram_httpx_client, 
-                message=notification_message
+            self._send_telegram_epoch_processing_notification(
+                error=e,
             )
             sys.exit(1)
 
@@ -282,20 +270,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
                 if int(time.time()) - self._last_reporting_message_sent >= 600:
                     self._last_reporting_message_sent = int(time.time())
-                    notification_message = TelegramEpochProcessingReportMessage(
-                        chatId=settings.reporting.telegram_chat_id,
-                        slotId=settings.slot_id,
-                        issue=EpochProcessingIssue(
-                            instanceID=settings.instance_id,
-                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                            timeOfReporting=str(time.time()),
-                            extra=json.dumps({'issueDetails': f'Error : {e}'})
-                        ),
-                    )
-
-                    send_telegram_notification_sync(
-                        client=self._telegram_httpx_client, 
-                        message=notification_message
+                    self._send_telegram_epoch_processing_notification(
+                        error=e,
                     )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
@@ -336,20 +312,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
                 if int(time.time()) - self._last_reporting_message_sent >= 600:
                     self._last_reporting_message_sent = int(time.time())
-                    notification_message = TelegramEpochProcessingReportMessage(
-                        chatId=settings.reporting.telegram_chat_id,
-                        slotId=settings.slot_id,
-                        issue=EpochProcessingIssue(
-                            instanceID=settings.instance_id,
-                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                            timeOfReporting=str(time.time()),
-                            extra=json.dumps({'issueDetails': f'Error : {e}'})
-                        ),
-                    )
-
-                    send_telegram_notification_sync(
-                        client=self._telegram_httpx_client, 
-                        message=notification_message
+                    self._send_telegram_epoch_processing_notification(
+                        error=e,
                     )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
@@ -377,6 +341,31 @@ class EventDetectorProcess(multiprocessing.Process):
             )
             await asyncio.sleep(settings.rpc.polling_interval)
 
+    def _send_telegram_epoch_processing_notification(
+        self,
+        error: Exception,
+    ):
+        """
+        Sends a Telegram notification with the given message.
+
+        Args:
+            error (Exception): The error to report.
+        """
+        telegram_message = TelegramEpochProcessingReportMessage(
+            chatId=settings.reporting.telegram_chat_id,
+            slotId=settings.slot_id,
+            issue=EpochProcessingIssue(
+                instanceID=settings.instance_id,
+                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                timeOfReporting=str(time.time()),
+                extra=json.dumps({'issueDetails': f'Error : {error}'}),
+            ),
+        )
+        send_telegram_notification_sync( 
+            client=self._telegram_httpx_client,
+            message=telegram_message,
+        )
+    
     def run(self):
         """
         A class for detecting system events.
