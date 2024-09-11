@@ -37,7 +37,6 @@ from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
-    _async_transport: AsyncHTTPTransport
     _reporting_httpx_client: AsyncClient
     _telegram_httpx_client: AsyncClient
 
@@ -86,7 +85,7 @@ class ProcessorDistributor:
                 max_connections=100,
                 max_keepalive_connections=50,
                 keepalive_expiry=None,
-            )
+            ),
         )
 
         self._reporting_httpx_client = AsyncClient(
@@ -242,11 +241,15 @@ class ProcessorDistributor:
                 'Exception in getting eth price: {}',
                 e,
             )
+            self.snapshot_worker.status.totalMissedSubmissions += 1
+            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+
             await self._send_failure_notifications(
                 error=e,
                 epoch_id=message.epochId,
                 project_id='ETH_PRICE_LOAD',
             )
+
             return
 
         for project_type, _ in self._project_type_config_mapping.items():
@@ -327,9 +330,6 @@ class ProcessorDistributor:
         epoch_id: str,
         project_id: str,
     ):
-        self.snapshot_worker.status.totalMissedSubmissions += 1
-        self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-
         notification_message = SnapshotterIssue(
             instanceID=settings.instance_id,
             issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
@@ -347,8 +347,18 @@ class ProcessorDistributor:
         )
 
         tasks = [
-            asyncio.create_task(send_failure_notifications_async(self._reporting_httpx_client, notification_message)),
-            asyncio.create_task(send_telegram_notification_async(self._telegram_httpx_client, telegram_message)),
+            asyncio.create_task(
+                send_failure_notifications_async(
+                    client=self._reporting_httpx_client,
+                    message=notification_message,
+                ),
+            ),
+            asyncio.create_task(
+                send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                ),
+            ),
         ]
 
         await asyncio.gather(*tasks)
