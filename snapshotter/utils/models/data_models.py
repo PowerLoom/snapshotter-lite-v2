@@ -194,22 +194,8 @@ class SnapshotterReportData(BaseModel):
     snapshotterStatus: SnapshotterStatus
 
 
-class TelegramSnapshotterReportMessage(BaseModel):
-    chatId: int
-    slotId: int
-    issue: SnapshotterIssue
-    status: SnapshotterStatus
-
-
 class EpochProcessingIssue(BaseModel):
     instanceID: str
     issueType: str
     timeOfReporting: str
     extra: Optional[str] = ''
-
-
-class TelegramEpochProcessingReportMessage(BaseModel):
-    chatId: int
-    slotId: int
-    issue: EpochProcessingIssue
-

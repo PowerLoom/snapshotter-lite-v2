@@ -5,6 +5,9 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import Field
 
+from snapshotter.utils.models.data_models import EpochProcessingIssue
+from snapshotter.utils.models.data_models import SnapshotterIssue
+from snapshotter.utils.models.data_models import SnapshotterStatus
 
 class TxLogsModel(BaseModel):
     logIndex: str
@@ -76,3 +79,16 @@ class ProcessHubCommand(BaseModel):
     pid: Optional[int] = None
     proc_str_id: Optional[str] = None
     init_kwargs: Optional[Dict] = dict()
+
+
+class TelegramEpochProcessingReportMessage(BaseModel):
+    chatId: int
+    slotId: int
+    issue: EpochProcessingIssue
+
+
+class TelegramSnapshotterReportMessage(BaseModel):
+    chatId: int
+    slotId: int
+    issue: SnapshotterIssue
+    status: SnapshotterStatus
