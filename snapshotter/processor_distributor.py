@@ -11,8 +11,6 @@ from httpx import Timeout
 from web3 import Web3
 import time
 
-from snapshotter.utils.models.data_models import SnapshotterReportData
-from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
 from snapshotter.utils.data_utils import get_snapshot_submision_window
@@ -24,21 +22,24 @@ from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
 from snapshotter.utils.models.data_models import SnapshotFinalizedEvent
+from snapshotter.utils.models.data_models import SnapshotterIssue
+from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshottersUpdatedEvent
 from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
+from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
 from snapshotter.utils.snapshot_utils import get_eth_price_usd
 from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterStatus
+from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
     _async_transport: AsyncHTTPTransport
-    _client: AsyncClient
+    _reporting_httpx_client: AsyncClient
+    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -78,20 +79,27 @@ class ProcessorDistributor:
 
     async def _init_httpx_client(self):
         """
-        Initializes the HTTPX client with the specified settings.
+        Initializes the HTTPX clients with the specified settings.
         """
-        self._async_transport = AsyncHTTPTransport(
+        transport_settings = dict(
             limits=Limits(
                 max_connections=100,
                 max_keepalive_connections=50,
                 keepalive_expiry=None,
-            ),
+            )
         )
-        self._client = AsyncClient(
+
+        self._reporting_httpx_client = AsyncClient(
             base_url=settings.reporting.service_url,
             timeout=Timeout(timeout=5.0),
             follow_redirects=False,
-            transport=self._async_transport,
+            transport=AsyncHTTPTransport(**transport_settings),
+        )
+        self._telegram_httpx_client = AsyncClient(
+            base_url=settings.reporting.telegram_url,
+            timeout=Timeout(timeout=5.0),
+            follow_redirects=False,
+            transport=AsyncHTTPTransport(**transport_settings),
         )
 
     async def init(self):
@@ -234,21 +242,10 @@ class ProcessorDistributor:
                 'Exception in getting eth price: {}',
                 e,
             )
-            self.snapshot_worker.status.totalMissedSubmissions += 1
-            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-            notification_message = SnapshotterReportData(
-                snapshotterIssue=SnapshotterIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                    projectID='ETH_PRICE_LOAD',
-                    epochId=str(message.epochId),
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {e}'}),
-                ),
-                snapshotterStatus=self.snapshot_worker.status,
-            )
-            await send_failure_notifications_async(
-                client=self._client, message=notification_message,
+            await self._send_failure_notifications(
+                error=e,
+                epoch_id=message.epochId,
+                project_id='ETH_PRICE_LOAD',
             )
             return
 
@@ -323,3 +320,35 @@ class ProcessorDistributor:
                 ),
                 type_,
             )
+
+    async def _send_failure_notifications(
+        self,
+        error: Exception,
+        epoch_id: str,
+        project_id: str,
+    ):
+        self.snapshot_worker.status.totalMissedSubmissions += 1
+        self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+
+        notification_message = SnapshotterIssue(
+            instanceID=settings.instance_id,
+            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+            projectID=project_id,
+            epochId=str(epoch_id),
+            timeOfReporting=str(time.time()),
+            extra=json.dumps({'issueDetails': f'Error : {error}'}),
+        )
+
+        telegram_message = TelegramSnapshotterReportMessage(
+            chatId=settings.reporting.telegram_chat_id,
+            slotId=settings.slot_id,
+            issue=notification_message,
+            status=self.snapshot_worker.status,
+        )
+
+        tasks = [
+            asyncio.create_task(send_failure_notifications_async(self._reporting_httpx_client, notification_message)),
+            asyncio.create_task(send_telegram_notification_async(self._telegram_httpx_client, telegram_message)),
+        ]
+
+        await asyncio.gather(*tasks)
