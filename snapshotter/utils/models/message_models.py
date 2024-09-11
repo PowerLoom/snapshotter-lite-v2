@@ -82,14 +82,15 @@ class ProcessHubCommand(BaseModel):
     init_kwargs: Optional[Dict] = dict()
 
 
-class TelegramEpochProcessingReportMessage(BaseModel):
+class TelegramMessage(BaseModel):
     chatId: int
     slotId: int
+
+
+class TelegramEpochProcessingReportMessage(TelegramMessage):
     issue: EpochProcessingIssue
 
 
-class TelegramSnapshotterReportMessage(BaseModel):
-    chatId: int
-    slotId: int
+class TelegramSnapshotterReportMessage(TelegramMessage):
     issue: SnapshotterIssue
     status: SnapshotterStatus

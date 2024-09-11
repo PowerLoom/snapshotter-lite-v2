@@ -15,6 +15,8 @@ from snapshotter.utils.default_logger import logger
 from snapshotter.utils.models.data_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.models.data_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
+from snapshotter.utils.models.message_models import SnapshotterIssue
+from snapshotter.utils.models.message_models import TelegramMessage
 from snapshotter.utils.rpc import RpcHelper
 
 # setup logger
@@ -67,13 +69,13 @@ def sync_notification_callback_result_handler(f: functools.partial):
         logger.debug('Callback or notification result:{}', result)
 
 
-async def send_failure_notifications_async(client: AsyncClient, message: BaseModel):
+async def send_failure_notifications_async(client: AsyncClient, message: SnapshotterIssue):
     """
     Sends failure notifications to the configured reporting services.
 
     Args:
         client (AsyncClient): The async HTTP client to use for sending notifications.
-        message (SnapshotterReportData): The message to send as notification.
+        message (SnapshotterIssue): The message to send to the reporting services.
 
     Returns:
         None
@@ -83,7 +85,7 @@ async def send_failure_notifications_async(client: AsyncClient, message: BaseMod
         f = asyncio.ensure_future(
             client.post(
                 url=urljoin(settings.reporting.service_url, '/reportIssue'),
-                json=message.snapshotterIssue.dict(),
+                json=message.dict(),
             ),
         )
         f.add_done_callback(misc_notification_callback_result_handler)
@@ -92,19 +94,19 @@ async def send_failure_notifications_async(client: AsyncClient, message: BaseMod
         f = asyncio.ensure_future(
             client.post(
                 url=settings.reporting.slack_url,
-                json=message.snapshotterIssue.dict(),
+                json=message.dict(),
             ),
         )
         f.add_done_callback(misc_notification_callback_result_handler)
 
 
-def send_failure_notifications_sync(client: SyncClient, message: BaseModel):
+def send_failure_notifications_sync(client: SyncClient, message: SnapshotterIssue):
     """
     Sends failure notifications synchronously to to the configured reporting services.
 
     Args:
         client (SyncClient): The HTTP client to use for sending notifications.
-        message (SnapshotterReportData): The message to send as notification.
+        message (SnapshotterIssue): The message to send to the reporting services.
 
     Returns:
         None
@@ -113,7 +115,7 @@ def send_failure_notifications_sync(client: SyncClient, message: BaseModel):
         f = functools.partial(
             client.post,
             url=urljoin(settings.reporting.service_url, '/reportIssue'),
-            json=message.snapshotterIssue.dict(),
+            json=message.dict(),
         )
         sync_notification_callback_result_handler(f)
 
@@ -121,12 +123,12 @@ def send_failure_notifications_sync(client: SyncClient, message: BaseModel):
         f = functools.partial(
             client.post,
             url=settings.reporting.slack_url,
-            json=message.snapshotterIssue.dict(),
+            json=message.dict(),
         )
         sync_notification_callback_result_handler(f)
 
 
-async def send_telegram_notification_async(client: AsyncClient, message: BaseModel):
+async def send_telegram_notification_async(client: AsyncClient, message: TelegramMessage):
     """
     Sends an asynchronous Telegram notification for reporting issues.
 
@@ -135,8 +137,7 @@ async def send_telegram_notification_async(client: AsyncClient, message: BaseMod
 
     Args:
         client (AsyncClient): The async HTTP client to use for sending notifications.
-        message (BaseModel): The message to send as a Telegram notification. Should be either
-                             TelegramEpochProcessingReportMessage or TelegramSnapshotterReportMessage.
+        message (TelegramMessage): The message to send as a Telegram notification.
 
     Returns:
         None
@@ -167,7 +168,7 @@ async def send_telegram_notification_async(client: AsyncClient, message: BaseMod
         )
 
 
-def send_telegram_notification_sync(client: SyncClient, message: BaseModel):
+def send_telegram_notification_sync(client: SyncClient, message: TelegramMessage):
     """
     Sends a synchronous Telegram notification for reporting issues.
 
@@ -176,8 +177,7 @@ def send_telegram_notification_sync(client: SyncClient, message: BaseModel):
 
     Args:
         client (SyncClient): The synchronous HTTP client to use for sending notifications.
-        message (BaseModel): The message to send as a Telegram notification. Should be either
-                             TelegramEpochProcessingReportMessage or TelegramSnapshotterReportMessage.
+        message (TelegramMessage): The message to send as a Telegram notification.
 
     Returns:
         None
