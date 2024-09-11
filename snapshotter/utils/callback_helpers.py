@@ -14,9 +14,6 @@ from snapshotter.settings.config import settings
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.models.data_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.models.data_models import TelegramSnapshotterReportMessage
-from snapshotter.utils.models.data_models import SnapshotterReportData
-from snapshotter.utils.models.data_models import EpochProcessingIssue
-from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.rpc import RpcHelper
 
@@ -70,7 +67,7 @@ def sync_notification_callback_result_handler(f: functools.partial):
         logger.debug('Callback or notification result:{}', result)
 
 
-async def send_failure_notifications_async(client: AsyncClient, message: SnapshotterReportData):
+async def send_failure_notifications_async(client: AsyncClient, message: BaseModel):
     """
     Sends failure notifications to the configured reporting services.
 
@@ -81,7 +78,7 @@ async def send_failure_notifications_async(client: AsyncClient, message: Snapsho
     Returns:
         None
     """
-    
+
     if settings.reporting.service_url:
         f = asyncio.ensure_future(
             client.post(
@@ -100,24 +97,8 @@ async def send_failure_notifications_async(client: AsyncClient, message: Snapsho
         )
         f.add_done_callback(misc_notification_callback_result_handler)
 
-    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
-        reporting_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=message.snapshotterIssue,
-            status=message.snapshotterStatus,
-        )
-        
-        f = asyncio.ensure_future(
-            client.post(
-                url=urljoin(settings.reporting.telegram_url, '/reportSnapshotIssue'),
-                json=reporting_message.dict(),
-            ),
-        )
-        f.add_done_callback(misc_notification_callback_result_handler)
 
-
-def send_failure_notifications_sync(client: SyncClient, message: SnapshotterReportData):
+def send_failure_notifications_sync(client: SyncClient, message: BaseModel):
     """
     Sends failure notifications synchronously to to the configured reporting services.
 
@@ -144,73 +125,85 @@ def send_failure_notifications_sync(client: SyncClient, message: SnapshotterRepo
         )
         sync_notification_callback_result_handler(f)
 
-    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
-        reporting_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=message.snapshotterIssue,
-            status=message.snapshotterStatus,
+
+async def send_telegram_notification_async(client: AsyncClient, message: BaseModel):
+    """
+    Sends an asynchronous Telegram notification for reporting issues.
+
+    This function checks if Telegram reporting is configured, and then sends the appropriate
+    message based on its type (epoch processing issue or snapshotter issue).
+
+    Args:
+        client (AsyncClient): The async HTTP client to use for sending notifications.
+        message (BaseModel): The message to send as a Telegram notification. Should be either
+                             TelegramEpochProcessingReportMessage or TelegramSnapshotterReportMessage.
+
+    Returns:
+        None
+    """
+
+    if not settings.reporting.telegram_url or not settings.reporting.telegram_chat_id:
+        return
+
+    if isinstance(message, TelegramEpochProcessingReportMessage):
+        f = asyncio.ensure_future(
+            client.post(
+                url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
+                json=message.dict(),
+            ),
+        )
+        f.add_done_callback(misc_notification_callback_result_handler)
+    elif isinstance(message, TelegramSnapshotterReportMessage):
+        f = asyncio.ensure_future(
+            client.post(
+                url=urljoin(settings.reporting.telegram_url, '/reportSnapshotIssue'),
+                json=message.dict(),
+            ),
+        )
+        f.add_done_callback(misc_notification_callback_result_handler)
+    else:
+        helper_logger.error(
+            f'Unsupported telegram message type: {type(message)} - message not sent',
         )
 
+
+def send_telegram_notification_sync(client: SyncClient, message: BaseModel):
+    """
+    Sends a synchronous Telegram notification for reporting issues.
+
+    This function checks if Telegram reporting is configured, and then sends the appropriate
+    message based on its type (epoch processing issue or snapshotter issue).
+
+    Args:
+        client (SyncClient): The synchronous HTTP client to use for sending notifications.
+        message (BaseModel): The message to send as a Telegram notification. Should be either
+                             TelegramEpochProcessingReportMessage or TelegramSnapshotterReportMessage.
+
+    Returns:
+        None
+    """
+
+    if not settings.reporting.telegram_url or not settings.reporting.telegram_chat_id:
+        return
+
+    if isinstance(message, TelegramEpochProcessingReportMessage):
+        f = functools.partial(
+            client.post,
+            url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
+            json=message.dict(),
+        )
+        sync_notification_callback_result_handler(f)
+    elif isinstance(message, TelegramSnapshotterReportMessage):
         f = functools.partial(
             client.post,
             url=urljoin(settings.reporting.telegram_url, '/reportSnapshotIssue'),
-            json=reporting_message.dict(),
+            json=message.dict(),
         )
         sync_notification_callback_result_handler(f)
-
-
-async def send_epoch_processing_failure_notification_async(client: AsyncClient, message: EpochProcessingIssue):
-    """
-    Sends epoch processing failure notifications synchronously to the telegarm reporting service.
-
-    Args:
-        client (SyncClient): The HTTP client to use for sending notifications.
-        message (EpochProcessingIssue): The message to send as notification.
-
-    Returns:
-        None
-    """
-    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
-        reporting_message = TelegramEpochProcessingReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=message,
+    else:
+        helper_logger.error(
+            f'Unsupported telegram message type: {type(message)} - message not sent',
         )
-
-        f = asyncio.ensure_future(
-                client.post(
-                    url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
-                    json=reporting_message.dict(),
-                ),
-            )
-        f.add_done_callback(misc_notification_callback_result_handler)
-
-
-def send_epoch_processing_failure_notification_sync(client: SyncClient, message: EpochProcessingIssue):
-    """
-    Sends epoch processing failure notifications synchronously to the telegarm reporting service.
-
-    Args:
-        client (SyncClient): The HTTP client to use for sending notifications.
-        message (EpochProcessingIssue): The message to send as notification.
-
-    Returns:
-        None
-    """
-    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
-        reporting_message = TelegramEpochProcessingReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=message,
-        )
-
-        f = functools.partial(
-                client.post,
-                url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
-                json=reporting_message.dict(),
-            )
-        sync_notification_callback_result_handler(f)
 
 
 class GenericProcessor(ABC):
