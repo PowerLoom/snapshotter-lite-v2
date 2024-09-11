@@ -12,11 +12,11 @@ from pydantic import BaseModel
 
 from snapshotter.settings.config import settings
 from snapshotter.utils.default_logger import logger
-from snapshotter.utils.models.data_models import TelegramEpochProcessingReportMessage
-from snapshotter.utils.models.data_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotterIssue
+from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.models.message_models import TelegramMessage
+from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 
 # setup logger
