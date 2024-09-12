@@ -189,11 +189,6 @@ class TaskStatusRequest(BaseModel):
     wallet_address: str
 
 
-class SnapshotterReportData(BaseModel):
-    snapshotterIssue: SnapshotterIssue
-    snapshotterStatus: SnapshotterStatus
-
-
 class EpochProcessingIssue(BaseModel):
     instanceID: str
     issueType: str
