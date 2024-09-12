@@ -187,10 +187,3 @@ class UnfinalizedSnapshot(BaseModel):
 class TaskStatusRequest(BaseModel):
     task_type: str
     wallet_address: str
-
-
-class EpochProcessingIssue(BaseModel):
-    instanceID: str
-    issueType: str
-    timeOfReporting: str
-    extra: Optional[str] = ''

@@ -5,7 +5,6 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import Field
 
-from snapshotter.utils.models.data_models import EpochProcessingIssue
 from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterStatus
 
@@ -88,7 +87,7 @@ class TelegramMessage(BaseModel):
 
 
 class TelegramEpochProcessingReportMessage(TelegramMessage):
-    issue: EpochProcessingIssue
+    issue: SnapshotterIssue
 
 
 class TelegramSnapshotterReportMessage(TelegramMessage):

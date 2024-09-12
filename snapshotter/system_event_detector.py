@@ -20,7 +20,7 @@ from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
-from snapshotter.utils.models.data_models import EpochProcessingIssue
+from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.rpc import get_event_sig_and_abi
@@ -353,9 +353,11 @@ class EventDetectorProcess(multiprocessing.Process):
         telegram_message = TelegramEpochProcessingReportMessage(
             chatId=settings.reporting.telegram_chat_id,
             slotId=settings.slot_id,
-            issue=EpochProcessingIssue(
+            issue=SnapshotterIssue(
                 instanceID=settings.instance_id,
                 issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                projectID='',
+                epochId='',
                 timeOfReporting=str(time.time()),
                 extra=json.dumps({'issueDetails': f'Error : {error}'}),
             ),
