@@ -83,7 +83,7 @@ class ProcessHubCommand(BaseModel):
 
 
 class TelegramMessage(BaseModel):
-    chatId: int
+    chatId: str
     slotId: int
 
 
