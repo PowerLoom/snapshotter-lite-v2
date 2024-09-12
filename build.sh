@@ -45,8 +45,9 @@ fi
 
 source .env
 
-BASE_SUBNET=$((SLOT_ID % 256))
-
+# Calculate subnet values based on SLOT_ID
+SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 256) % 240))
+SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "setting default values...";
     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
@@ -55,6 +56,37 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
     export PROST_CHAIN_ID="11169"
     export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
     export DOCKER_NETWORK_SUBNET="172.${BASE_SUBNET}.0.0/16"
+    export DOCKER_NETWORK_SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.0/24"
+    # Test function for subnet calculation
+    test_subnet_calculation() {
+        local test_slot_id=$1
+        local expected_second_octet=$2
+        local expected_third_octet=$3
+
+        SLOT_ID=$test_slot_id
+        SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 256) % 240))
+        SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+
+        if [ $SUBNET_SECOND_OCTET -eq $expected_second_octet ] && [ $SUBNET_THIRD_OCTET -eq $expected_third_octet ]; then
+            echo "Test passed for SLOT_ID $test_slot_id: 172.$SUBNET_SECOND_OCTET.$SUBNET_THIRD_OCTET.0/24"
+        else
+            echo "Test failed for SLOT_ID $test_slot_id: Expected 172.$expected_second_octet.$expected_third_octet.0/24, got 172.$SUBNET_SECOND_OCTET.$SUBNET_THIRD_OCTET.0/24"
+        fi
+    }
+
+    # Run tests
+    echo "Running subnet calculation tests..."
+    test_subnet_calculation 1 16 1
+    test_subnet_calculation 255 16 255
+    test_subnet_calculation 256 17 0
+    test_subnet_calculation 1000 19 232
+    test_subnet_calculation 10000 55 16
+    test_subnet_calculation 61439 255 255
+    test_subnet_calculation 61440 16 0
+    test_subnet_calculation 100000 166 160
+
+    # Add this line to run tests before the main script logic
+    [ "$1" = "--test" ] && exit 0
 fi
 
 
