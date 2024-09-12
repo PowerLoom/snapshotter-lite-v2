@@ -103,8 +103,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
         EVENT_SIGS = {
             'EpochReleased': 'EpochReleased(address,uint256,uint256,uint256,uint256)',
-            'DayStartedEvent': 'DayStartedEvent(uint256,uint256)',
-            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,uint256,uint256,uint256)',
+            'DayStartedEvent': 'DayStartedEvent(address,uint256,uint256)',
+            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,address,uint256,uint256,uint256)',
 
         }
 
