@@ -121,7 +121,6 @@ class EventDetectorProcess(multiprocessing.Process):
         await asyncio.sleep(60)
         await self.processor_distributor.init()
         await self._init_check_and_report()
-        await asyncio.sleep(120)
 
     async def _init_check_and_report(self):
         try:
