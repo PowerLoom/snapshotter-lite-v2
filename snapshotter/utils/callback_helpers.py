@@ -147,25 +147,22 @@ async def send_telegram_notification_async(client: AsyncClient, message: Telegra
         return
 
     if isinstance(message, TelegramEpochProcessingReportMessage):
-        f = asyncio.ensure_future(
-            client.post(
-                url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
-                json=message.dict(),
-            ),
-        )
-        f.add_done_callback(misc_notification_callback_result_handler)
+        endpoint = '/reportEpochProcessingIssue'
     elif isinstance(message, TelegramSnapshotterReportMessage):
-        f = asyncio.ensure_future(
-            client.post(
-                url=urljoin(settings.reporting.telegram_url, '/reportSnapshotIssue'),
-                json=message.dict(),
-            ),
-        )
-        f.add_done_callback(misc_notification_callback_result_handler)
+        endpoint = '/reportSnapshotIssue'
     else:
         helper_logger.error(
             f'Unsupported telegram message type: {type(message)} - message not sent',
         )
+        return
+
+    f = asyncio.ensure_future(
+        client.post(
+            url=urljoin(settings.reporting.telegram_url, endpoint),
+            json=message.dict(),
+        ),
+    )
+    f.add_done_callback(misc_notification_callback_result_handler)
 
 
 def send_telegram_notification_sync(client: SyncClient, message: TelegramMessage):
@@ -187,23 +184,21 @@ def send_telegram_notification_sync(client: SyncClient, message: TelegramMessage
         return
 
     if isinstance(message, TelegramEpochProcessingReportMessage):
-        f = functools.partial(
-            client.post,
-            url=urljoin(settings.reporting.telegram_url, '/reportEpochProcessingIssue'),
-            json=message.dict(),
-        )
-        sync_notification_callback_result_handler(f)
+        endpoint = '/reportEpochProcessingIssue'
     elif isinstance(message, TelegramSnapshotterReportMessage):
-        f = functools.partial(
-            client.post,
-            url=urljoin(settings.reporting.telegram_url, '/reportSnapshotIssue'),
-            json=message.dict(),
-        )
-        sync_notification_callback_result_handler(f)
+        endpoint = '/reportSnapshotIssue'
     else:
         helper_logger.error(
             f'Unsupported telegram message type: {type(message)} - message not sent',
         )
+        return
+
+    f = functools.partial(
+        client.post,
+        url=urljoin(settings.reporting.telegram_url, endpoint),
+        json=message.dict(),
+    )
+    sync_notification_callback_result_handler(f)
 
 
 class GenericProcessor(ABC):
