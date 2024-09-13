@@ -254,7 +254,7 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 ### Monitoring
 
 To enable Telegram reporting for snapshotter issues:
-1. Open the conversation with [@PowerloomReportingBot](https://t.me/PowerloomReportingBot) in the Telegram App and start a conversation.
+1. Open a new conversation with [@PowerloomReportingBot](https://t.me/PowerloomReportingBot) in the Telegram App.
 2. Start the bot by typing the `/start` command in the chat. You will receive a response containing your `Chat ID` for the bot.
 3. Enter the `Chat ID` when prompted on node startup.
 4. You will now receive an error report whenever your node fails to process an epoch or snapshot.
