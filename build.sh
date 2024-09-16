@@ -54,8 +54,8 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
     export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
     SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 65536) % 16))
     SUBNET_THIRD_OCTET=$(((SLOT_ID / 256) % 256))
-    SUBNET_FOURTH_OCTET=$((SLOT_ID % 256))
-    export DOCKER_NETWORK_SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.${SUBNET_FOURTH_OCTET}/24"
+    # Always use 0 for the fourth octet to ensure a valid subnet
+    export DOCKER_NETWORK_SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.0/24"
 
     echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
     echo "Selected DOCKER_NETWORK_SUBNET: ${DOCKER_NETWORK_SUBNET}"
@@ -65,34 +65,32 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
         local test_slot_id=$1
         local expected_second_octet=$2
         local expected_third_octet=$3
-        local expected_fourth_octet=$4
 
         SLOT_ID=$test_slot_id
         SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 65536) % 16))
         SUBNET_THIRD_OCTET=$(((SLOT_ID / 256) % 256))
-        SUBNET_FOURTH_OCTET=$((SLOT_ID % 256))
+        SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.0/24"
 
         if [ $SUBNET_SECOND_OCTET -eq $expected_second_octet ] && 
-           [ $SUBNET_THIRD_OCTET -eq $expected_third_octet ] && 
-           [ $SUBNET_FOURTH_OCTET -eq $expected_fourth_octet ]; then
-            echo "Test passed for SLOT_ID $test_slot_id: 172.$SUBNET_SECOND_OCTET.$SUBNET_THIRD_OCTET.$SUBNET_FOURTH_OCTET/24"
+           [ $SUBNET_THIRD_OCTET -eq $expected_third_octet ]; then
+            echo "Test passed for SLOT_ID $test_slot_id: $SUBNET"
         else    
-            echo "Test failed for SLOT_ID $test_slot_id: Expected 172.$expected_second_octet.$expected_third_octet.$expected_fourth_octet/24, got 172.$SUBNET_SECOND_OCTET.$SUBNET_THIRD_OCTET.$SUBNET_FOURTH_OCTET/24"
+            echo "Test failed for SLOT_ID $test_slot_id: Expected 172.$expected_second_octet.$expected_third_octet.0/24, got $SUBNET"
         fi
     }
 
     # Run tests
     echo "Running subnet calculation tests..."
-    test_subnet_calculation 1 16 0 1
-    test_subnet_calculation 255 16 0 255
-    test_subnet_calculation 256 16 1 0
-    test_subnet_calculation 1000 16 3 232
-    test_subnet_calculation 10000 16 39 16
-    test_subnet_calculation 65535 16 255 255
-    test_subnet_calculation 65536 17 0 0
-    test_subnet_calculation 100000 17 134 160
-    test_subnet_calculation 1048575 31 255 255
-    test_subnet_calculation 1048576 16 0 0
+    test_subnet_calculation 1 16 0
+    test_subnet_calculation 255 16 0
+    test_subnet_calculation 256 16 1
+    test_subnet_calculation 1000 16 3
+    test_subnet_calculation 10000 16 39
+    test_subnet_calculation 65535 16 255
+    test_subnet_calculation 65536 17 0
+    test_subnet_calculation 100000 17 134
+    test_subnet_calculation 1048575 31 255
+    test_subnet_calculation 1048576 16 0
     # Add this line to run tests before the main script logic
     [ "$1" = "--test" ] && exit 0
 fi
