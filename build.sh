@@ -52,9 +52,6 @@ if [ -z "$OVERRIDE_DEFAULTS" ]; then
     export DATA_MARKET_CONTRACT="0x0C2E22fe7526fAeF28E7A58c84f8723dEFcE200c"
     export PROST_CHAIN_ID="11169"
     export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
-    # We're now using the range 172.16.0.0 to 172.31.255.255 for our subnets, which is the correct private IP range.
-    # This approach provides 1,048,576 unique subnets before wrapping around, which should be sufficient for most use cases.
-    # The calculation ensures each slot ID gets a unique subnet within this range.
     SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 65536) % 16))
     SUBNET_THIRD_OCTET=$(((SLOT_ID / 256) % 256))
     SUBNET_FOURTH_OCTET=$((SLOT_ID % 256))
