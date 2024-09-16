@@ -25,8 +25,6 @@ services:
       - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
       - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
       - BLOCK_TIME=$BLOCK_TIME
-    command:
-      bash -c  "bash server_autofill.sh && bash init_processes.sh"
     networks:
       - custom_network
 
@@ -62,8 +60,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    command:
-      bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

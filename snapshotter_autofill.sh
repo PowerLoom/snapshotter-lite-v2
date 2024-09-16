@@ -72,9 +72,6 @@ if [ "$NAMESPACE" ]; then
     echo "Found NAMESPACE ${NAMESPACE}";
 fi
 
-cp config/projects.example.json config/projects.json
-cp config/settings.example.json config/settings.json
-
 
 export namespace="${NAMESPACE:-namespace_hash}"
 export ipfs_url="${IPFS_URL:-}"
@@ -137,4 +134,4 @@ sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.
 sed -i'.backup' "s#https://telegram-reporting-url#$telegram_reporting_url#" config/settings.json
 sed -i'.backup' "s#telegram-chat-id#$telegram_chat_id#" config/settings.json
 
-echo 'settings has been populated!'
+echo 'settings have been populated!'
