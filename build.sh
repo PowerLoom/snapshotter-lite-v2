@@ -45,8 +45,8 @@ fi
 
 source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
-SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 65536) % 16))
-SUBNET_THIRD_OCTET=$(((SLOT_ID / 256) % 256))
+SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 256) % 240))
+SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
 # Always use 0 for the fourth octet to ensure a valid subnet
 export DOCKER_NETWORK_SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.0/24"
 
@@ -60,8 +60,8 @@ test_subnet_calculation() {
     local expected_third_octet=$3
 
     SLOT_ID=$test_slot_id
-    SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 65536) % 16))
-    SUBNET_THIRD_OCTET=$(((SLOT_ID / 256) % 256))
+    SUBNET_SECOND_OCTET=$((16 + (SLOT_ID / 256) % 240))
+    SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
     SUBNET="172.${SUBNET_SECOND_OCTET}.${SUBNET_THIRD_OCTET}.0/24"
 
     if [ $SUBNET_SECOND_OCTET -eq $expected_second_octet ] && 
