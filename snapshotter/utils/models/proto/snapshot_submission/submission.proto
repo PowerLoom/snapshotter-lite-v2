@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package submission;
-option go_package = "github.com/PowerLoom/snapshotter-lite-local-collector/pkgs";
+option go_package = "github.com/PowerLoom/proto-snapshot-server/pkgs";
 
 // Request structure as defined in your Solidity contract
 message Request {
