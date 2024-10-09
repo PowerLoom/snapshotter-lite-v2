@@ -1,18 +1,19 @@
-import time
-import json
 import asyncio
+import json
+import time
+
 from httpx import AsyncClient
 from httpx import AsyncHTTPTransport
 from httpx import Limits
 from httpx import Timeout
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.models.data_models import SnapshotterReportData 
+
+from snapshotter.settings.config import settings
+from snapshotter.utils.callback_helpers import send_telegram_notification_async
+from snapshotter.utils.default_logger import logger
 from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshotterStatus
-from snapshotter.utils.default_logger import logger
-from snapshotter.settings.config import settings
-
+from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 
 
 # ensure telegram__url / telegram_chat_id are set in config/settings.json
@@ -21,7 +22,7 @@ async def test_tg_reporting_call():
 
     project_id = 'test_project_id'
     epoch_id = 0
-    
+
     async_client = AsyncClient(
         timeout=Timeout(timeout=5.0),
         follow_redirects=False,
@@ -34,22 +35,28 @@ async def test_tg_reporting_call():
         ),
     )
 
-    notification_message = SnapshotterReportData(
-        snapshotterIssue=SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=epoch_id,
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : TEST ERROR MESSAGE'}),
-        ),
-        snapshotterStatus=SnapshotterStatus(
+    notification_message = SnapshotterIssue(
+        instanceID=settings.instance_id,
+        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+        projectID=project_id,
+        epochId=epoch_id,
+        timeOfReporting=str(time.time()),
+        extra=json.dumps({'issueDetails': f'Error : TEST ERROR MESSAGE'}),
+    )
+
+    telegram_message = TelegramSnapshotterReportMessage(
+        chatId=settings.reporting.telegram_chat_id,
+        slotId=settings.slot_id,
+        issue=notification_message,
+        status=SnapshotterStatus(
             projects=[],
+            totalMissedSubmissions=1,
+            consecutiveMissedSubmissions=1,
         ),
     )
 
-    await send_failure_notifications_async(
-        client=async_client, message=notification_message,
+    await send_telegram_notification_async(
+        client=async_client, message=telegram_message,
     )
 
     # wait for the callback to complete

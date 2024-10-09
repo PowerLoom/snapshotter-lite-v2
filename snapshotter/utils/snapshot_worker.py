@@ -1,7 +1,4 @@
 import importlib
-import json
-import sys
-import time
 from typing import Optional
 
 from ipfs_client.main import AsyncIPFSClient
@@ -9,12 +6,8 @@ from ipfs_client.main import AsyncIPFSClientSingleton
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.generic_worker import GenericAsyncWorker
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportData
-from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 
 
@@ -101,20 +94,12 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             self.status.totalMissedSubmissions += 1
             self.status.consecutiveMissedSubmissions += 1
 
-            notification_message = SnapshotterReportData(
-                snapshotterIssue=SnapshotterIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                    projectID=f'{task_type}:{settings.namespace}',
-                    epochId=str(msg_obj.epochId),
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {e}'}),
+            await self._send_failure_notifications(
+                error=e,
+                epoch_id=msg_obj.epochId,
+                project_id=self._gen_project_id(
+                    task_type=task_type,
                 ),
-                snapshotterStatus=self.status,
-            )
-
-            await send_failure_notifications_async(
-                client=self._client, message=notification_message,
             )
         else:
 

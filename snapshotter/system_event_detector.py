@@ -13,15 +13,16 @@ from web3 import Web3
 import sys
 from snapshotter.processor_distributor import ProcessorDistributor
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_epoch_processing_failure_notification_sync
+from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.exceptions import GenericExitOnSignal
 from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
-from snapshotter.utils.models.data_models import EpochProcessingIssue
+from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterReportState
+from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
 from urllib.parse import urljoin
@@ -63,8 +64,16 @@ class EventDetectorProcess(multiprocessing.Process):
             settings.protocol_state.abi,
             self._logger,
         )
-        self._httpx_client = httpx.Client(
+        self._reporting_httpx_client = httpx.Client(
             base_url=settings.reporting.service_url,
+            limits=httpx.Limits(
+                max_keepalive_connections=2,
+                max_connections=2,
+                keepalive_expiry=300,
+            ),
+        )
+        self._telegram_httpx_client = httpx.Client(
+            base_url=settings.reporting.telegram_url,
             limits=httpx.Limits(
                 max_keepalive_connections=2,
                 max_connections=2,
@@ -94,8 +103,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
         EVENT_SIGS = {
             'EpochReleased': 'EpochReleased(address,uint256,uint256,uint256,uint256)',
-            'DayStartedEvent': 'DayStartedEvent(uint256,uint256)',
-            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,uint256,uint256,uint256)',
+            'DayStartedEvent': 'DayStartedEvent(address,uint256,uint256)',
+            'DailyTaskCompletedEvent': 'DailyTaskCompletedEvent(address,address,uint256,uint256,uint256)',
 
         }
 
@@ -112,7 +121,6 @@ class EventDetectorProcess(multiprocessing.Process):
         await asyncio.sleep(60)
         await self.processor_distributor.init()
         await self._init_check_and_report()
-        await asyncio.sleep(120)
 
     async def _init_check_and_report(self):
         try:
@@ -137,15 +145,8 @@ class EventDetectorProcess(multiprocessing.Process):
                 '❌ Dummy Event processing failed! Error: {}', e,
             )
             self._logger.info("Please check your config and if issue persists please reach out to the team!")
-            notification_message = EpochProcessingIssue(
-                instanceID=settings.instance_id,
-                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                timeOfReporting=str(time.time()),
-                extra=json.dumps({'issueDetails': f'Error : {e}'})
-            )
-            send_epoch_processing_failure_notification_sync(
-                client=self._httpx_client, 
-                message=notification_message
+            self._send_telegram_epoch_processing_notification(
+                error=e,
             )
             sys.exit(1)
 
@@ -238,7 +239,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 if settings.reporting.service_url and int(time.time()) - self._last_reporting_service_ping >= 30:
                     self._last_reporting_service_ping = int(time.time())
                     try:
-                        self._httpx_client.post(
+                        self._reporting_httpx_client.post(
                             url=urljoin(settings.reporting.service_url, '/ping'),
                             json=SnapshotterPing(instanceID=settings.instance_id, slotId=settings.slot_id).dict(),
                         )
@@ -268,15 +269,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
                 if int(time.time()) - self._last_reporting_message_sent >= 600:
                     self._last_reporting_message_sent = int(time.time())
-                    notification_message = EpochProcessingIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                        timeOfReporting=str(time.time()),
-                        extra=json.dumps({'issueDetails': f'Error : {e}'})
-                    )
-                    send_epoch_processing_failure_notification_sync(
-                        client=self._httpx_client, 
-                        message=notification_message
+                    self._send_telegram_epoch_processing_notification(
+                        error=e,
                     )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
@@ -317,15 +311,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
                 if int(time.time()) - self._last_reporting_message_sent >= 600:
                     self._last_reporting_message_sent = int(time.time())
-                    notification_message = EpochProcessingIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                        timeOfReporting=str(time.time()),
-                        extra=json.dumps({'issueDetails': f'Error : {e}'})
-                    )
-                    send_epoch_processing_failure_notification_sync(
-                        client=self._httpx_client, 
-                        message=notification_message
+                    self._send_telegram_epoch_processing_notification(
+                        error=e,
                     )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
@@ -353,6 +340,33 @@ class EventDetectorProcess(multiprocessing.Process):
             )
             await asyncio.sleep(settings.rpc.polling_interval)
 
+    def _send_telegram_epoch_processing_notification(
+        self,
+        error: Exception,
+    ):
+        """
+        Sends a Telegram notification with the given message.
+
+        Args:
+            error (Exception): The error to report.
+        """
+        telegram_message = TelegramEpochProcessingReportMessage(
+            chatId=settings.reporting.telegram_chat_id,
+            slotId=settings.slot_id,
+            issue=SnapshotterIssue(
+                instanceID=settings.instance_id,
+                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                projectID='',
+                epochId='',
+                timeOfReporting=str(time.time()),
+                extra=json.dumps({'issueDetails': f'Error : {error}'}),
+            ),
+        )
+        send_telegram_notification_sync( 
+            client=self._telegram_httpx_client,
+            message=telegram_message,
+        )
+    
     def run(self):
         """
         A class for detecting system events.
