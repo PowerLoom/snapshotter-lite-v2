@@ -55,7 +55,7 @@ if [ -z "$NETWORK_OCTET" ]; then
 else
     export DOCKER_SUBNET="10.${NETWORK_OCTET}.0.0/16"
 fi
-
+echo "Selected DOCKER_SUBNET: ${DOCKER_SUBNET}"
 
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
