@@ -47,8 +47,35 @@ source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
 # Clean up any existing network with this name
 docker network rm ${DOCKER_NETWORK_NAME} 2>/dev/null
-
 echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
+
+# check if DOCKER_SUBNET is set, if not set it to 10.0.0.0/16
+if [ -z "$NETWORK_OCTET" ]; then
+    export DOCKER_SUBNET="10.0.0.0/16"
+else
+    export DOCKER_SUBNET="10.${NETWORK_OCTET}.0.0/16"
+fi
+
+
+# check if ufw command exists
+if [ -x "$(command -v ufw)" ]; then
+    # delete old blanket allow rule
+    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
+    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
+    if [ $? -eq 0 ]; then
+        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
+    else
+            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
+Please attempt to add it manually with the following command with sudo privileges: \
+sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
+Then run ./build.sh again."
+        # exit script if ufw rule not added
+        exit 1
+    fi
+else
+    echo "ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}. \
+If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
+fi
 
 
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
@@ -76,8 +103,6 @@ if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
     echo "SIGNER_ACCOUNT_ADDRESS not found, please set this in your .env!";
     exit 1;
 fi
-
-echo "DOCKER NETWORK NAME: ${DOCKER_NETWORK_NAME}"
 
 echo "Found SOURCE RPC URL ${SOURCE_RPC_URL}"
 
@@ -175,25 +200,3 @@ else
     fi
 fi
 
-NETWORK_INFO=$(docker network inspect ${DOCKER_NETWORK_NAME})
-DOCKER_NETWORK_SUBNET=$(echo $NETWORK_INFO | jq -r '.[0].IPAM.Config[0].Subnet')
-
-# check if ufw command exists
-if [ -x "$(command -v ufw)" ]; then
-    # delete old blanket allow rule
-    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
-    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
-    if [ $? -eq 0 ]; then
-        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
-    else
-            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
-Please attempt to add it manually with the following command with sudo privileges: \
-sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
-Then run ./build.sh again."
-        # exit script if ufw rule not added
-        exit 1
-    fi
-else
-    echo "ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}. \
-If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
-fi
