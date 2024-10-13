@@ -45,8 +45,6 @@ fi
 
 source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
-# remove any existing network with this name
-sudo docker network rm ${DOCKER_NETWORK_NAME} 2>/dev/null
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
 SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
