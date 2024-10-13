@@ -45,17 +45,46 @@ fi
 
 source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
-# Clean up any existing network with this name
-docker network rm ${DOCKER_NETWORK_NAME} 2>/dev/null
+# remove any existing network with this name
+sudo docker network rm ${DOCKER_NETWORK_NAME} 2>/dev/null
+# Use 172.18.0.0/16 as the base, which is within Docker's default pool
+SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
+
 echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
+echo "Selected DOCKER_NETWORK_SUBNET: ${DOCKER_NETWORK_SUBNET}"
 
-# check if DOCKER_SUBNET is set, if not set it to 10.0.0.0/16
-if [ -z "$NETWORK_OCTET" ]; then
-    export DOCKER_SUBNET="10.0.0.0/16"
-else
-    export DOCKER_SUBNET="10.${NETWORK_OCTET}.0.0/16"
+# Check if the first argument is "test"
+if [ "$1" = "test" ]; then
+    echo "Running subnet calculation tests..."
+    
+    # Test function for subnet calculation
+    test_subnet_calculation() {
+        local test_slot_id=$1
+        local expected_third_octet=$2
+
+        SLOT_ID=$test_slot_id
+        SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+        SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
+
+        if [ $SUBNET_THIRD_OCTET -eq $expected_third_octet ]; then
+            echo "Test passed for SLOT_ID $test_slot_id: $SUBNET"
+        else    
+            echo "Test failed for SLOT_ID $test_slot_id: Expected 172.18.$expected_third_octet.0/24, got $SUBNET"
+        fi
+    }
+
+    # Run test cases
+    test_subnet_calculation 0 0
+    test_subnet_calculation 1 1
+    test_subnet_calculation 99 99
+    test_subnet_calculation 100 100
+    test_subnet_calculation 255 255
+    test_subnet_calculation 256 0
+
+    echo "Subnet calculation tests completed."
+    exit 0
 fi
-
 
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
