@@ -176,6 +176,7 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
+git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch feat/close-sub-stream --force
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
 cd ../;
 
