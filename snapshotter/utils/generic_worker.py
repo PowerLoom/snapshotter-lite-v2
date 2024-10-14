@@ -314,8 +314,7 @@ class GenericAsyncWorker:
             project_id: str,
             epoch: Union[
                 SnapshotProcessMessage,
-                SnapshotSubmittedMessage,
-                SnapshotSubmittedMessageLite,
+                SnapshotSubmittedMessage
             ],
             snapshot: BaseModel,
             storage_flag: bool,
