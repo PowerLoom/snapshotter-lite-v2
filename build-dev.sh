@@ -176,9 +176,20 @@ fi
 
 # setting up git submodules
 git submodule update --init --recursive
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch feat/close-sub-stream --force
-cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
-cd ../;
+
+# Remove existing directory if it exists
+if [ -d "./snapshotter-lite-local-collector" ]; then
+    echo "Removing existing snapshotter-lite-local-collector directory..."
+    rm -rf ./snapshotter-lite-local-collector
+fi
+
+# Clone the repository
+git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch feat/close-sub-stream
+
+# Change directory, make the script executable, and run it
+cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh
+
+cd ../
 
 docker build -t snapshotter-lite-v2 .
 
