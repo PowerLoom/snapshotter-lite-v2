@@ -272,7 +272,10 @@ class GenericAsyncWorker:
         except asyncio.TimeoutError:
             self.logger.error(f'Timeout in _send_submission_to_collector while sending snapshot to local collector {msg}')
         except Exception as e:
-            self.logger.error(f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}')
+            if isinstance(e, grpclib.exceptions.StreamTerminatedError):
+                pass # fail silently as this is intended for the stream to be closed right after sending the message
+            else:
+                self.logger.error(f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}')
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
@@ -287,24 +290,14 @@ class GenericAsyncWorker:
                     self.logger.info('✅ Simulation snapshot submitted successfully to local collector: {}!', msg)
                 else:
                     self.logger.info('✅ Snapshot submitted successfully to local collector: {}!', msg)
-                return
                 await stream.end()
-            except (ConnectionResetError, grpclib.exceptions.GRPCError) as e:
-                self.logger.error(f'Probable grpc failure to send snapshot {msg}, got error: {e}. Will try to cancel and re-init the stream')
-                try:
-                    await asyncio.wait_for(stream.cancel(), timeout=10)
-                except asyncio.TimeoutError:
-                    self.logger.error(f'Timeout in cancelling stream for snapshot {msg}')
-                except asyncio.CancelledError:
-                    self.logger.info(f'Stream for snapshot {msg} was already cancelled')
-                except Exception as e:
-                    self.logger.error(f'Probable exception in cancelling stream for snapshot {msg}: {e}')
+                self.logger.debug(f'gRPC stream ended for snapshot {msg}')
+            except (ConnectionResetError, grpclib.exceptions.StreamTerminatedError) as e:
+                pass # fail silently as this is intended for the stream to be closed right after sending the message
             except asyncio.CancelledError:
                 self.logger.info('Task to send snapshot to local collector was asyncio cancelled! {}', msg)
-            except Exception as e:
-                self.logger.error(f'Probable failure to send snapshot {msg}, got error: {e}')
             else:
-                self.logger.debug(f'Finalized snapshot submission to local collector without errors: {msg}')
+                self.logger.info(f'Finalized snapshot submission to local collector without errors: {msg}')
     
 
     async def _commit_payload(
