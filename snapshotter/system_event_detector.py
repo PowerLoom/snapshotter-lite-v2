@@ -109,10 +109,10 @@ class EventDetectorProcess(multiprocessing.Process):
 
     async def init(self):
         self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
-        await asyncio.sleep(60)
+        await asyncio.sleep(15)
         await self.processor_distributor.init()
         await self._init_check_and_report()
-        await asyncio.sleep(120)
+        await asyncio.sleep(15)
 
     async def _init_check_and_report(self):
         try:
