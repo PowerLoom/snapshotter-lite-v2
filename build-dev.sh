@@ -184,7 +184,7 @@ if [ -d "./snapshotter-lite-local-collector" ]; then
 fi
 
 # Clone the repository
-git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch feat/close-sub-stream
+git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch main
 
 # Change directory, make the script executable, and run it
 cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh
