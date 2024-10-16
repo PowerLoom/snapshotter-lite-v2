@@ -286,10 +286,6 @@ class GenericAsyncWorker:
                 self.logger.debug(f'Sent message to local collector: {msg}')
                 response = await stream.recv_message()
                 self.logger.debug(f'Received response from local collector for {msg}: {response}')
-                if simulation:
-                    self.logger.info('✅ Simulation snapshot submitted successfully to local collector: {}!', msg)
-                else:
-                    self.logger.info('✅ Snapshot submitted successfully to local collector: {}!', msg)
                 await stream.end()
                 self.logger.debug(f'gRPC stream ended for snapshot {msg}')
             except (ConnectionResetError, grpclib.exceptions.StreamTerminatedError) as e:
