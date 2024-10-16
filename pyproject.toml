@@ -5,6 +5,7 @@ description = ""
 authors = ["Powerloom, Inc."]
 license = "Apache-2.0"
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10.13"
@@ -33,6 +34,7 @@ grpcio-tools = "^1.62.1"
 safe-pysha3 = "^1.0.4"
 ipfs-cid = "^1.0.0"
 eip712-structs = {git = "https://github.com/powerloom/py-eip712-structs"}
+protobuf = "^5.28.2"
 
 
 [build-system]

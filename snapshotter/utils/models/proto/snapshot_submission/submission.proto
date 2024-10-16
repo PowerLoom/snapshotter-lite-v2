@@ -19,10 +19,11 @@ message SnapshotSubmission {
 }
 
 service Submission {
-  rpc SubmitSnapshotSimulation (stream SnapshotSubmission) returns (stream SubmissionResponse);
-  rpc SubmitSnapshot (stream SnapshotSubmission) returns (SubmissionResponse);
+  rpc SubmitSnapshotSimulation (stream SnapshotSubmission) returns (SubmissionResponse);
+  rpc SubmitSnapshot (stream SnapshotSubmission) returns (stream SubmissionResponse);
 }
 
 message SubmissionResponse {
   string message = 1; // Response message
 }
+
