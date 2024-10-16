@@ -47,7 +47,7 @@ source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
 if [ -z "$SUBNET_THIRD_OCTET" ]; then
-    SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+    SUBNET_THIRD_OCTET=1
     echo "SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"

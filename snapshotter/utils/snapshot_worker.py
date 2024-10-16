@@ -135,21 +135,15 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 project_id = self._gen_project_id(
                     task_type=task_type, data_source=data_source, primary_data_source=primary_data_source,
                 )
-                # check if epoch id is 0, if yes send to snap API else function normally
-                if msg_obj.epochId == 0:
-                    # epoch: SnapshotProcessMessage, snapshot: BaseModel
-                    await self._submit_to_snap_api_and_check(
-                        project_id=project_id, epoch=msg_obj, snapshot=snapshot,
-                    )
-                else:
-                    await self._commit_payload(
-                        task_type=task_type,
-                        _ipfs_writer_client=self._ipfs_writer_client,
-                        project_id=project_id,
-                        epoch=msg_obj,
-                        snapshot=snapshot,
-                        storage_flag=settings.web3storage.upload_snapshots,
-                    )
+                
+                await self._commit_payload(
+                    task_type=task_type,
+                    _ipfs_writer_client=self._ipfs_writer_client,
+                    project_id=project_id,
+                    epoch=msg_obj,
+                    snapshot=snapshot,
+                    storage_flag=settings.web3storage.upload_snapshots,
+                )
 
     async def process_task(self, msg_obj: SnapshotProcessMessage, task_type: str, eth_price_dict: dict):
         """
