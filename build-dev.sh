@@ -102,6 +102,20 @@ else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
+if [ "$MAX_STREAM_POOL_SIZE" ]; then
+    echo "Found MAX_STREAM_POOL_SIZE ${MAX_STREAM_POOL_SIZE}";
+else
+    export MAX_STREAM_POOL_SIZE=2
+    echo "MAX_STREAM_POOL_SIZE not found in .env, setting to default value ${MAX_STREAM_POOL_SIZE}";
+fi
+
+if [ "$STREAM_POOL_HEALTH_CHECK_INTERVAL" ]; then
+    echo "Found STREAM_POOL_HEALTH_CHECK_INTERVAL ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+else
+    export STREAM_POOL_HEALTH_CHECK_INTERVAL=30
+    echo "STREAM_POOL_HEALTH_CHECK_INTERVAL not found in .env, setting to default value ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+fi
+
 if [ -z "$CORE_API_PORT" ]; then
     export CORE_API_PORT=8002;
     echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
