@@ -11,6 +11,7 @@ import httpx
 from eth_utils.address import to_checksum_address
 from web3 import Web3
 import sys
+import os
 from snapshotter.processor_distributor import ProcessorDistributor
 from snapshotter.settings.config import settings
 from snapshotter.utils.callback_helpers import send_telegram_notification_sync
@@ -117,11 +118,13 @@ class EventDetectorProcess(multiprocessing.Process):
         self._initialized = False
 
     async def init(self):
-        self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
-        await asyncio.sleep(15)
+        self._last_processed_block = await self._load_last_processed_block()
         await self.processor_distributor.init()
-        await self._init_check_and_report()
-        await asyncio.sleep(15)
+        if self._last_processed_block is None:
+            self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
+            await asyncio.sleep(15)
+            await self._init_check_and_report()
+            await asyncio.sleep(15)
 
     async def _init_check_and_report(self):
         try:
@@ -230,6 +233,17 @@ class EventDetectorProcess(multiprocessing.Process):
             self._shutdown_initiated = True
             raise GenericExitOnSignal
 
+    async def _save_last_processed_block(self):
+        with open("last_processed_block.log", 'w') as f:
+            f.write(str(self._last_processed_block))
+
+    async def _load_last_processed_block(self):
+        # check if last_processed_block.log exists
+        if os.path.exists("last_processed_block.log"):
+            with open("last_processed_block.log", 'r') as f:
+                return int(f.read())
+        return None
+
     async def _detect_events(self):
         """
         Continuously detects events by fetching the current block and comparing it to the last processed block.
@@ -279,6 +293,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
             if not self._last_processed_block:
                 self._last_processed_block = current_block - 1
+                # save it to last_processed_block file
+                await self._save_last_processed_block()
 
             if self._last_processed_block >= current_block:
                 self._logger.info(
@@ -294,6 +310,7 @@ class EventDetectorProcess(multiprocessing.Process):
                     'processing current block',
                 )
                 self._last_processed_block = current_block - 10
+                await self._save_last_processed_block()
 
             # Get events from current block to last_processed_block
             try:
@@ -330,7 +347,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 )
 
             self._last_processed_block = current_block
-
+            await self._save_last_processed_block()
             self._logger.info(
                 'DONE: Processed blocks till {}',
                 current_block,

@@ -28,7 +28,9 @@ module.exports = {
       out_file: "/dev/null",
       env: {
         NODE_ENV: NODE_ENV,
-      }
+      },
+      cron_restart: "0 * * * *",
+      autorestart: true
     },
   ]
 }
