@@ -11,6 +11,7 @@ from ipfs_client.main import AsyncIPFSClient
 
 from snapshotter.settings.config import settings
 from snapshotter.utils.default_logger import logger
+from snapshotter.utils.models.data_models import PreloaderResult
 from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotterIssue
@@ -215,7 +216,7 @@ class GenericProcessor(ABC):
         anchor_rpc_helper: RpcHelper,
         ipfs_reader: AsyncIPFSClient,
         protocol_state_contract,
-        eth_price_dict: dict,
+        preloader_results: dict,
     ):
         pass
 
@@ -234,7 +235,7 @@ class GenericPreloader(ABC):
         self,
         epoch: EpochBase,
         rpc_helper: RpcHelper,
-    ):
+    ) -> PreloaderResult:
         """
         Abstract method to compute preload data.
 
