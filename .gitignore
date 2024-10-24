@@ -10,6 +10,7 @@ uniswapTokenData
 **/*projects.json
 **/*aggregator.json
 config/*settings.json
+computes/*
 **/*.backup
 .vscode/*
 src
