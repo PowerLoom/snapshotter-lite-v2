@@ -8,10 +8,10 @@ from urllib.parse import urljoin
 from httpx import AsyncClient
 from httpx import Client as SyncClient
 from ipfs_client.main import AsyncIPFSClient
-from pydantic import BaseModel
 
 from snapshotter.settings.config import settings
 from snapshotter.utils.default_logger import logger
+from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotterIssue
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
@@ -217,4 +217,37 @@ class GenericProcessor(ABC):
         protocol_state_contract,
         eth_price_dict: dict,
     ):
+        pass
+
+
+class GenericPreloader(ABC):
+    """
+    Abstract base class for preloaders.
+    """
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    async def compute(
+        self,
+        epoch: EpochBase,
+        rpc_helper: RpcHelper,
+    ):
+        """
+        Abstract method to compute preload data.
+
+        Args:
+            epoch (EpochBase): The epoch message.
+            redis_conn (aioredis.Redis): Redis connection.
+            rpc_helper (RpcHelper): RPC helper instance.
+        """
+        pass
+
+    @abstractmethod
+    async def cleanup(self):
+        """
+        Abstract method to clean up resources.
+        """
         pass
