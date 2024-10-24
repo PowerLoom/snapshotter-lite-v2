@@ -187,3 +187,8 @@ class UnfinalizedSnapshot(BaseModel):
 class TaskStatusRequest(BaseModel):
     task_type: str
     wallet_address: str
+
+
+class PreloaderResult(BaseModel):
+    keyword: str
+    result: dict

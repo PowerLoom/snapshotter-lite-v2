@@ -122,6 +122,7 @@ class ProcessorConfig(BaseModel):
 class ProjectConfig(BaseModel):
     project_type: str
     processor: ProcessorConfig
+    preload_tasks: List[str]
 
 
 class ProjectsConfig(BaseModel):
