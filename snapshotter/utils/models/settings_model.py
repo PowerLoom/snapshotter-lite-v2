@@ -103,7 +103,6 @@ class Settings(BaseModel):
     projects_config_path: str
     preloaders_config_path: str
     simulation_submission_url: str
-    pair_contract_abi: str
     protocol_state: EventContract
     data_market: str
     relayer: Relayer
