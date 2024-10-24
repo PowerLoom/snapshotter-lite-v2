@@ -1,5 +1,6 @@
 import json
 
+from snapshotter.utils.models.settings_model import PreloaderConfig
 from snapshotter.utils.models.settings_model import ProjectsConfig
 from snapshotter.utils.models.settings_model import Settings
 
@@ -19,3 +20,14 @@ project_types = set()
 for project in projects_config:
     project_types.add(project.project_type)
 assert len(project_types) == len(projects_config)
+
+preloaders_config_path = settings.preloaders_config_path
+preloaders_config_file = open(preloaders_config_path)
+preloaders_config_dict = json.load(preloaders_config_file)
+preloaders_config = PreloaderConfig(**preloaders_config_dict)
+preloaders = preloaders_config.preloaders
+
+preloader_types = set()
+for preloader in preloaders:
+    preloader_types.add(preloader.task_type)
+assert len(preloader_types) == len(preloaders), 'Duplicate preloader types found'
