@@ -1,5 +1,6 @@
 import asyncio
 import json
+import importlib
 from collections import defaultdict
 from typing import Union
 
@@ -13,6 +14,7 @@ import time
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
+from snapshotter.settings.config import preloaders
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.data_utils import get_source_chain_epoch_size
 from snapshotter.utils.data_utils import get_source_chain_id
@@ -21,6 +23,7 @@ from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
+from snapshotter.utils.models.data_models import PreloaderResult
 from snapshotter.utils.models.data_models import SnapshotFinalizedEvent
 from snapshotter.utils.models.data_models import SnapshotterIssue
 from snapshotter.utils.models.data_models import SnapshotterReportState
@@ -30,7 +33,6 @@ from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
-from snapshotter.utils.snapshot_utils import get_eth_price_usd
 from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
@@ -62,8 +64,13 @@ class ProcessorDistributor:
         self._initialized = False
         self._upcoming_project_changes = defaultdict(list)
         self._project_type_config_mapping = dict()
+        self._preloader_compute_mapping = dict()
+        self._all_preload_tasks = set()
         for project_config in projects_config:
             self._project_type_config_mapping[project_config.project_type] = project_config
+            for preload_task in project_config.preload_tasks:
+                self._all_preload_tasks.add(preload_task)
+
         self._snapshotter_enabled = True
         self._snapshotter_active = True
         self.snapshot_worker = SnapshotAsyncWorker()
@@ -100,6 +107,27 @@ class ProcessorDistributor:
             follow_redirects=False,
             transport=AsyncHTTPTransport(**transport_settings),
         )
+
+    async def _init_preloader_compute_mapping(self):
+        """
+        Initializes the preloader compute mapping by importing the preloader module and class and
+        adding it to the mapping dictionary.
+        """
+        if self._preloader_compute_mapping:
+            return
+
+        for preloader in preloaders:
+            if preloader.task_type in self._all_preload_tasks:
+                preloader_module = importlib.import_module(preloader.module)
+                self._logger.debug('Imported preloader module: {}', preloader_module)
+                preloader_class = getattr(preloader_module, preloader.class_name)
+                self._preloader_compute_mapping[preloader.task_type] = preloader_class
+                self._logger.debug(
+                    'Imported preloader class {} against preloader module {} for task type {}',
+                    preloader_class,
+                    preloader_module,
+                    preloader.task_type,
+                )
 
     async def init(self):
         """
@@ -178,6 +206,7 @@ class ProcessorDistributor:
             await self._init_httpx_client()
             await self._init_rpc_helper()
             await self._load_projects_metadata()
+            await self._init_preloader_compute_mapping()
             await self.snapshot_worker.init_worker()
 
             self._initialized = True
@@ -217,7 +246,7 @@ class ProcessorDistributor:
 
     async def _epoch_release_processor(self, message: EpochReleasedEvent):
         """
-        This method is called when an epoch is released. It start the snapshotting process for the epoch.
+        This method is called when an epoch is released. It starts the snapshotting process for the epoch.
 
         Args:
             message (EpochBase): The message containing the epoch information.
@@ -230,37 +259,91 @@ class ProcessorDistributor:
             day=self._current_day,
         )
 
-        try:
-            eth_price_dict = await get_eth_price_usd(
-                message.begin,
-                message.end,
-                self._rpc_helper,
-            )
-        except Exception as e:
-            self._logger.error(
-                'Exception in getting eth price: {}',
-                e,
-            )
-            self.snapshot_worker.status.totalMissedSubmissions += 1
-            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+        preloader_tasks = {}
+        preloader_results_dict = {}
+        failed_preloaders = set()
 
-            await self._send_failure_notifications(
-                error=e,
-                epoch_id=message.epochId,
-                project_id='ETH_PRICE_LOAD',
+        # Determine which preloaders are needed across all projects
+        project_required_preloaders = set()
+        for project_config in self._project_type_config_mapping.values():
+            project_required_preloaders.update(project_config.preload_tasks)
+
+        for preloader_task in project_required_preloaders:
+            preloader_class = self._preloader_compute_mapping[preloader_task]
+            preloader_obj = preloader_class()
+            preloader_compute_kwargs = dict(
+                epoch=epoch,
+                rpc_helper=self._rpc_helper,
             )
-
-            return
-
-        for project_type, _ in self._project_type_config_mapping.items():
-            # release for snapshotting
-            asyncio.ensure_future(
-                self._distribute_callbacks_snapshotting(
-                    project_type, epoch, eth_price_dict,
-                ),
+            self._logger.debug(
+                'Starting preloader obj {} for epoch {}',
+                preloader_task,
+                epoch.epochId,
+            )
+            preloader_tasks[preloader_task] = asyncio.create_task(
+                preloader_obj.compute(**preloader_compute_kwargs)
             )
 
-    async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, eth_price_dict: dict):
+        await asyncio.gather(
+            *preloader_tasks.values(),
+            return_exceptions=True,
+        )
+
+        for preloader_task, task in preloader_tasks.items():
+            try:
+                result = task.result()
+                if isinstance(result, PreloaderResult):
+                    preloader_results_dict[preloader_task] = result.result
+                    self._logger.debug(
+                        'Preloader {} result: {}',
+                        preloader_task,
+                        result,
+                    )
+                else:
+                    raise ValueError(
+                        f"Unexpected result from preloader {preloader_task}: {result}"
+                    )
+            except Exception as e:
+                self._logger.error(
+                    'Exception in preloader {} for epoch {}: {}',
+                    preloader_task,
+                    epoch.epochId,
+                    e,
+                )
+                failed_preloaders.add(preloader_task)
+
+        # Distribute results to each project based on its requirements
+        for project_type, project_config in self._project_type_config_mapping.items():
+            # Check if all required preloaders for this project succeeded
+            project_required_preloaders = set(project_config.preload_tasks)
+            if not failed_preloaders.intersection(project_required_preloaders):
+                project_preloader_results = {
+                    task: preloader_results_dict[task]
+                    for task in project_required_preloaders
+                    if task in preloader_results_dict
+                }
+                
+                asyncio.ensure_future(
+                    self._distribute_callbacks_snapshotting(
+                        project_type, epoch, project_preloader_results,
+                    )
+                )
+            else:
+                self._logger.warning(
+                    'Skipping project type {} for epoch {} due to failed preloader tasks: {}',
+                    project_type,
+                    epoch.epochId,
+                    failed_preloaders.intersection(project_required_preloaders)
+                )
+
+        if failed_preloaders:
+            self._logger.warning(
+                'Some preloader tasks failed for epoch {}: {}',
+                epoch.epochId,
+                failed_preloaders
+            )
+
+    async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
         """
         Distributes callbacks for snapshotting to the appropriate snapshotters based on the project type and epoch.
 
@@ -280,7 +363,7 @@ class ProcessorDistributor:
         )
 
         asyncio.ensure_future(
-            self.snapshot_worker.process_task(process_unit, project_type, eth_price_dict),
+            self.snapshot_worker.process_task(process_unit, project_type, preloader_results),
         )
 
     async def process_event(
