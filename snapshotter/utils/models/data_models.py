@@ -4,6 +4,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -191,4 +192,4 @@ class TaskStatusRequest(BaseModel):
 
 class PreloaderResult(BaseModel):
     keyword: str
-    result: dict
+    result: Union[Dict[str, Any], List, Tuple]
