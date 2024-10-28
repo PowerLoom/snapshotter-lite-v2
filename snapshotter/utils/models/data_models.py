@@ -192,4 +192,4 @@ class TaskStatusRequest(BaseModel):
 
 class PreloaderResult(BaseModel):
     keyword: str
-    result: Union[Dict[str, Any], List, Tuple]
+    result: Union[Dict, List, Tuple]
