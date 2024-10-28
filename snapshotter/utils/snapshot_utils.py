@@ -35,7 +35,7 @@ async def get_block_details_in_block_range(
 
         block_details_dict = dict()
 
-        block_num = from_block
+        block_num = int(from_block)
         for block_details in rpc_batch_block_details:
             block_details = block_details.get('result')
             # right now we are just storing timestamp out of all block details,
