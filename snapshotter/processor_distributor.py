@@ -294,11 +294,6 @@ class ProcessorDistributor:
                 result = task.result()
                 if isinstance(result, PreloaderResult):
                     preloader_results_dict[preloader_task] = result.result
-                    self._logger.debug(
-                        'Preloader {} result: {}',
-                        preloader_task,
-                        result,
-                    )
                 else:
                     raise ValueError(
                         f"Unexpected result from preloader {preloader_task}: {result}"
