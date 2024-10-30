@@ -14,3 +14,6 @@ computes/*
 **/*.backup
 .vscode/*
 src
+snapshotter-lite-local-collectorg
+computes
+shared-volume
