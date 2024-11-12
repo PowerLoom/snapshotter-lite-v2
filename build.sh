@@ -270,16 +270,16 @@ if ! [ -x "$(command -v docker-compose)" ]; then
 
     docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
     if [ -n "$IPFS_URL" ]; then
-        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
+        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
+        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 else
     docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
     if [ -n "$IPFS_URL" ]; then
-        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
+        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V --abort-on-container-exit
+        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 fi
 

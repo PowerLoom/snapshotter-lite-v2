@@ -234,14 +234,14 @@ echo "building...";
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker';
     if [ "$IPFS_URL" == "/dns/ipfs/tcp/5001" ]; then
-        docker compose -f docker-compose-dev.yaml --profile ipfs up -V --abort-on-container-exit
+        docker compose -f docker-compose-dev.yaml --profile ipfs up -V
     else
-        docker compose -f docker-compose-dev.yaml up --no-deps -V --abort-on-container-exit
+        docker compose -f docker-compose-dev.yaml up --no-deps -V
     fi
 else
     if [ "$IPFS_URL" == "/dns/ipfs/tcp/5001" ]; then
-        docker-compose -f docker-compose-dev.yaml --profile ipfs up -V --abort-on-container-exit
+        docker-compose -f docker-compose-dev.yaml --profile ipfs up -V
     else
-        docker-compose -f docker-compose-dev.yaml up --no-deps -V --abort-on-container-exit
+        docker-compose -f docker-compose-dev.yaml up --no-deps -V
     fi
 fi
