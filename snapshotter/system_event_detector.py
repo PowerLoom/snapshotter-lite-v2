@@ -118,7 +118,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
     async def init(self):
         self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
-        await asyncio.sleep(60)
+        await asyncio.sleep(15)
         await self.processor_distributor.init()
         await self._init_check_and_report()
 
@@ -135,14 +135,14 @@ class EventDetectorProcess(multiprocessing.Process):
             )
 
             self._logger.info(
-                'Processing dummy event: {}', event,
+                'Processing simulation event: {}', event,
             )
             await self.processor_distributor.process_event(
                 "EpochReleased", event,
             )
         except Exception as e:
             self._logger.error(
-                '❌ Dummy Event processing failed! Error: {}', e,
+                '❌ Simulation event processing failed! Error: {}', e,
             )
             self._logger.info("Please check your config and if issue persists please reach out to the team!")
             self._send_telegram_epoch_processing_notification(
