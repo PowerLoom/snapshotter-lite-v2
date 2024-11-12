@@ -337,6 +337,22 @@ class ProcessorDistributor:
                 epoch.epochId,
                 failed_preloaders
             )
+            await send_telegram_notification_async(
+                client=self._telegram_httpx_client,
+                message=TelegramSnapshotterReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=SnapshotterIssue(
+                        instanceID=settings.instance_id,
+                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                        epochId=str(epoch.epochId),
+                        timeOfReporting=str(time.time()),
+                        projectID=project_type,
+                        extra=json.dumps({'issueDetails': f'Failed preloaders: {failed_preloaders}'}),
+                    ),
+                    status=self.snapshot_worker.status,
+                ),
+            )
 
     async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
         """
