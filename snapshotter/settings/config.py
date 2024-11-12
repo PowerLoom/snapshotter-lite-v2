@@ -19,3 +19,4 @@ project_types = set()
 for project in projects_config:
     project_types.add(project.project_type)
 assert len(project_types) == len(projects_config)
+
