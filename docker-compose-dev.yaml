@@ -72,8 +72,6 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - custom_network
-    networks:
-      - custom_network
   ipfs:
     image: ipfs/kubo:release
     environment:
