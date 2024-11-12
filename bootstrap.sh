@@ -5,7 +5,7 @@ echo "setting up codebase..."
 rm -rf snapshotter-lite-local-collector
 git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git
 cd ./snapshotter-lite-local-collector
-git checkout feat/trusted-relayers
+git checkout main
 cd ..
 
 if [ -z "$SNAPSHOT_CONFIG_REPO" ]; then
