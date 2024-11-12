@@ -120,7 +120,6 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 project_id = self._gen_project_id(
                     task_type=task_type, data_source=data_source, primary_data_source=primary_data_source,
                 )
-                
                 await self._commit_payload(
                     task_type=task_type,
                     _ipfs_writer_client=self._ipfs_writer_client,

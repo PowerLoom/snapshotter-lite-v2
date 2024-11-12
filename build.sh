@@ -188,11 +188,50 @@ else
     echo "MAX_STREAM_POOL_SIZE not found in .env, setting to default value ${MAX_STREAM_POOL_SIZE}";
 fi
 
-if [ "$STREAM_POOL_HEALTH_CHECK_INTERVAL" ]; then
-    echo "Found STREAM_POOL_HEALTH_CHECK_INTERVAL ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+if [ -z "$STREAM_HEALTH_CHECK_TIMEOUT_MS" ]; then
+    export STREAM_HEALTH_CHECK_TIMEOUT_MS=5000
+    echo "STREAM_HEALTH_CHECK_TIMEOUT_MS not found in .env, setting to default value ${STREAM_HEALTH_CHECK_TIMEOUT_MS}";
 else
-    export STREAM_POOL_HEALTH_CHECK_INTERVAL=30
-    echo "STREAM_POOL_HEALTH_CHECK_INTERVAL not found in .env, setting to default value ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+    echo "Found STREAM_HEALTH_CHECK_TIMEOUT_MS ${STREAM_HEALTH_CHECK_TIMEOUT_MS}";
+fi
+
+if [ -z "$STREAM_WRITE_TIMEOUT_MS" ]; then
+    export STREAM_WRITE_TIMEOUT_MS=5000
+    echo "STREAM_WRITE_TIMEOUT_MS not found in .env, setting to default value ${STREAM_WRITE_TIMEOUT_MS}";
+else
+    echo "Found STREAM_WRITE_TIMEOUT_MS ${STREAM_WRITE_TIMEOUT_MS}";
+fi
+
+if [ -z "$MAX_WRITE_RETRIES" ]; then
+    export MAX_WRITE_RETRIES=3
+    echo "MAX_WRITE_RETRIES not found in .env, setting to default value ${MAX_WRITE_RETRIES}";
+else
+    echo "Found MAX_WRITE_RETRIES ${MAX_WRITE_RETRIES}";
+fi
+
+if [ -z "$MAX_CONCURRENT_WRITES" ]; then
+    export MAX_CONCURRENT_WRITES=4
+    echo "MAX_CONCURRENT_WRITES not found in .env, setting to default value ${MAX_CONCURRENT_WRITES}";
+else
+    echo "Found MAX_CONCURRENT_WRITES ${MAX_CONCURRENT_WRITES}";
+# check if ufw command exists
+if [ -x "$(command -v ufw)" ]; then
+    # delete old blanket allow rule
+    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
+    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
+    if [ $? -eq 0 ]; then
+        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
+    else
+            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
+Please attempt to add it manually with the following command with sudo privileges: \
+sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
+Then run ./build.sh again."
+        # exit script if ufw rule not added
+        exit 1
+    fi
+else
+    echo "ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}. \
+If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
 fi
 
 #fetch current git branch name

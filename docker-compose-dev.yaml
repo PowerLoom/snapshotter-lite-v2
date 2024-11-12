@@ -25,9 +25,10 @@ services:
       - BLOCK_TIME=$BLOCK_TIME
       - DATA_MARKET_CONTRACT=$DATA_MARKET_CONTRACT
       - MAX_STREAM_POOL_SIZE=$MAX_STREAM_POOL_SIZE
-      - STREAM_POOL_HEALTH_CHECK_INTERVAL=$STREAM_POOL_HEALTH_CHECK_INTERVAL
-    command:
-      bash -c  "bash server_autofill.sh && bash init_processes.sh"
+      - STREAM_HEALTH_CHECK_TIMEOUT_MS=$STREAM_HEALTH_CHECK_TIMEOUT_MS
+      - STREAM_WRITE_TIMEOUT_MS=$STREAM_WRITE_TIMEOUT_MS
+      - MAX_WRITE_RETRIES=$MAX_WRITE_RETRIES
+      - MAX_CONCURRENT_WRITES=$MAX_CONCURRENT_WRITES
     networks:
       - custom_network
 
@@ -69,6 +70,8 @@ services:
       bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - custom_network
     networks:
       - custom_network
   ipfs:

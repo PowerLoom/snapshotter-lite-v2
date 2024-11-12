@@ -32,7 +32,7 @@ class SubmissionBase(abc.ABC):
             ),
             '/submission.Submission/SubmitSnapshot': grpclib.const.Handler(
                 self.SubmitSnapshot,
-                grpclib.const.Cardinality.STREAM_STREAM,
+                grpclib.const.Cardinality.UNARY_UNARY,
                 submission_pb2.SnapshotSubmission,
                 submission_pb2.SubmissionResponse,
             ),
@@ -48,7 +48,7 @@ class SubmissionStub:
             submission_pb2.SnapshotSubmission,
             submission_pb2.SubmissionResponse,
         )
-        self.SubmitSnapshot = grpclib.client.StreamStreamMethod(
+        self.SubmitSnapshot = grpclib.client.UnaryUnaryMethod(
             channel,
             '/submission.Submission/SubmitSnapshot',
             submission_pb2.SnapshotSubmission,

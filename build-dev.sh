@@ -109,19 +109,41 @@ else
     echo "MAX_STREAM_POOL_SIZE not found in .env, setting to default value ${MAX_STREAM_POOL_SIZE}";
 fi
 
-if [ "$STREAM_POOL_HEALTH_CHECK_INTERVAL" ]; then
-    echo "Found STREAM_POOL_HEALTH_CHECK_INTERVAL ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
-else
-    export STREAM_POOL_HEALTH_CHECK_INTERVAL=30
-    echo "STREAM_POOL_HEALTH_CHECK_INTERVAL not found in .env, setting to default value ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
-fi
-
 if [ -z "$CORE_API_PORT" ]; then
     export CORE_API_PORT=8002;
     echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
 else
     echo "Found CORE_API_PORT ${CORE_API_PORT}";
 fi
+
+if [ -z "$STREAM_HEALTH_CHECK_TIMEOUT_MS" ]; then
+    export STREAM_HEALTH_CHECK_TIMEOUT_MS=5000
+    echo "STREAM_HEALTH_CHECK_TIMEOUT_MS not found in .env, setting to default value ${STREAM_HEALTH_CHECK_TIMEOUT_MS}";
+else
+    echo "Found STREAM_HEALTH_CHECK_TIMEOUT_MS ${STREAM_HEALTH_CHECK_TIMEOUT_MS}";
+fi
+
+if [ -z "$STREAM_WRITE_TIMEOUT_MS" ]; then
+    export STREAM_WRITE_TIMEOUT_MS=5000
+    echo "STREAM_WRITE_TIMEOUT_MS not found in .env, setting to default value ${STREAM_WRITE_TIMEOUT_MS}";
+else
+    echo "Found STREAM_WRITE_TIMEOUT_MS ${STREAM_WRITE_TIMEOUT_MS}";
+fi
+
+if [ -z "$MAX_WRITE_RETRIES" ]; then
+    export MAX_WRITE_RETRIES=3
+    echo "MAX_WRITE_RETRIES not found in .env, setting to default value ${MAX_WRITE_RETRIES}";
+else
+    echo "Found MAX_WRITE_RETRIES ${MAX_WRITE_RETRIES}";
+fi
+
+if [ -z "$MAX_CONCURRENT_WRITES" ]; then
+    export MAX_CONCURRENT_WRITES=4
+    echo "MAX_CONCURRENT_WRITES not found in .env, setting to default value ${MAX_CONCURRENT_WRITES}";
+else
+    echo "Found MAX_CONCURRENT_WRITES ${MAX_CONCURRENT_WRITES}";
+fi
+
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
 if [ -z "$SUBNET_THIRD_OCTET" ]; then
