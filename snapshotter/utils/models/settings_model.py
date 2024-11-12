@@ -101,8 +101,8 @@ class Settings(BaseModel):
     reporting: ReportingConfig
     logs: Logs
     projects_config_path: str
+    preloaders_config_path: str
     simulation_submission_url: str
-    pair_contract_abi: str
     protocol_state: EventContract
     data_market: str
     relayer: Relayer
@@ -121,7 +121,19 @@ class ProcessorConfig(BaseModel):
 class ProjectConfig(BaseModel):
     project_type: str
     processor: ProcessorConfig
+    preload_tasks: List[str]
 
 
 class ProjectsConfig(BaseModel):
     config: List[ProjectConfig]
+
+
+class Preloader(BaseModel):
+    task_type: str
+    module: str
+    class_name: str
+
+
+class PreloaderConfig(BaseModel):
+    preloaders: List[Preloader]
+    timeout: int

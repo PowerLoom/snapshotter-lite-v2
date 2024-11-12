@@ -2,11 +2,9 @@ import asyncio
 import json
 import sys
 import time
-from contextlib import asynccontextmanager
 from typing import Dict
 from typing import Union
-from urllib.parse import urljoin
-
+import grpclib
 import httpx
 import sha3
 import tenacity
@@ -33,7 +31,6 @@ from tenacity import wait_random_exponential
 from web3 import Web3
 
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import misc_notification_callback_result_handler
 from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.callback_helpers import send_failure_notifications_sync
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
@@ -45,11 +42,11 @@ from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotSubmittedMessage
-from snapshotter.utils.models.message_models import SnapshotSubmittedMessageLite
 from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.models.proto.snapshot_submission.submission_grpc import SubmissionStub
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import Request
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import SnapshotSubmission
+
 from snapshotter.utils.rpc import RpcHelper
 
 import grpclib
@@ -225,94 +222,12 @@ class GenericAsyncWorker:
         snapshot_cid = await _ipfs_writer_client.add_bytes(snapshot)
         return snapshot_cid
 
-    @tenacity.retry(
-        wait=tenacity.wait_random_exponential(multiplier=1, max=60),
-        stop=tenacity.stop_after_attempt(3),
-        retry=tenacity.retry_if_exception_type(Exception),
-    )
-    async def _submit_to_snap_api_and_check(self, project_id: str, epoch: SnapshotProcessMessage, snapshot: BaseModel):
-        """
-        Submits the given snapshot to the SNAP API and checks if the submission was successful.
 
-        Args:
-            project_id (str): The project ID.
-            epoch (SnapshotProcessMessage): The epoch message object.
-            snapshot (Pydantic Model): The snapshot data.
-
-        Returns:
-            bool: True if the submission was successful, False otherwise.
-        """
-        self.logger.debug(
-            'Submitting snapshot to SNAP API for project: {}', project_id,
-        )
-
-        snapshot_json = json.dumps(snapshot.dict(by_alias=True), sort_keys=True, separators=(',', ':'))
-        snapshot_bytes = snapshot_json.encode('utf-8')
-        snapshot_cid = cid_sha256_hash(snapshot_bytes)
-
-        # request_, signature, _ = await self.generate_signature(snapshot_cid, epoch.epochId, f"{project_id}|{settings.node_version}")
-        # submit to relayer
-        try:
-            await self._send_submission_to_collector(snapshot_cid=snapshot_cid, epoch_id=epoch.epochId, project_id=f'{project_id}|{settings.node_version}')
-        except Exception as e:
-            self.logger.error(
-                '❌ Simulation snapshot generation failed: {}', epoch,
-            )
-            self.logger.info('Please check your config and if issue persists please reach out to the team!')
-            self.status.totalMissedSubmissions += 1
-            self.status.consecutiveMissedSubmissions += 1
-            notification_message = SnapshotterIssue(
-                instanceID=settings.instance_id,
-                issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                projectID=project_id,
-                epochId=str(epoch.epochId),
-                timeOfReporting=str(time.time()),
-                extra=json.dumps({
-                    'issueDetails': f'Error : {e}',
-                }),
-            )
-            telegram_message = TelegramSnapshotterReportMessage(
-                chatId=settings.reporting.telegram_chat_id,
-                slotId=settings.slot_id,
-                issue=notification_message,
-                status=self.status,
-            )
-
-            sync_client = Client(
-                timeout=Timeout(timeout=5.0),
-                follow_redirects=False,
-            )
-            send_failure_notifications_sync(
-                client=sync_client, message=notification_message,
-            )
-            send_telegram_notification_sync(
-                client=sync_client, message=telegram_message,
-            )
-            sys.exit(1)
-
-    @asynccontextmanager
-    async def open_stream(self):
-        try:
-            async with self._grpc_stub.SubmitSnapshot.open() as stream:
-                self._stream = stream
-                yield self._stream
-        finally:
-            self._stream = None
-
-    async def _cancel_stream(self):
-        if self._stream is not None:
-            try:
-                await self._stream.cancel()
-            except:
-                self.logger.debug('Error cancelling stream, continuing...')
-            self.logger.debug('Stream cancelled due to inactivity.')
-            self._stream = None
-
-    async def _send_submission_to_collector(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None):
+    async def _send_submission_to_collector(self, snapshot_cid, epoch_id, project_id):
         self.logger.debug(
             'Sending submission to collector...',
         )
-        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, slot_id, private_key)
+        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key)
 
         request_msg = Request(
             slotId=request_['slotId'],
@@ -332,35 +247,50 @@ class GenericAsyncWorker:
         kwargs_simulation = {'simulation': False}
         if epoch_id == 0:
             kwargs_simulation['simulation'] = True
-        
         try:
-            await self._send_msg_with_closure(msg=msg, **kwargs_simulation)
-        except asyncio.TimeoutError:
-            self.logger.error(f'Timeout in _send_submission_to_collector while sending snapshot to local collector {msg}')
+            await self.send_message(msg=msg, **kwargs_simulation)
         except Exception as e:
-            if isinstance(e, grpclib.exceptions.StreamTerminatedError):
-                pass # fail silently as this is intended for the stream to be closed right after sending the message
+            if 'StreamTerminatedError' in str(e):  # Doing this because we get RetryError here not StreamTerminatedError
+                pass  # fail silently as this is intended for the stream to be closed right after sending the message
             else:
-                self.logger.error(f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}')
+                self.logger.error(
+                    f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}',
+                )
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
-    async def _send_msg_with_closure(self, msg, simulation=False):
-        async with self._grpc_stub.SubmitSnapshot.open() as stream:
-            try:
-                await stream.send_message(msg)
-                self.logger.debug(f'Sent message to local collector: {msg}')
-                response = await stream.recv_message()
-                self.logger.debug(f'Received response from local collector for {msg}: {response}')
-                await stream.end()
-                self.logger.debug(f'gRPC stream ended for snapshot {msg}')
-            except (ConnectionResetError, grpclib.exceptions.StreamTerminatedError) as e:
-                pass # fail silently as this is intended for the stream to be closed right after sending the message
-            except asyncio.CancelledError:
-                self.logger.info('Task to send snapshot to local collector was asyncio cancelled! {}', msg)
-            else:
-                self.logger.info(f'Finalized snapshot submission to local collector without errors: {msg}')
-    
+    @retry(
+        wait=wait_random_exponential(multiplier=1, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(Exception),
+    )
+    async def send_message(self, msg, simulation=False):
+        """
+        Sends a message to the collector, either as a simulation or a real submission.
+
+        Args:
+            msg (SnapshotSubmission): The message to send.
+            simulation (bool, optional): Whether this is a simulation. Defaults to False.
+
+        Raises:
+            Exception: If failed to send the message.
+        """
+        try:
+            response = await self._grpc_stub.SubmitSnapshot(msg)
+            self.logger.debug(f'Sent message to local collector and received response: {response}')
+        except grpclib.GRPCError as e:
+            self.logger.error(f'gRPC error occurred while sending snapshot to local collector: {e}')
+            raise
+        except asyncio.CancelledError:
+            self.logger.info('Task to send snapshot to local collector was asyncio cancelled!')
+            raise
+        except Exception as e:
+            self.logger.error(f'Unexpected error occurred while sending snapshot to local collector: {e}')
+            raise
+        else:
+            self.logger.info(f'Successfully submitted snapshot to local collector: {msg}')
+        
+        return response
 
     async def _commit_payload(
             self,
@@ -407,7 +337,7 @@ class GenericAsyncWorker:
             self.status.consecutiveMissedSubmissions += 1
             await self._send_failure_notifications(
                 error=e,
-                epoch_id=epoch.epochId,
+                epoch_id=str(epoch.epochId),
                 project_id=project_id,
             )
         else:
@@ -423,7 +353,7 @@ class GenericAsyncWorker:
                 self.status.consecutiveMissedSubmissions += 1
                 await self._send_failure_notifications(
                     error=e,
-                    epoch_id=epoch.epochId,
+                    epoch_id=str(epoch.epochId),
                     project_id=project_id,
                 )
             else:
@@ -499,25 +429,17 @@ class GenericAsyncWorker:
         """
         Initializes the HTTPX client and transport objects for making HTTP requests.
         """
-        transport_settings = dict(
-            limits=Limits(
-                max_connections=100,
-                max_keepalive_connections=50,
-                keepalive_expiry=None,
-            ),
-        )
-
         self._reporting_httpx_client = AsyncClient(
             base_url=settings.reporting.service_url,
             timeout=Timeout(timeout=5.0),
             follow_redirects=False,
-            transport=AsyncHTTPTransport(**transport_settings),
+            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
         )
         self._telegram_httpx_client = AsyncClient(
             base_url=settings.reporting.telegram_url,
             timeout=Timeout(timeout=5.0),
             follow_redirects=False,
-            transport=AsyncHTTPTransport(**transport_settings),
+            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
         )
         self._web3_storage_upload_transport = AsyncHTTPTransport(
             limits=Limits(

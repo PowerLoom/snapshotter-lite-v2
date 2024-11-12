@@ -4,6 +4,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -187,3 +188,8 @@ class UnfinalizedSnapshot(BaseModel):
 class TaskStatusRequest(BaseModel):
     task_type: str
     wallet_address: str
+
+
+class PreloaderResult(BaseModel):
+    keyword: str
+    result: Union[Dict, List, Tuple]
