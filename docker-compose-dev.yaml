@@ -70,6 +70,8 @@ services:
       bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - custom_network
   ipfs:
     image: ipfs/kubo:release
     profiles: ["ipfs"]
@@ -90,3 +92,12 @@ services:
     ports:
       - 5001:5001
     restart: on-failure
+    networks:
+      - custom_network
+networks:
+  custom_network:
+    name: ${DOCKER_NETWORK_NAME}
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DOCKER_NETWORK_SUBNET}
