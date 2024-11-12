@@ -102,17 +102,108 @@ else
     echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
 fi
 
+if [ "$MAX_STREAM_POOL_SIZE" ]; then
+    echo "Found MAX_STREAM_POOL_SIZE ${MAX_STREAM_POOL_SIZE}";
+else
+    export MAX_STREAM_POOL_SIZE=2
+    echo "MAX_STREAM_POOL_SIZE not found in .env, setting to default value ${MAX_STREAM_POOL_SIZE}";
+fi
+
+if [ "$STREAM_POOL_HEALTH_CHECK_INTERVAL" ]; then
+    echo "Found STREAM_POOL_HEALTH_CHECK_INTERVAL ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+else
+    export STREAM_POOL_HEALTH_CHECK_INTERVAL=30
+    echo "STREAM_POOL_HEALTH_CHECK_INTERVAL not found in .env, setting to default value ${STREAM_POOL_HEALTH_CHECK_INTERVAL}";
+fi
+
 if [ -z "$CORE_API_PORT" ]; then
     export CORE_API_PORT=8002;
     echo "CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}";
 else
     echo "Found CORE_API_PORT ${CORE_API_PORT}";
 fi
+export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
+# Use 172.18.0.0/16 as the base, which is within Docker's default pool
+if [ -z "$SUBNET_THIRD_OCTET" ]; then
+    SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+    if [ $SUBNET_THIRD_OCTET -eq 0 ]; then
+        SUBNET_THIRD_OCTET=1
+    fi
+    echo "SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
+fi
+export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
+
+echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
+echo "Selected DOCKER_NETWORK_SUBNET: ${DOCKER_NETWORK_SUBNET}"
+
+# Check if the first argument is "test"
+if [ "$1" = "test" ]; then
+    echo "Running subnet calculation tests..."
+    
+    # Test function for subnet calculation
+    test_subnet_calculation() {
+        local test_slot_id=$1
+        local expected_third_octet=$2
+
+        SLOT_ID=$test_slot_id
+        SUBNET_THIRD_OCTET=$((SLOT_ID % 256))
+        SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
+
+        if [ $SUBNET_THIRD_OCTET -eq $expected_third_octet ]; then
+            echo "Test passed for SLOT_ID $test_slot_id: $SUBNET"
+        else    
+            echo "Test failed for SLOT_ID $test_slot_id: Expected 172.18.$expected_third_octet.0/24, got $SUBNET"
+        fi
+    }
+
+    # Run test cases
+    test_subnet_calculation 0 0
+    test_subnet_calculation 1 1
+    test_subnet_calculation 99 99
+    test_subnet_calculation 100 100
+    test_subnet_calculation 255 255
+    test_subnet_calculation 256 0
+
+    echo "Subnet calculation tests completed."
+    exit 0
+fi
+
+# check if ufw command exists
+if [ -x "$(command -v ufw)" ]; then
+    # delete old blanket allow rule
+    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
+    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
+    if [ $? -eq 0 ]; then
+        echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
+    else
+            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
+Please attempt to add it manually with the following command with sudo privileges: \
+sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
+Then run ./build.sh again."
+        # exit script if ufw rule not added
+        exit 1
+    fi
+else
+    echo "ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}. \
+If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
+fi
 
 # setting up git submodules
 git submodule update --init --recursive
-cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh;
-cd ../;
+
+# Remove existing directory if it exists
+if [ -d "./snapshotter-lite-local-collector" ]; then
+    echo "Removing existing snapshotter-lite-local-collector directory..."
+    rm -rf ./snapshotter-lite-local-collector
+fi
+
+# Clone the repository
+git clone https://github.com/PowerLoom/snapshotter-lite-local-collector.git ./snapshotter-lite-local-collector --single-branch --branch main
+
+# Change directory, make the script executable, and run it
+cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh
+
+cd ../
 
 docker build -t snapshotter-lite-v2 .
 
