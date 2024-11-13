@@ -214,6 +214,7 @@ if [ -z "$MAX_CONCURRENT_WRITES" ]; then
     echo "MAX_CONCURRENT_WRITES not found in .env, setting to default value ${MAX_CONCURRENT_WRITES}";
 else
     echo "Found MAX_CONCURRENT_WRITES ${MAX_CONCURRENT_WRITES}";
+fi
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
     # delete old blanket allow rule
