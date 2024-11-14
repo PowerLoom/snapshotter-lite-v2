@@ -9,13 +9,15 @@ git checkout main
 cd ..
 
 if [ -z "$SNAPSHOT_CONFIG_REPO" ]; then
-    echo "SNAPSHOT_CONFIG_REPO not found, please set this in your .env!";
-    exit 1;
+    echo "SNAPSHOT_CONFIG_REPO not found, using default config repo";
+    SNAPSHOT_CONFIG_REPO="https://github.com/PowerLoom/snapshotter-configs.git";
+    SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2";
 fi
 
 if [ -z "$SNAPSHOTTER_COMPUTE_REPO" ]; then
-    echo "SNAPSHOTTER_COMPUTE_REPO not found, please set this in your .env!";
-    exit 1;
+    echo "SNAPSHOTTER_COMPUTE_REPO not found, using default compute repo";
+    SNAPSHOTTER_COMPUTE_REPO="https://github.com/PowerLoom/snapshotter-computes.git";
+    SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2";
 fi
 
 echo "Found SNAPSHOT_CONFIG_REPO ${SNAPSHOT_CONFIG_REPO}";
