@@ -43,6 +43,9 @@ if [ ! -f .env ]; then
 
 fi
 
+echo "bootstrapping..."
+./bootstrap.sh
+
 source .env
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool

@@ -43,6 +43,9 @@ if [ ! -f .env ]; then
 
 fi
 
+echo "bootstrapping..."
+./bootstrap.sh
+
 source .env
 
 echo "testing before build...";
