@@ -34,6 +34,27 @@ if [ ! -f .env ]; then
         sed -i'.backup' "s#<slot-id>#$SLOT_ID#" .env
     fi
 
+    # ask user to select a data market contract
+    echo "Select a data market contract: ";
+    echo "1. Aave V3";
+    echo "2. Uniswap V2";
+    read DATA_MARKET_CONTRACT_CHOICE;
+    if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
+        export DATA_MARKET_CONTRACT="0x15c2900346eADf32165c78c317943B48C33A0429"
+        export SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
+        export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
+        export NAMESPACE="AAVEV3"
+    elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
+        export DATA_MARKET_CONTRACT="0xaa4604f88f75B036fD09Bea876e4835731655ebf"
+        export SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
+        export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
+        export NAMESPACE="UNISWAPV2"
+    fi
+    sed -i'.backup' "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" .env
+    sed -i'.backup' "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" .env
+    sed -i'.backup' "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" .env
+    sed -i'.backup' "s#<namespace>#$NAMESPACE#" .env
+
     # ask user for TELEGRAM_CHAT_ID and replace it in .env
     if [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): ";
@@ -114,10 +135,10 @@ fi
 if [ -z "$OVERRIDE_DEFAULTS" ]; then
     echo "setting default values...";
     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
-    export PROTOCOL_STATE_CONTRACT="0xE88E5f64AEB483d7057645326AdDFA24A3B312DF"
-    export DATA_MARKET_CONTRACT="0x0C2E22fe7526fAeF28E7A58c84f8723dEFcE200c"
+    export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
     export PROST_CHAIN_ID="11169"
 fi
+
 
 
 echo "testing before build...";
