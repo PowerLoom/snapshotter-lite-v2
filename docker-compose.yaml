@@ -30,6 +30,7 @@ services:
       - STREAM_WRITE_TIMEOUT_MS=$STREAM_WRITE_TIMEOUT_MS
       - MAX_WRITE_RETRIES=$MAX_WRITE_RETRIES
       - MAX_CONCURRENT_WRITES=$MAX_CONCURRENT_WRITES
+      - DATA_MARKET_IN_REQUEST=$DATA_MARKET_IN_REQUEST
     networks:
       - custom_network
     restart: on-failure:10
