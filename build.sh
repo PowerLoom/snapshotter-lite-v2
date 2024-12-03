@@ -40,12 +40,12 @@ if [ ! -f .env ]; then
     echo "2. Uniswap V2";
     read DATA_MARKET_CONTRACT_CHOICE;
     if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
-        export DATA_MARKET_CONTRACT="0x15c2900346eADf32165c78c317943B48C33A0429"
+        export DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
         export SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
         export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
         export NAMESPACE="AAVEV3"
     elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
-        export DATA_MARKET_CONTRACT="0xaa4604f88f75B036fD09Bea876e4835731655ebf"
+        export DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
         export SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
         export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
         export NAMESPACE="UNISWAPV2"
