@@ -117,6 +117,47 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     SUBNET_THIRD_OCTET=1
     echo "SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
+
+# Check if subnet is already in use (cross-platform)
+if command -v ip >/dev/null 2>&1; then
+    # Linux systems with 'ip' command
+    SUBNET_IN_USE=$(ip addr show | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
+else
+    # macOS and other systems without 'ip' command
+    SUBNET_IN_USE=$(ifconfig 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
+fi
+
+if [ "$SUBNET_IN_USE" = "yes" ]; then
+    echo "Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use."
+    attempts=0
+    max_attempts=5
+    while [ "$SUBNET_IN_USE" = "yes" ] && [ $attempts -lt $max_attempts ]; do
+        echo "Would you like to try a different subnet? (y/n): "
+        read CHANGE_SUBNET
+        if [ "$CHANGE_SUBNET" = "y" ]; then
+            echo "Enter new subnet third octet (2-255): "
+            read NEW_SUBNET_THIRD_OCTET
+            SUBNET_THIRD_OCTET=$NEW_SUBNET_THIRD_OCTET
+            echo "Setting SUBNET_THIRD_OCTET=${SUBNET_THIRD_OCTET}"
+            # Re-check if the new subnet is in use
+            if command -v ip >/dev/null 2>&1; then
+                SUBNET_IN_USE=$(ip addr show | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
+            else
+                SUBNET_IN_USE=$(ifconfig 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
+            fi
+            attempts=$((attempts + 1))
+        else
+            break
+        fi
+    done
+    if [ "$SUBNET_IN_USE" = "yes" ]; then
+        echo "Failed to find an available subnet after $max_attempts attempts."
+        exit 1
+    fi
+else 
+    echo "Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available."
+fi
+
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
 
 echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
