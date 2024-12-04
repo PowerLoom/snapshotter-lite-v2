@@ -318,6 +318,22 @@ else
     echo "Found CORE_API_PORT ${CORE_API_PORT}";
 fi
 
+# Function to check if port is in use
+check_port() {
+    curl -s http://"localhost:$1"/health >/dev/null 2>&1
+    return $?
+}
+
+# Find available port starting from CORE_API_PORT
+while check_port $CORE_API_PORT; do
+    echo "Port ${CORE_API_PORT} is already in use"
+    CORE_API_PORT=$((CORE_API_PORT + 1))
+done
+
+echo "Using available port: ${CORE_API_PORT}"
+export CORE_API_PORT
+sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-$NAMESPACE"
+
 if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     export LOCAL_COLLECTOR_PORT=50051;
     echo "LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
@@ -405,21 +421,26 @@ else
     COLLECTOR_PROFILE_STRING=""
 fi
 
+# Convert namespace to lowercase for docker compose
+NAMESPACE_LOWER=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
 if ! [ -x "$(command -v docker-compose)" ]; then
-    echo 'docker compose not found, trying to see if compose exists within docker';
+    echo 'docker compose not found, trying to see if compose exists within docker'
     
-    docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
     if [ -n "$IPFS_URL" ]; then
-        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 else
-    docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
     if [ -n "$IPFS_URL" ]; then
-        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 fi
 
