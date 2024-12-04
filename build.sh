@@ -8,14 +8,14 @@ read DATA_MARKET_CONTRACT_CHOICE;
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
     DATA_MARKET_SUFFIX="aavev3"
-    DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+    DATA_MARKET_CONTRACT="0x15c2900346eADf32165c78c317943B48C33A0429"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
     DATA_MARKET_SUFFIX="uniswapv2"
-    DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
+    DATA_MARKET_CONTRACT="0xaa4604f88f75B036fD09Bea876e4835731655ebf"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
@@ -118,17 +118,17 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     echo "SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 
-# Check if subnet is already in use (cross-platform)
-if command -v ip >/dev/null 2>&1; then
-    # Linux systems with 'ip' command
-    SUBNET_IN_USE=$(ip addr show | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-else
-    # macOS and other systems without 'ip' command
-    SUBNET_IN_USE=$(ifconfig 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-fi
+# Check if subnet is already in use in Docker networks
+SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
+    if docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+        echo "yes"
+        break
+    fi
+done || echo "no")
 
 if [ "$SUBNET_IN_USE" = "yes" ]; then
     echo "Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use."
+    echo "You may already have a snapshotter running. Enter 'n' to the prompt below if you are unsure."
     attempts=0
     max_attempts=5
     while [ "$SUBNET_IN_USE" = "yes" ] && [ $attempts -lt $max_attempts ]; do
@@ -139,19 +139,20 @@ if [ "$SUBNET_IN_USE" = "yes" ]; then
             read NEW_SUBNET_THIRD_OCTET
             SUBNET_THIRD_OCTET=$NEW_SUBNET_THIRD_OCTET
             echo "Setting SUBNET_THIRD_OCTET=${SUBNET_THIRD_OCTET}"
-            # Re-check if the new subnet is in use
-            if command -v ip >/dev/null 2>&1; then
-                SUBNET_IN_USE=$(ip addr show | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-            else
-                SUBNET_IN_USE=$(ifconfig 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-            fi
+            # Check if the subnet is in use by any Docker network
+            SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
+                if docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+                    echo "yes"
+                    break
+                fi
+            done || echo "no")
             attempts=$((attempts + 1))
         else
             break
         fi
     done
     if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "Failed to find an available subnet after $max_attempts attempts."
+        echo "Failed to find an available subnet."
         exit 1
     fi
 else 
@@ -216,12 +217,12 @@ If you are on a Linux VPS, please ensure that the port is open for connections f
 fi
 
 
-if [ -z "$OVERRIDE_DEFAULTS" ]; then
-    echo "setting default values...";
-    export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
-    export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
-    export PROST_CHAIN_ID="11169"
-fi
+# if [ -z "$OVERRIDE_DEFAULTS" ]; then
+#     echo "setting default values...";
+#     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
+#     export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+#     export PROST_CHAIN_ID="11169"
+# fi
 
 
 
@@ -373,22 +374,22 @@ else
     COLLECTOR_PROFILE_STRING=""
 fi
 
-# if ! [ -x "$(command -v docker-compose)" ]; then
-#     echo 'docker compose not found, trying to see if compose exists within docker';
-#     # assign docker compose file according to $ARG1
+if ! [ -x "$(command -v docker-compose)" ]; then
+    echo 'docker compose not found, trying to see if compose exists within docker';
+    # assign docker compose file according to $ARG1
 
-#     docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-#     if [ -n "$IPFS_URL" ]; then
-#         docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
-#     else
-#         docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
-#     fi
-# else
-#     docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-#     if [ -n "$IPFS_URL" ]; then
-#         docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
-#     else
-#         docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
-#     fi
-# fi
+    docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+    if [ -n "$IPFS_URL" ]; then
+        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+    else
+        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+    fi
+else
+    docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+    if [ -n "$IPFS_URL" ]; then
+        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+    else
+        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+    fi
+fi
 
