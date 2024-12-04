@@ -106,6 +106,8 @@ else
     fi
 fi
 
+export DATA_MARKET_SUFFIX
+
 echo "bootstrapping..."
 ./bootstrap.sh
 
@@ -118,45 +120,83 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     echo "SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 
+# Check if network with same name already exists
+NETWORK_EXISTS=$(docker network ls --format '{{.Name}}' | grep -x "$DOCKER_NETWORK_NAME" || echo "")
+
 # Check if subnet is already in use in Docker networks
 SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-    if docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
         echo "yes"
         break
     fi
 done || echo "no")
 
-if [ "$SUBNET_IN_USE" = "yes" ]; then
-    echo "Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use."
-    echo "You may already have a snapshotter running. Enter 'n' to the prompt below if you are unsure."
-    attempts=0
-    max_attempts=5
-    while [ "$SUBNET_IN_USE" = "yes" ] && [ $attempts -lt $max_attempts ]; do
-        echo "Would you like to try a different subnet? (y/n): "
-        read CHANGE_SUBNET
-        if [ "$CHANGE_SUBNET" = "y" ]; then
-            echo "Enter new subnet third octet (2-255): "
-            read NEW_SUBNET_THIRD_OCTET
-            SUBNET_THIRD_OCTET=$NEW_SUBNET_THIRD_OCTET
-            echo "Setting SUBNET_THIRD_OCTET=${SUBNET_THIRD_OCTET}"
-            # Check if the subnet is in use by any Docker network
-            SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-                if docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-                    echo "yes"
-                    break
-                fi
-            done || echo "no")
-            attempts=$((attempts + 1))
-        else
-            break
-        fi
-    done
+if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
+    echo "Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
+    echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
+    
+    echo "Would you like to prune unused Docker networks? (y/n): "
+    read PRUNE_NETWORKS
+    if [ "$PRUNE_NETWORKS" = "y" ]; then
+        docker network prune -f
+        # Re-check if the subnet is still in use
+        SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
+            if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+                echo "yes"
+                break
+            fi
+        done || echo "no")
+    fi
+
+    # Only continue with subnet change prompts if still in use after potential pruning
     if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "Failed to find an available subnet."
-        exit 1
+        echo "Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is already in use."
+        echo "Searching for an available subnet..."
+        # First try to find an available subnet
+        FOUND_AVAILABLE_SUBNET=false
+        AVAILABLE_SUBNET_OCTET=""
+        
+        for i in $(seq 1 255); do
+            echo "Checking subnet 172.18.${i}.0/24..."
+            SUBNET_IN_USE="no"
+            while read network; do
+                if [ "$network" != "$DOCKER_NETWORK_NAME" ]; then
+                    if docker network inspect "$network" 2>/dev/null | grep -q "172.18.${i}"; then
+                        SUBNET_IN_USE="yes"
+                        break
+                    fi
+                fi
+            done < <(docker network ls --format '{{.Name}}')
+            
+            echo "Subnet 172.18.${i}.0/24 in use: $SUBNET_IN_USE"
+            
+            if [ "$SUBNET_IN_USE" = "no" ]; then
+                FOUND_AVAILABLE_SUBNET=true
+                AVAILABLE_SUBNET_OCTET=$i
+                break
+            fi
+        done
+
+        if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
+            echo "Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
+            echo "Would you like to use this subnet? (y/n): "
+            read USE_FOUND_SUBNET
+            if [ "$USE_FOUND_SUBNET" = "y" ]; then
+                SUBNET_THIRD_OCTET=$AVAILABLE_SUBNET_OCTET
+                SUBNET_IN_USE="no"
+            else
+                echo "Failed to assign subnet."
+                echo "Please check your docker networks and/or prune any unused networks."
+                exit 1
+            fi
+        else
+            echo "No available subnets found between 172.18.1.0/24 and 172.18.255.0/24"
+            echo "Please check your docker networks and/or prune any unused networks."
+            exit 1
+        fi
     fi
 else 
-    echo "Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available."
+    echo "Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available or already assigned to ${DOCKER_NETWORK_NAME}."
 fi
 
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
@@ -204,10 +244,10 @@ if [ -x "$(command -v ufw)" ]; then
     if [ $? -eq 0 ]; then
         echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
     else
-            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
-Please attempt to add it manually with the following command with sudo privileges: \
-sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
-Then run ./build.sh again."
+        echo "ufw firewall allow rule could not be added for local collector port ${LOCAL_COLLECTOR_PORT}. \
+            Please attempt to add it manually with the following command with sudo privileges: \
+            sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT. \
+            Then run ./build.sh again."
         # exit script if ufw rule not added
         exit 1
     fi
@@ -332,10 +372,10 @@ if [ -x "$(command -v ufw)" ]; then
     if [ $? -eq 0 ]; then
         echo "ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}.\n"
     else
-            echo "ufw firewall allow rule could not added for local collector port ${LOCAL_COLLECTOR_PORT} \
-Please attempt to add it manually with the following command with sudo privileges: \
-sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT \
-Then run ./build.sh again."
+        echo "ufw firewall allow rule could not be added for local collector port ${LOCAL_COLLECTOR_PORT}. \
+            Please attempt to add it manually with the following command with sudo privileges: \
+            sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT. \
+            Then run ./build.sh again."
         # exit script if ufw rule not added
         exit 1
     fi
