@@ -1,74 +1,117 @@
 #!/bin/bash
 
+# ask user to select a data market contract
+echo "Select a data market contract: ";
+echo "1. Aave V3";
+echo "2. Uniswap V2";
+read DATA_MARKET_CONTRACT_CHOICE;
+if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
+    echo "Aave V3 selected"
+    DATA_MARKET_SUFFIX="aavev3"
+    DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+    SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
+    SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
+    NAMESPACE="AAVEV3"
+elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
+    echo "Uniswap V2 selected"
+    DATA_MARKET_SUFFIX="uniswapv2"
+    DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
+    SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
+    SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
+    NAMESPACE="UNISWAPV2"
+fi
+
 # check if .env exists
-if [ ! -f .env ]; then
-    echo ".env file not found, please create one!";
-    echo "creating .env file...";
-    cp env.example .env;
+if [ ! -f ".env-${DATA_MARKET_SUFFIX}" ]; then
+    echo ".env-${DATA_MARKET_SUFFIX} file not found, please create one!";
+    echo "creating .env-${DATA_MARKET_SUFFIX} file...";
+    cp env.example ".env-${DATA_MARKET_SUFFIX}";
+
+    unset SOURCE_RPC_URL
+    unset SIGNER_ACCOUNT_ADDRESS
+    unset SIGNER_ACCOUNT_PRIVATE_KEY
+    unset SLOT_ID
+    unset TELEGRAM_CHAT_ID
 
     # ask user for SOURCE_RPC_URL and replace it in .env
     if [ -z "$SOURCE_RPC_URL" ]; then
         echo "Enter SOURCE_RPC_URL: ";
         read SOURCE_RPC_URL;
-        sed -i'.backup' "s#<source-rpc-url>#$SOURCE_RPC_URL#" .env
     fi
 
     # ask user for SIGNER_ACCOUNT_ADDRESS and replace it in .env
     if [ -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
         echo "Enter SIGNER_ACCOUNT_ADDRESS: ";
         read SIGNER_ACCOUNT_ADDRESS;
-        sed -i'.backup' "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" .env
     fi
 
     # ask user for SIGNER_ACCOUNT_PRIVATE_KEY and replace it in .env
     if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
         echo "Enter SIGNER_ACCOUNT_PRIVATE_KEY: ";
         read SIGNER_ACCOUNT_PRIVATE_KEY;
-        sed -i'.backup' "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" .env
     fi
 
     # ask user for SLOT_ID and replace it in .env
     if [ -z "$SLOT_ID" ]; then
         echo "Enter Your SLOT_ID (NFT_ID): ";
         read SLOT_ID;
-        sed -i'.backup' "s#<slot-id>#$SLOT_ID#" .env
     fi
-
-    # ask user to select a data market contract
-    echo "Select a data market contract: ";
-    echo "1. Aave V3";
-    echo "2. Uniswap V2";
-    read DATA_MARKET_CONTRACT_CHOICE;
-    if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
-        export DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
-        export SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
-        export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
-        export NAMESPACE="AAVEV3"
-    elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
-        export DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
-        export SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
-        export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
-        export NAMESPACE="UNISWAPV2"
-    fi
-    sed -i'.backup' "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" .env
-    sed -i'.backup' "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" .env
-    sed -i'.backup' "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" .env
-    sed -i'.backup' "s#<namespace>#$NAMESPACE#" .env
 
     # ask user for TELEGRAM_CHAT_ID and replace it in .env
     if [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): ";
         read TELEGRAM_CHAT_ID;
-        sed -i'.backup' "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" .env
     fi
 
+    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-$DATA_MARKET_SUFFIX"
+
+
+else
+    # .env exists, ask if user wants to update SIGNER_ACCOUNT_ADDRESS and SIGNER_ACCOUNT_PRIVATE_KEY
+    echo ".env-${DATA_MARKET_SUFFIX} file found." 
+    echo "Would you like to update SIGNER_ACCOUNT_ADDRESS and SIGNER_ACCOUNT_PRIVATE_KEY? (y/n): ";
+    read UPDATE_SIGNER_INFO;
+    if [ "$UPDATE_SIGNER_INFO" = "y" ]; then
+        echo "Enter new SIGNER_ACCOUNT_ADDRESS: ";
+        read SIGNER_ACCOUNT_ADDRESS;
+        echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
+        read SIGNER_ACCOUNT_PRIVATE_KEY;
+
+        sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
+        sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
+    fi
+    
+    echo "Would you like to update SLOT_ID? (y/n): ";
+    read UPDATE_SLOT_ID;
+    if [ "$UPDATE_SLOT_ID" = "y" ]; then
+        echo "Enter new SLOT_ID (NFT_ID): ";
+        read SLOT_ID;
+        sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
+    fi
+
+    echo "Would you like to update SOURCE_RPC_URL? (y/n): ";
+    read UPDATE_RPC_URL;
+    if [ "$UPDATE_RPC_URL" = "y" ]; then
+        echo "Enter new SOURCE_RPC_URL: ";
+        read SOURCE_RPC_URL;
+        sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
+    fi
 fi
 
 echo "bootstrapping..."
 ./bootstrap.sh
 
-source .env
-export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}"
+source ".env-$DATA_MARKET_SUFFIX"
+
+export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${DATA_MARKET_SUFFIX}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
 if [ -z "$SUBNET_THIRD_OCTET" ]; then
     SUBNET_THIRD_OCTET=1
@@ -289,22 +332,22 @@ else
     COLLECTOR_PROFILE_STRING=""
 fi
 
-if ! [ -x "$(command -v docker-compose)" ]; then
-    echo 'docker compose not found, trying to see if compose exists within docker';
-    # assign docker compose file according to $ARG1
+# if ! [ -x "$(command -v docker-compose)" ]; then
+#     echo 'docker compose not found, trying to see if compose exists within docker';
+#     # assign docker compose file according to $ARG1
 
-    docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-    if [ -n "$IPFS_URL" ]; then
-        docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
-    else
-        docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
-    fi
-else
-    docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-    if [ -n "$IPFS_URL" ]; then
-        docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
-    else
-        docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
-    fi
-fi
+#     docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+#     if [ -n "$IPFS_URL" ]; then
+#         docker compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+#     else
+#         docker compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+#     fi
+# else
+#     docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+#     if [ -n "$IPFS_URL" ]; then
+#         docker-compose -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+#     else
+#         docker-compose -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+#     fi
+# fi
 
