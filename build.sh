@@ -7,14 +7,12 @@ echo "2. Uniswap V2";
 read DATA_MARKET_CONTRACT_CHOICE;
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
-    DATA_MARKET_SUFFIX="aavev3"
     DATA_MARKET_CONTRACT="0x15c2900346eADf32165c78c317943B48C33A0429"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
-    DATA_MARKET_SUFFIX="uniswapv2"
     DATA_MARKET_CONTRACT="0xaa4604f88f75B036fD09Bea876e4835731655ebf"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
@@ -22,10 +20,10 @@ elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
 fi
 
 # check if .env exists
-if [ ! -f ".env-${DATA_MARKET_SUFFIX}" ]; then
-    echo ".env-${DATA_MARKET_SUFFIX} file not found, please create one!";
-    echo "creating .env-${DATA_MARKET_SUFFIX} file...";
-    cp env.example ".env-${DATA_MARKET_SUFFIX}";
+if [ ! -f ".env-${NAMESPACE}" ]; then
+    echo ".env-${NAMESPACE} file not found, please create one!";
+    echo "creating .env-${NAMESPACE} file...";
+    cp env.example ".env-${NAMESPACE}";
 
     unset SOURCE_RPC_URL
     unset SIGNER_ACCOUNT_ADDRESS
@@ -63,20 +61,20 @@ if [ ! -f ".env-${DATA_MARKET_SUFFIX}" ]; then
         read TELEGRAM_CHAT_ID;
     fi
 
-    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
-    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-$DATA_MARKET_SUFFIX"
+    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-$NAMESPACE"
 
 
 else
     # .env exists, ask if user wants to update any of the environment variables
-    echo ".env-${DATA_MARKET_SUFFIX} file found." 
+    echo ".env-${NAMESPACE} file found." 
     echo "Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
     read UPDATE_ENV_VARS;
     if [ "$UPDATE_ENV_VARS" = "y" ]; then
@@ -85,32 +83,32 @@ else
         if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
             echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
             read SIGNER_ACCOUNT_PRIVATE_KEY;
-            sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
-            sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
+            sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
+            sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
         fi
 
         echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): ";
         read SLOT_ID;
         if [ ! -z "$SLOT_ID" ]; then
-            sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
+            sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
         fi
 
         echo "Enter new SOURCE_RPC_URL (press enter to skip): ";
         read SOURCE_RPC_URL;
         if [ ! -z "$SOURCE_RPC_URL" ]; then
-            sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
+            sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
         fi
     fi
 fi
 
-export DATA_MARKET_SUFFIX
+export NAMESPACE
 
 echo "bootstrapping..."
 ./bootstrap.sh
 
-source ".env-$DATA_MARKET_SUFFIX"
+source ".env-$NAMESPACE"
 
-export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${DATA_MARKET_SUFFIX}"
+export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
 if [ -z "$SUBNET_THIRD_OCTET" ]; then
     SUBNET_THIRD_OCTET=1
