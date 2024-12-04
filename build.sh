@@ -75,34 +75,31 @@ if [ ! -f ".env-${DATA_MARKET_SUFFIX}" ]; then
 
 
 else
-    # .env exists, ask if user wants to update SIGNER_ACCOUNT_ADDRESS and SIGNER_ACCOUNT_PRIVATE_KEY
+    # .env exists, ask if user wants to update any of the environment variables
     echo ".env-${DATA_MARKET_SUFFIX} file found." 
-    echo "Would you like to update SIGNER_ACCOUNT_ADDRESS and SIGNER_ACCOUNT_PRIVATE_KEY? (y/n): ";
-    read UPDATE_SIGNER_INFO;
-    if [ "$UPDATE_SIGNER_INFO" = "y" ]; then
-        echo "Enter new SIGNER_ACCOUNT_ADDRESS: ";
+    echo "Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
+    read UPDATE_ENV_VARS;
+    if [ "$UPDATE_ENV_VARS" = "y" ]; then
+        echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): ";
         read SIGNER_ACCOUNT_ADDRESS;
-        echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
-        read SIGNER_ACCOUNT_PRIVATE_KEY;
+        if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
+            echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
+            read SIGNER_ACCOUNT_PRIVATE_KEY;
+            sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
+            sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
+        fi
 
-        sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$DATA_MARKET_SUFFIX"
-        sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$DATA_MARKET_SUFFIX"
-    fi
-    
-    echo "Would you like to update SLOT_ID? (y/n): ";
-    read UPDATE_SLOT_ID;
-    if [ "$UPDATE_SLOT_ID" = "y" ]; then
-        echo "Enter new SLOT_ID (NFT_ID): ";
+        echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): ";
         read SLOT_ID;
-        sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
-    fi
+        if [ ! -z "$SLOT_ID" ]; then
+            sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$DATA_MARKET_SUFFIX"
+        fi
 
-    echo "Would you like to update SOURCE_RPC_URL? (y/n): ";
-    read UPDATE_RPC_URL;
-    if [ "$UPDATE_RPC_URL" = "y" ]; then
-        echo "Enter new SOURCE_RPC_URL: ";
+        echo "Enter new SOURCE_RPC_URL (press enter to skip): ";
         read SOURCE_RPC_URL;
-        sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
+        if [ ! -z "$SOURCE_RPC_URL" ]; then
+            sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$DATA_MARKET_SUFFIX"
+        fi
     fi
 fi
 
