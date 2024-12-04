@@ -3,6 +3,7 @@ version: '3.9'
 services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
+    container_name: snapshotter-lite-local-collector-${SLOT_ID}-${NAMESPACE}
     profiles: ["local-collector"]
     expose:
       - ${LOCAL_COLLECTOR_PORT}
@@ -36,12 +37,13 @@ services:
     restart: on-failure:10
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
+    container_name: snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}
     expose:
       - ${CORE_API_PORT}
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./logs:/logs
+      - ./logs-${NAMESPACE}:/logs
       - ./computes:/computes
       - ./config:/config
     environment:
