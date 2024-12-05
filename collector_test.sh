@@ -13,7 +13,7 @@ if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     export LOCAL_COLLECTOR_PORT=50051
 fi
 
-echo "Testing connection to local collector..."
+echo "⏳ Testing connection to local collector..."
 echo "Host: host.docker.internal"
 echo "Port: ${LOCAL_COLLECTOR_PORT}"
 

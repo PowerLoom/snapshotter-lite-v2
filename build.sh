@@ -21,7 +21,7 @@ fi
 
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
-    echo "🔴 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
+    echo "🟡 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
     echo "creating .env-${NAMESPACE} file...";
     cp env.example ".env-${NAMESPACE}";
 
