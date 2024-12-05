@@ -257,16 +257,6 @@ else
 If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
 fi
 
-
-# if [ -z "$OVERRIDE_DEFAULTS" ]; then
-#     echo "setting default values...";
-#     export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
-#     export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
-#     export PROST_CHAIN_ID="11169"
-# fi
-
-
-
 echo "testing before build...";
 
 if [ -z "$SOURCE_RPC_URL" ]; then
