@@ -170,20 +170,6 @@ class ProcessorDistributor:
                 self._epoch_size = epoch_size
 
             try:
-                snapshotter_address = self._protocol_state_contract.functions.slotSnapshotterMapping(
-                    settings.slot_id,
-                ).call()
-                if snapshotter_address != to_checksum_address(settings.instance_id):
-                    self._logger.error('Signer Account is not the one configured in slot, exiting!')
-                    exit(0)
-            except Exception as e:
-                self._logger.error(
-                    'Exception in querying protocol state for snapshotter status: {}',
-                    e,
-                )
-                exit(0)
-
-            try:
                 self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.data_market)).call()
 
                 task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
