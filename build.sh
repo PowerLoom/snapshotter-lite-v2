@@ -18,7 +18,7 @@ elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
-
+PROTOCOL_STATE_CONTRACT="0x865EFcdA6A4a46177dFddff3BeDa2dbD98a892F3"
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
     echo "🟡 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
@@ -62,6 +62,7 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     fi
 
     sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-$NAMESPACE"
     sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$NAMESPACE"
     sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$NAMESPACE"
     sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$NAMESPACE"
