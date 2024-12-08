@@ -14,7 +14,6 @@ if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
 fi
 
 echo "⏳ Testing connection to local collector..."
-echo "Host: host.docker.internal"
 echo "Port: ${LOCAL_COLLECTOR_PORT}"
 
 # Test if container is running
@@ -23,15 +22,25 @@ if ! docker ps | grep -q "snapshotter-lite-local-collector"; then
     exit 1
 fi
 
-# Test connection using nc (netcat)
-docker run --rm \
-    alpine:latest \
-    timeout 5 nc -zv host.docker.internal "${LOCAL_COLLECTOR_PORT}" 2>&1
+# Array of hosts to try
+hosts=("localhost" "127.0.0.1" "0.0.0.0")
+success=false
 
-if [ $? -eq 0 ]; then
-    echo "Successfully connected to collector endpoint!"
+for host in "${hosts[@]}"; do
+    echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
+    if timeout 5 nc -zv "${host}" "${LOCAL_COLLECTOR_PORT}" 2>&1; then
+        echo "✅ Connected!"
+        success=true
+        break
+    else
+        echo "❌ Failed"
+    fi
+done
+
+if [ "$success" = true ]; then
+    echo "🎉 Successfully connected to collector endpoint!"
     exit 0
 else
-    echo "Failed to connect to collector endpoint!"
+    echo "💥 Failed to connect to collector endpoint on all addresses!"
     exit 1
 fi
