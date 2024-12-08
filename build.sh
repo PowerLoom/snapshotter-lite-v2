@@ -390,7 +390,7 @@ echo "🏗️ Building image with tag ${IMAGE_TAG}";
 # Run collector test to determine if we need to spawn a collector
 ./collector_test.sh
 if [ $? -eq 1 ]; then
-    echo "🔌 ⭕ Local collector not found - will spawn a local collector instance"
+    echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
     COLLECTOR_PROFILE_STRING="--profile local-collector"
 else
     echo "🔌 ✅ Local collector found - using existing collector instance"
