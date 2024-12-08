@@ -77,7 +77,7 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
 else
     # .env exists, ask if user wants to update any of the environment variables
     echo "🟢 .env-${NAMESPACE} file found." 
-    echo "🔍 Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
+    echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
     read UPDATE_ENV_VARS;
     if [ "$UPDATE_ENV_VARS" = "y" ]; then
         echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): ";
@@ -112,7 +112,8 @@ if ! ./bootstrap.sh; then
 fi
 echo "✅ bootstrap complete"
 
-source ".env-$NAMESPACE"
+bootstrapped_env_file=.env-${NAMESPACE}
+source ${bootstrapped_env_file}
 
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}"
 # Use 172.18.0.0/16 as the base, which is within Docker's default pool
@@ -136,7 +137,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
     
-    echo "🔍 Would you like to prune unused Docker networks? (y/n): "
+    echo "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): "
     read PRUNE_NETWORKS
     if [ "$PRUNE_NETWORKS" = "y" ]; then
         docker network prune -f
@@ -180,7 +181,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
 
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
-            echo "🔍 Would you like to use this subnet? (y/n): "
+            echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
             read USE_FOUND_SUBNET
             if [ "$USE_FOUND_SUBNET" = "y" ]; then
                 SUBNET_THIRD_OCTET=$AVAILABLE_SUBNET_OCTET
@@ -404,19 +405,23 @@ if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker'
     
     if [ -n "$IPFS_URL" ]; then
-        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        docker compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 else
     if [ -n "$IPFS_URL" ]; then
-        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
     else
-        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        docker-compose -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
     fi
 fi
+
+# Explicitly specify env file for cross-platform compatibility
+# This is especially important on Linux where environment variables
+# don't automatically pass through to Docker Compose
 
