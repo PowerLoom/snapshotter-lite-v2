@@ -213,9 +213,6 @@ else
 If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
 fi
 
-# setting up git submodules
-git submodule update --init --recursive
-
 # Remove existing directory if it exists
 if [ -d "./snapshotter-lite-local-collector" ]; then
     echo "Removing existing snapshotter-lite-local-collector directory..."
