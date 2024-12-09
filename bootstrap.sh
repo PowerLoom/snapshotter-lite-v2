@@ -1,4 +1,10 @@
-source .env
+if [ -z "$NAMESPACE" ]; then
+    echo "NAMESPACE not found, sourcing branches from .env";
+    source .env
+else
+    echo "NAMESPACE found, sourcing branches from .env-${NAMESPACE}";
+    source ".env-${NAMESPACE}"
+fi
 
 echo "setting up codebase..."
 
