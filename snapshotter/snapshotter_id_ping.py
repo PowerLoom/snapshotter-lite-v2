@@ -38,7 +38,7 @@ async def main():
     ).call()
 
     try:
-        slot_id_snapshotter_addr = Web3.to_checksum_address(slot_id_mapping_query[0])
+        slot_id_snapshotter_addr = Web3.to_checksum_address(slot_id_mapping_query)
         if slot_id_snapshotter_addr == Web3.to_checksum_address(settings.instance_id):
             print('Snapshotter identity found in slot ID mapping...')
         else:
