@@ -26,9 +26,16 @@ fi
 hosts=("localhost" "127.0.0.1" "0.0.0.0")
 success=false
 
+# Check if nc is available, otherwise use curl
+if command -v nc &> /dev/null; then
+    test_command="nc -zv"
+else
+    test_command="curl -s --connect-timeout 5"
+fi
+
 for host in "${hosts[@]}"; do
     echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
-    if timeout 5 nc -zv "${host}" "${LOCAL_COLLECTOR_PORT}" 2>&1; then
+    if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>&1; then
         echo "✅ Connected!"
         success=true
         break
