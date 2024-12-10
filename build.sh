@@ -317,8 +317,11 @@ fi
 
 # Function to check if port is in use
 check_port() {
-    curl -s http://"localhost:$1"/health >/dev/null 2>&1
-    return $?
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -i:"$1" >/dev/null 2>&1
+    else
+        netstat -tuln | grep -q ":$1 "
+    fi
 }
 
 # Find available port starting from CORE_API_PORT
