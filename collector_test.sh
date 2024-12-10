@@ -28,21 +28,30 @@ success=false
 
 # Check if nc is available, otherwise use curl
 if command -v nc &> /dev/null; then
-    test_command="nc -zv"
+    test_command="nc -zv -w 5"
+    for host in "${hosts[@]}"; do
+        echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
+        if ${test_command} "${host}" "${LOCAL_COLLECTOR_PORT}" 2>&1; then
+            echo "✅ Connected!"
+            success=true
+            break
+        else
+            echo "❌ Failed"
+        fi
+    done
 else
     test_command="curl -s --connect-timeout 5"
+    for host in "${hosts[@]}"; do
+        echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
+        if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>&1; then
+            echo "✅ Connected!"
+            success=true
+            break
+        else
+            echo "❌ Failed"
+        fi
+    done
 fi
-
-for host in "${hosts[@]}"; do
-    echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
-    if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>&1; then
-        echo "✅ Connected!"
-        success=true
-        break
-    else
-        echo "❌ Failed"
-    fi
-done
 
 if [ "$success" = true ]; then
     echo "🎉 Successfully connected to collector endpoint!"
