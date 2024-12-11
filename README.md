@@ -219,7 +219,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
 > [!NOTE]
 > The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further  expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
 
-After running `./build.sh`, your setup steps will appear slighyly different based on whether you are setting up the multi data market release for the first time or not.
+After running `./build.sh`, your setup steps will appear slightly different based on whether you are setting up the multi data market release for the first time or not.
 
 #### Setting up multi data market release for the first time
 
