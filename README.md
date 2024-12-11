@@ -189,15 +189,13 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 ### Using Docker
 
-:::NOTE
-It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal. The steps look like the following with `GNU screen` on linux:
-
-* Start a new session by running the command `screen -S snapshotter-lite-node-premainnet`
-* Run the `build.sh` script by running the command `./build.sh`
-* Detach from the session by running the command `Ctrl+A+D`
-* You can reattach to the session by running the command `screen -r snapshotter-lite-node-premainnet` or `screen -rx snapshotter-lite-node-premainnet`
-
-:::
+> **Note**
+> It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal. The steps look like the following with `GNU screen` on linux:
+> 
+> * Start a new session by running the command `screen -S snapshotter-lite-node-premainnet`
+> * Run the `build.sh` script by running the command `./build.sh`
+> * Detach from the session by running the command `Ctrl+A+D`
+> * You can reattach to the session by running the command `screen -r snapshotter-lite-node-premainnet` or `screen -rx snapshotter-lite-node-premainnet`
 
 1. Install Docker on your machine. You can find the installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
 
@@ -218,9 +216,8 @@ It is recommended to run `build.sh` in a screen or tmux session so that the proc
 ```
 
 
-:::NOTE
-The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
-:::
+> **Note**
+> The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
 
 After running `./build.sh`, your setup steps will appear slighyly different based on whether you are setting up the multi data market release for the first time or not.
 
@@ -269,23 +266,21 @@ Once all the steps around network selection and local collector setup are comple
 
 ![Simulation submissions](snapshotter/static/docs/assets/multiDataMarketSetup/SimulationSubmission.png)
 
-1. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
+To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
 
-:::INFO
-If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
-
-```bash
-./bootstrap.sh
-./build-dev.sh
-```
-:::
+> **Tip**
+> If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
+> 
+> ```bash
+> ./bootstrap.sh
+> ./build-dev.sh
+> ```
 
 ### Without Docker
 
-:::NOTE
- The non-Docker setup is not recommended since it is not actively tested and maintained.
-:::
+> **Note**
+> For the most reliable and well-tested experience, we recommend using the Docker setup. The non-Docker setup is available for advanced users who prefer direct installation.
 
 If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
 
