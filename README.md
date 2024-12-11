@@ -248,9 +248,13 @@ In case of conflicts or multiple subnets being available to allocate, the instal
 
 Similarly, the installer also tries to resolve whether it should spawn a new local collector container or not. If it finds an already running collector container, it will not spawn a new one.
 
-Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.
+**Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.**
 
 ![No existing collector containers and no previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-NoPrev.png)
+
+If the installer does find an existing local collector container, the logs will look like the following:
+
+![Existing collector container](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-Prev-LocalCollector.png)
 
 In case it finds an existing subnet assigned to a Docker network, it will prompt you two things:
 
