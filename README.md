@@ -12,8 +12,13 @@
   - [Core API](#core-api)
 - [Setup](#setup)
   - [Using Docker](#using-docker)
+    - [Setting up multi data market release for the first time](#setting-up-multi-data-market-release-for-the-first-time)
+    - [Running from a previously configured multi data market release](#running-from-a-previously-configured-multi-data-market-release)
+    - [Docker network selection and local collector setup](#docker-network-selection-and-local-collector-setup)
+    - [Simulation submissions](#simulation-submissions)
   - [Without Docker](#without-docker)
 - [Monitoring and Debugging](#monitoring-and-debugging)
+  - [Monitoring](#monitoring)
   - [Debugging](#debugging)
 - [For Contributors](#for-contributors)
 - [Case Studies](#case-studies)
@@ -183,7 +188,16 @@ There are multiple ways to set up the Snapshotter Lite Node. You can either use 
 However, it is recommended to use the Docker image as it is the easiest and most reliable way to set up the Snapshotter Lite Node.
 
 ### Using Docker
-NOTE: It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal.
+
+:::NOTE
+It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal. The steps look like the following with `GNU screen` on linux:
+
+* Start a new session by running the command `screen -S snapshotter-lite-node-premainnet`
+* Run the `build.sh` script by running the command `./build.sh`
+* Detach from the session by running the command `Ctrl+A+D`
+* You can reattach to the session by running the command `screen -r snapshotter-lite-node-premainnet` or `screen -rx snapshotter-lite-node-premainnet`
+
+:::
 
 1. Install Docker on your machine. You can find the installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
 
@@ -199,33 +213,76 @@ NOTE: It is recommended to run `build.sh` in a screen or tmux session so that th
    ```
 
 4. Run `build.sh` to start the snapshotter lite node:
-   ```bash
-   ./build.sh
-   ```
-   If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
-   ```bash
-   ./bootstrap.sh
-   ./build-dev.sh
-   ```
-5. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
+```bash
+./build.sh
+```
 
-6. This should start your snapshotter node and you should see something like this in your terminal logs
-  ```bash
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:02 | INFO | Application startup complete. | {}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:02 | INFO | Reporting service pinged successfully| {'module': 'EventDetector'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | INFO | Current block: 6964653| {'module': 'EventDetector'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:03 | DEBUG | Set source chain block time to 12.0| {'module': 'ProcessDistributor'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | INFO | Snapshotter active: True| {'module': 'ProcessDistributor'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 1|snapshotter-lite | May 28, 2024 > 16:19:05 | DEBUG | Loading web3 provider for node https://rpc-prost1h-proxy.powerloom.io| {'module': 'RpcHelper'}
-  snapshotter-lite-v2-snapshotter-lite-v2-1 | 0|core-api | May 28, 2024 > 16:19:06 | INFO | 127.0.0.1:44338 - "GET /health HTTP/1.1" 200 | {}
 
-  ```
-7. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
+:::NOTE
+The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
+:::
 
+After running `./build.sh`, your setup steps will appear slighyly different based on whether you are setting up the multi data market release for the first time or not.
+
+#### Setting up multi data market release for the first time
+
+You will be prompted to choose the data market you want to operate on, followed by prompts to enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`. 
+
+This will create a namespace `.env-<data_market_name>` file in the root directory of the project.
+
+![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1.png)
+
+#### Running from a previously configured multi data market release
+
+You will be prompted to choose whether you wish to change the previously configured values for the above: `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`.
+
+![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1-Existing.png)
+
+Choose `y` or `n` depending on whether you wish to change them.
+
+#### Docker network selection and local collector setup
+
+The installer automatically tries to resolve the subnet to assign to the Docker network that will run the snapshotter node.
+
+In case of conflicts or multiple subnets being available to allocate, the installer will prompt you to choose the subnet you want to use.
+
+Similarly, the installer also tries to resolve whether it should spawn a new local collector container or not. If it finds an already running collector container, it will not spawn a new one.
+
+Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.
+
+![No existing collector containers and no previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-NoPrev.png)
+
+In case it finds an existing subnet assigned to a Docker network, it will prompt you two things:
+
+* to prune existing networks. *Select `n` for this prompt unless you are being guided by someone from support to specifically clean up the existing networks.*
+
+* to choose the subnet you want to use. Select `y` for the automated suggestion.
+![Existing collector container or previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-Prev-NetworkSelect.png)
+
+#### Simulation submissions
+
+Once all the steps around network selection and local collector setup are complete, the installer will start the snapshotter node and you should see submissions against `epochId=0` in your terminal logs that denotes the node is able to send simulation submissions to the sequencer.
+
+![Simulation submissions](snapshotter/static/docs/assets/multiDataMarketSetup/SimulationSubmission.png)
+
+1. To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
+
+
+:::INFO
+If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
+
+```bash
+./bootstrap.sh
+./build-dev.sh
+```
+:::
 
 ### Without Docker
+
+:::NOTE
+ The non-Docker setup is not recommended since it is not actively tested and maintained.
+:::
+
 If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
 
 1. Clone this repository using the following command:
