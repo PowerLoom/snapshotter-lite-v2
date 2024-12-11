@@ -189,7 +189,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 ### Using Docker
 
-> **Note**
+> [!IMPORTANT]
 > It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal. The steps look like the following with `GNU screen` on linux:
 > 
 > * Start a new session by running the command `screen -S snapshotter-lite-node-premainnet`
@@ -216,8 +216,8 @@ However, it is recommended to use the Docker image as it is the easiest and most
 ```
 
 
-> **Note**
-> The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
+> [!NOTE]
+> The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further  expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
 
 After running `./build.sh`, your setup steps will appear slighyly different based on whether you are setting up the multi data market release for the first time or not.
 
@@ -269,7 +269,7 @@ Once all the steps around network selection and local collector setup are comple
 To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
 
-> **Tip**
+> [!TIP]
 > If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
 > 
 > ```bash
@@ -279,16 +279,16 @@ To stop the node, you can press `Ctrl+C` in the terminal where the node is runni
 
 ### Without Docker
 
-> **Note**
+> [!IMPORTANT]
 > For the most reliable and well-tested experience, we recommend using the Docker setup. The non-Docker setup is available for advanced users who prefer direct installation.
 
 If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
 
 1. Clone this repository using the following command:
-   ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
-   ```
-    This will clone the repository into a directory named `powerloom`.
+  ```bash
+  git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
+  ```
+  This will clone the repository into a directory named `powerloom-pre-mainnet`.
 
 2. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
