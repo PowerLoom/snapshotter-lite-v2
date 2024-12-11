@@ -122,11 +122,11 @@ class EventDetectorProcess(multiprocessing.Process):
         await asyncio.sleep(15)
         self._last_processed_block = await self._load_last_processed_block()
         await self.processor_distributor.init()
-        if self._last_processed_block is None:
-            self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
-            await asyncio.sleep(15)
-            await self._init_check_and_report()
-            await asyncio.sleep(15)
+        # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
+        self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
+        await asyncio.sleep(15)
+        await self._init_check_and_report()
+        await asyncio.sleep(15)
 
     async def _init_check_and_report(self):
         try:
