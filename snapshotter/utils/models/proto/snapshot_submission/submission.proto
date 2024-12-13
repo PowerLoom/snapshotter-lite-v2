@@ -16,6 +16,7 @@ message SnapshotSubmission {
   Request request = 1;
   string signature = 2;
   string header = 3;
+  string dataMarket = 4;
 }
 
 service Submission {
