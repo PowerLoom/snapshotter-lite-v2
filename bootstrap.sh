@@ -29,18 +29,18 @@ fi
 echo "Found SNAPSHOT_CONFIG_REPO ${SNAPSHOT_CONFIG_REPO}";
 echo "Found SNAPSHOTTER_COMPUTE_REPO ${SNAPSHOTTER_COMPUTE_REPO}";
 
-rm -rf config;
-git clone $SNAPSHOT_CONFIG_REPO config;
-cd config;
+rm -rf config-${NAMESPACE};
+git clone $SNAPSHOT_CONFIG_REPO "config-${NAMESPACE}";
+cd config-${NAMESPACE};
 if [ "$SNAPSHOT_CONFIG_REPO_BRANCH" ]; then
     echo "Found SNAPSHOT_CONFIG_REPO_BRANCH ${SNAPSHOT_CONFIG_REPO_BRANCH}";
     git checkout $SNAPSHOT_CONFIG_REPO_BRANCH;
 fi
 cd ../;
 
-rm -rf computes;
-git clone $SNAPSHOTTER_COMPUTE_REPO computes;
-cd computes;
+rm -rf computes-${NAMESPACE};
+git clone $SNAPSHOTTER_COMPUTE_REPO "computes-${NAMESPACE}";
+cd computes-${NAMESPACE};
 if [ "$SNAPSHOTTER_COMPUTE_REPO_BRANCH" ]; then
     echo "Found SNAPSHOTTER_COMPUTE_REPO_BRANCH ${SNAPSHOTTER_COMPUTE_REPO_BRANCH}";
     git checkout $SNAPSHOTTER_COMPUTE_REPO_BRANCH;
