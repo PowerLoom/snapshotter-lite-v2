@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DOCKER_NETWORK_PRUNE=false
+SETUP_COMPLETE=false
 
 # Parse command line argument
 # this is used to prune the docker network if the user passes --docker-network-prune
@@ -35,9 +36,9 @@ cleanup() {
     # Remove backup files
     find . -name "*.backup" -type f -delete
     # also check if the namespace is set and if the .env-${NAMESPACE} file exists
-    if [ -n "$NAMESPACE" ] && [ -f ".env-${NAMESPACE}" ]; then
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${NAMESPACE}" ] && [ "$SETUP_COMPLETE" = false ]; then
         rm -rf ".env-${NAMESPACE}"
-        echo 'Aborted setup. Deleted .env-${NAMESPACE} file.' 
+        echo "Aborted setup. Deleted .env-${NAMESPACE} file."
     fi
     # Other cleanup tasks
 }
@@ -461,10 +462,11 @@ echo "🏗️ Building image with tag ${IMAGE_TAG}";
 # When collector is found and working
 # exit 100
 ./collector_test.sh
-if [ $? -eq 101 ]; then
+test_result=$?
+if [ $test_result -eq 101 ]; then
     echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
     COLLECTOR_PROFILE_STRING="--profile local-collector"
-elif [ $? -eq 100 ]; then
+elif [ $test_result -eq 100 ]; then
     echo "🔌 ✅ Local collector found - using existing collector instance"
     COLLECTOR_PROFILE_STRING=""
 else
@@ -474,6 +476,9 @@ fi
 
 # Convert namespace to lowercase for docker compose
 NAMESPACE_LOWER=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
+# if the setup has reached here, do not delete the .env-${NAMESPACE} file
+SETUP_COMPLETE=true
 
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker'
