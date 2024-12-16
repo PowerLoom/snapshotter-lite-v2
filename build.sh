@@ -1,5 +1,54 @@
 #!/bin/bash
 
+DOCKER_NETWORK_PRUNE=false
+
+# Parse command line argument
+# this is used to prune the docker network if the user passes --docker-network-prune
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --docker-network-prune)
+            DOCKER_NETWORK_PRUNE=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+handle_error() {
+    local exit_code=$?
+    # Only handle exit codes below 100 as errors
+    if [ $exit_code -lt 100 ]; then
+        echo "Error on line $1: Command exited with status $exit_code"
+        # Cleanup code here
+        exit $exit_code
+    fi
+    return $exit_code
+}
+
+# Add trap for error handling
+trap 'handle_error $LINENO' ERR
+
+# Add cleanup function
+cleanup() {
+    # Remove backup files
+    find . -name "*.backup" -type f -delete
+    # also check if the namespace is set and if the .env-${NAMESPACE} file exists
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${NAMESPACE}" ]; then
+        rm -rf ".env-${NAMESPACE}"
+        echo 'Aborted setup. Deleted .env-${NAMESPACE} file.' 
+    fi
+    # Other cleanup tasks
+}
+
+trap cleanup EXIT
+
+# Add docker daemon check
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker daemon is not running"
+    exit 1
+fi
 # ask user to select a data market contract
 echo "🔍 Select a data market contract: ";
 echo "1. Aave V3";
@@ -18,7 +67,12 @@ elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
+
+# set default protocol values
 PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
+PROST_CHAIN_ID=11169
+
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
     echo "🟡 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
@@ -71,6 +125,8 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-$NAMESPACE"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-$NAMESPACE"
 
     echo "🟢 .env-${NAMESPACE} file created successfully."
 
@@ -81,23 +137,23 @@ else
     echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
     read UPDATE_ENV_VARS;
     if [ "$UPDATE_ENV_VARS" = "y" ]; then
-        echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): ";
+        echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): "
         read SIGNER_ACCOUNT_ADDRESS;
         if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
-            echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
+            echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: "
             read SIGNER_ACCOUNT_PRIVATE_KEY;
             sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
             sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
         fi
 
-        echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): ";
-        read SLOT_ID;
+        echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): "
+        read SLOT_ID
         if [ ! -z "$SLOT_ID" ]; then
             sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
         fi
 
-        echo "Enter new SOURCE_RPC_URL (press enter to skip): ";
-        read SOURCE_RPC_URL;
+        echo "Enter new SOURCE_RPC_URL (press enter to skip): "
+        read SOURCE_RPC_URL
         if [ ! -z "$SOURCE_RPC_URL" ]; then
             sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
         fi
@@ -137,24 +193,26 @@ done || echo "no")
 if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
-    
-    echo "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): "
-    read PRUNE_NETWORKS
-    if [ "$PRUNE_NETWORKS" = "y" ]; then
-        docker network prune -f
-        # Re-check if the subnet is still in use
-        SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-            if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-                echo "yes"
-                break
-            fi
-        done || echo "no")
+    if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+        echo "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): "
+        read PRUNE_NETWORKS
+        if [ "$PRUNE_NETWORKS" = "y" ]; then
+            docker network prune -f
+            # Re-check if the subnet is still in use
+            SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
+                    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+                            echo "yes"
+                            break
+                    fi
+                done || echo "no")
+        else
+            echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 allowed to remain in use."
+        fi
     fi
 
     # Only continue with subnet change prompts if still in use after potential pruning
     if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is already in use."
-        echo "⏳ Searching for an available subnet..."
+        echo "⏳ Searching for an available subnet other than 172.18.${SUBNET_THIRD_OCTET}.0/24..."
         # First try to find an available subnet
         FOUND_AVAILABLE_SUBNET=false
         AVAILABLE_SUBNET_OCTET=""
@@ -182,8 +240,14 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
 
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
-            echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
-            read USE_FOUND_SUBNET
+            # select subnet by default unless the command line argument is passed
+            if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+                echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
+                read USE_FOUND_SUBNET
+            else
+                echo "🟠 Proceeding with subnet 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
+                USE_FOUND_SUBNET="y"
+            fi
             if [ "$USE_FOUND_SUBNET" = "y" ]; then
                 SUBNET_THIRD_OCTET=$AVAILABLE_SUBNET_OCTET
                 SUBNET_IN_USE="no"
@@ -198,8 +262,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
             exit 1
         fi
     fi
-else 
-    echo "🟢 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available or already assigned to ${DOCKER_NETWORK_NAME}."
+
 fi
 
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
@@ -393,13 +456,20 @@ fi
 echo "🏗️ Building image with tag ${IMAGE_TAG}";
 
 # Run collector test to determine if we need to spawn a collector
+# When collector is not found/unreachable
+# exit 101
+# When collector is found and working
+# exit 100
 ./collector_test.sh
-if [ $? -eq 1 ]; then
+if [ $? -eq 101 ]; then
     echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
     COLLECTOR_PROFILE_STRING="--profile local-collector"
-else
+elif [ $? -eq 100 ]; then
     echo "🔌 ✅ Local collector found - using existing collector instance"
     COLLECTOR_PROFILE_STRING=""
+else
+    echo "❌ Collector test failed with exit code $?, exiting..."
+    exit 1
 fi
 
 # Convert namespace to lowercase for docker compose

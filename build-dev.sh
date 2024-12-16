@@ -1,25 +1,105 @@
 #!/bin/bash
 
+SETUP_COMPLETE=false
+
+# Add error handling function
+handle_error() {
+    local exit_code=$?
+    if [ $exit_code -lt 100 ]; then
+        echo "Error on line $1: Command exited with status $exit_code"
+        # Cleanup code here
+        exit $exit_code
+    fi
+}
+
+# trap for error handling
+trap 'handle_error $LINENO' ERR
+
+# cleanup
+cleanup() {
+    # Remove backup files
+    find . -name "*.backup" -type f -delete
+    # also check if the namespace is set and if the .env-${NAMESPACE} file exists
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${NAMESPACE}" ] && [ "$SETUP_COMPLETE" = false ]; then
+        rm -rf ".env-${NAMESPACE}"
+        echo "Aborted setup. Deleted .env-${NAMESPACE} file."
+    fi
+    # Other cleanup tasks
+}
+
+trap cleanup EXIT
+
+# Add docker daemon check
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker daemon is not running"
+    exit 1
+fi
+
+echo "Do you want to run with the injected default chain, protocol and data market contracts? (y/n): "
+read USE_DEFAULT_CONTRACTS
+# ask for PROST RPC
+if [ "$USE_DEFAULT_CONTRACTS" = "n" ]; then
+    echo "Enter the PROST RPC URL: "
+    read PROST_RPC_URL_INPUT
+    echo "Enter the PROST CHAIN ID: "
+    read PROST_CHAIN_ID_INPUT
+    echo "Enter the PROTOCOL_STATE_CONTRACT: "
+    read PROTOCOL_STATE_CONTRACT_INPUT
+fi
+
 # ask user to select a data market contract
-echo "🔍 Select a data market contract: ";
-echo "1. Aave V3";
-echo "2. Uniswap V2";
-read DATA_MARKET_CONTRACT_CHOICE;
+echo "🔍 Select a data market contract: "
+echo "1. Aave V3"
+echo "2. Uniswap V2"
+read DATA_MARKET_CONTRACT_CHOICE
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
-    DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+    if [ "$USE_DEFAULT_CONTRACTS" = "n" ]; then
+        echo "Enter the address of the Aave V3 data market contract: "
+        read DATA_MARKET_CONTRACT
+    else
+    # TODO: fix the default data market contract for Aave V3 attached to protocol state 0x846594DAdE0D42696F29AC4337861Bf1B2eff4ad
+        export DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+        echo 'Chose following default value for Aave V3 DATA_MARKET_CONTRACT: '
+        echo 'DATA_MARKET_CONTRACT: ' $DATA_MARKET_CONTRACT
+    fi
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
-    DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
+    if [ "$USE_DEFAULT_CONTRACTS" = "n" ]; then
+        echo "Enter the address of the Uniswap V2 data market contract: "
+        read DATA_MARKET_CONTRACT
+    else
+        export DATA_MARKET_CONTRACT="0xD53FBB0b8cdB6b1231c93ad5210273d7ab98A8d3"
+        echo 'Chose following default value for Uniswap V2 DATA_MARKET_CONTRACT: '
+        echo 'DATA_MARKET_CONTRACT: ' $DATA_MARKET_CONTRACT
+    fi
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
 
-PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+if [ "$USE_DEFAULT_CONTRACTS" = "y" ]; then
+    echo "Using default PROST RPC URL and CHAIN ID for Devnet in build-dev.sh"
+    export PROST_RPC_URL='https://rpc-devnet.powerloom.io'
+    export PROST_CHAIN_ID=11170
+    export PROTOCOL_STATE_CONTRACT="0x846594DAdE0D42696F29AC4337861Bf1B2eff4ad"
+    echo 'Chose following default values for PROST_RPC_URL, PROST_CHAIN_ID and PROTOCOL_STATE_CONTRACT: '
+    echo 'PROST_RPC_URL: ' $PROST_RPC_URL
+    echo 'PROST_CHAIN_ID: ' $PROST_CHAIN_ID
+    echo 'PROTOCOL_STATE_CONTRACT: ' $PROTOCOL_STATE_CONTRACT
+else
+    export PROST_RPC_URL=$PROST_RPC_URL_INPUT
+    export PROST_CHAIN_ID=$PROST_CHAIN_ID_INPUT
+    export PROTOCOL_STATE_CONTRACT=$PROTOCOL_STATE_CONTRACT_INPUT
+    echo 'Chose dev supplied values for PROST_RPC_URL, PROST_CHAIN_ID and PROTOCOL_STATE_CONTRACT: '
+    echo 'PROST_RPC_URL: ' $PROST_RPC_URL
+    echo 'PROST_CHAIN_ID: ' $PROST_CHAIN_ID
+    echo 'PROTOCOL_STATE_CONTRACT: ' $PROTOCOL_STATE_CONTRACT
+fi
+
 
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
@@ -72,6 +152,9 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$NAMESPACE"
     sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$NAMESPACE"
     sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-$NAMESPACE"
 
 else
     # Add update option for existing env file
@@ -129,6 +212,8 @@ else
         sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-$NAMESPACE"
         sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-$NAMESPACE"
         sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-$NAMESPACE"
+        sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-$NAMESPACE"
+        sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-$NAMESPACE"
     fi
 fi
 
@@ -144,6 +229,8 @@ echo "✅ bootstrap complete"
 bootstrapped_env_file=.env-${NAMESPACE}
 source ${bootstrapped_env_file}
 
+
+# 
 # Update network naming to include namespace
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}"
 
@@ -315,8 +402,11 @@ fi
 
 # Function to check if port is in use
 check_port() {
-    curl -s http://"localhost:$1"/health >/dev/null 2>&1
-    return $?
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -i:"$1" >/dev/null 2>&1
+    else
+        netstat -tuln | grep -q ":$1 "
+    fi
 }
 
 # Find available port starting from CORE_API_PORT
@@ -372,13 +462,21 @@ else
 fi
 
 # Add collector test
+# When collector is not found/unreachable
+# exit 101
+# When collector is found and working
+# exit 100
 ./collector_test.sh
-if [ $? -eq 1 ]; then
+test_result=$?
+if [ $test_result -eq 101 ]; then
     echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
     COLLECTOR_PROFILE_STRING="--profile local-collector"
-else
+elif [ $test_result -eq 100 ]; then
     echo "🔌 ✅ Local collector found - using existing collector instance"
     COLLECTOR_PROFILE_STRING=""
+else
+    echo "❌ Collector test failed with exit code $test_result, exiting..."
+    exit 1
 fi
 
 # Remove existing directory if it exists
@@ -401,6 +499,9 @@ echo "building...";
 
 # Convert namespace to lowercase for docker compose
 NAMESPACE_LOWER=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
+# if the setup has reached here, do not delete the .env-${NAMESPACE} file
+SETUP_COMPLETE=true
 
 # Update docker-compose execution
 if ! [ -x "$(command -v docker-compose)" ]; then

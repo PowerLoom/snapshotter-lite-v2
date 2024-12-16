@@ -3,7 +3,7 @@
 # Source environment variables
 if [ -z "$NAMESPACE" ]; then
     echo "NAMESPACE not found, please run build.sh first to set up environment"
-    exit 1
+    exit 1  # it is fine to exit with 1 here, as setup should not proceed past this
 fi
 
 source ".env-${NAMESPACE}"
@@ -19,7 +19,7 @@ echo "Port: ${LOCAL_COLLECTOR_PORT}"
 # Test if container is running
 if ! docker ps | grep -q "snapshotter-lite-local-collector"; then
     echo "Local collector container is not running!"
-    exit 1
+    exit 101
 fi
 
 # Array of hosts to try
@@ -55,8 +55,8 @@ fi
 
 if [ "$success" = true ]; then
     echo "🎉 Successfully connected to collector endpoint!"
-    exit 0
+    exit 100
 else
     echo "💥 Failed to connect to collector endpoint on all addresses!"
-    exit 1
+    exit 101
 fi

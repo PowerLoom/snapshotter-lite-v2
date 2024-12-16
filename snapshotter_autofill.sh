@@ -1,6 +1,12 @@
 #!/bin/bash
 
-source .env
+# if namespace is not set, please exit
+if [ -z "$NAMESPACE" ]; then
+    echo "NAMESPACE not found, please set this in your .env!";
+    exit 1;
+fi
+
+source .env-${NAMESPACE}
 
 echo 'populating setting from environment values...';
 
