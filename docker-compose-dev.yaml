@@ -3,6 +3,7 @@ version: '3.9'
 services:
   snapshotter-lite-local-collector:
     image: snapshotter-lite-local-collector
+    profiles: ["local-collector"]
     expose:
       - ${LOCAL_COLLECTOR_PORT}
     ports:
@@ -75,6 +76,7 @@ services:
       - custom_network
   ipfs:
     image: ipfs/kubo:release
+    profiles: ["ipfs"]
     environment:
       - IPFS_PROFILE=server
       - DATA_CLEANUP_DAYS=3
