@@ -1,14 +1,7 @@
 #!/bin/bash
 
-# if namespace is not set, please exit
-if [ -z "$NAMESPACE" ]; then
-    echo "NAMESPACE not found, please set this in your .env!";
-    exit 1;
-fi
 
-source .env-${NAMESPACE}
-
-echo 'populating setting from environment values...';
+echo 'Snapshotter node: populating setting from environment values...';
 
 if [ -z "$SOURCE_RPC_URL" ]; then
     echo "RPC URL not found, please set this in your .env!";
