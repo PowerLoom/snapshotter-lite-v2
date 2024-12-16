@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   snapshotter-lite-local-collector:
     image: snapshotter-lite-local-collector
