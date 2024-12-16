@@ -59,7 +59,7 @@ if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
         read DATA_MARKET_CONTRACT
     else
     # TODO: fix the default data market contract for Aave V3 attached to protocol state 0x846594DAdE0D42696F29AC4337861Bf1B2eff4ad
-        export DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+        export DATA_MARKET_CONTRACT="0xD9a127170600A8f99deaA84DD3b40DbDd2730e6c"
         echo 'Chose following default value for Aave V3 DATA_MARKET_CONTRACT: '
         echo 'DATA_MARKET_CONTRACT: ' $DATA_MARKET_CONTRACT
     fi
