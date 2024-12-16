@@ -70,9 +70,9 @@ elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
 fi
 
 # set default protocol values
-PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
-PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
-PROST_CHAIN_ID=11169
+export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
+export PROST_CHAIN_ID=11169
 
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
@@ -344,20 +344,26 @@ echo "Found SOURCE RPC URL ${SOURCE_RPC_URL}"
 
 echo "Found SIGNER ACCOUNT ADDRESS ${SIGNER_ACCOUNT_ADDRESS}";
 
-if [ "$PROST_RPC_URL" ]; then
-    echo "Found PROST_RPC_URL ${PROST_RPC_URL}";
+if export -p | grep -q "PROST_RPC_URL="; then
+    echo "Found exported PROST_RPC_URL ${PROST_RPC_URL}";
+elif [ "$PROST_RPC_URL" ]; then
+    echo "PROST_RPC_URL is set but not exported: ${PROST_RPC_URL}";
 fi
 
-if [ "$PROST_CHAIN_ID" ]; then
-    echo "Found PROST_CHAIN_ID ${PROST_CHAIN_ID}";
+if export -p | grep -q "PROST_CHAIN_ID="; then
+    echo "Found exported PROST_CHAIN_ID ${PROST_CHAIN_ID}";
+elif [ "$PROST_CHAIN_ID" ]; then
+    echo "PROST_CHAIN_ID is set but not exported: ${PROST_CHAIN_ID}";
 fi
 
 if [ "$IPFS_URL" ]; then
     echo "Found IPFS_URL ${IPFS_URL}";
 fi
 
-if [ "$PROTOCOL_STATE_CONTRACT" ]; then
-    echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
+if export -p | grep -q "PROTOCOL_STATE_CONTRACT="; then
+    echo "Found exported PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
+elif [ "$PROTOCOL_STATE_CONTRACT" ]; then
+    echo "PROTOCOL_STATE_CONTRACT is set but not exported: ${PROTOCOL_STATE_CONTRACT}";
 fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then

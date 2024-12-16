@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
