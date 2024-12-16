@@ -41,9 +41,9 @@ services:
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./snapshotter:/snapshotter
-      - ./config:/config
-      - ./logs:/logs
+      - ./logs-${NAMESPACE}:/logs
+      - ./computes-${NAMESPACE}:/computes
+      - ./config-${NAMESPACE}:/config
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
