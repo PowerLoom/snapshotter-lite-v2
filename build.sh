@@ -2,6 +2,7 @@
 
 DOCKER_NETWORK_PRUNE=false
 SETUP_COMPLETE=false
+DATA_MARKET_CONTRACT_NUMBER=""
 
 # Parse command line argument
 # this is used to prune the docker network if the user passes --docker-network-prune
@@ -9,6 +10,14 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --docker-network-prune)
             DOCKER_NETWORK_PRUNE=true
+            shift
+            ;;
+        --data-market-contract-number)
+            DATA_MARKET_CONTRACT_NUMBER=$2
+            shift 2
+            ;;
+        --skip-credential-update)
+            SKIP_CREDENTIAL_UPDATE=true
             shift
             ;;
         *)
@@ -50,11 +59,18 @@ if ! docker info >/dev/null 2>&1; then
     echo "❌ Docker daemon is not running"
     exit 1
 fi
-# ask user to select a data market contract
-echo "🔍 Select a data market contract: ";
-echo "1. Aave V3";
-echo "2. Uniswap V2";
-read DATA_MARKET_CONTRACT_CHOICE;
+# if the data market number is passed as an argument with the data-market-contract-number flag, use it
+# Replace the interactive data market selection with automated selection if argument is provided
+if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
+    DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
+else
+    # ask user to select a data market contract
+    echo "🔍 Select a data market contract: ";
+    echo "1. Aave V3";
+    echo "2. Uniswap V2";
+    read DATA_MARKET_CONTRACT_CHOICE;
+fi
+
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
     DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
@@ -135,28 +151,33 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
 else
     # .env exists, ask if user wants to update any of the environment variables
     echo "🟢 .env-${NAMESPACE} file found." 
-    echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
     read UPDATE_ENV_VARS;
-    if [ "$UPDATE_ENV_VARS" = "y" ]; then
-        echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): "
-        read SIGNER_ACCOUNT_ADDRESS;
-        if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
-            echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: "
-            read SIGNER_ACCOUNT_PRIVATE_KEY;
-            sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
-            sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
-        fi
+    if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
+        echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
+    else
+        echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
+        read UPDATE_ENV_VARS
+        if [ "$UPDATE_ENV_VARS" = "y" ]; then
+            echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): "
+            read SIGNER_ACCOUNT_ADDRESS;
+            if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
+                echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: "
+                read SIGNER_ACCOUNT_PRIVATE_KEY;
+                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
+            fi
 
-        echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): "
-        read SLOT_ID
-        if [ ! -z "$SLOT_ID" ]; then
-            sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
-        fi
+            echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): "
+            read SLOT_ID
+            if [ ! -z "$SLOT_ID" ]; then
+                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
+            fi
 
-        echo "Enter new SOURCE_RPC_URL (press enter to skip): "
-        read SOURCE_RPC_URL
-        if [ ! -z "$SOURCE_RPC_URL" ]; then
-            sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
+            echo "Enter new SOURCE_RPC_URL (press enter to skip): "
+            read SOURCE_RPC_URL
+            if [ ! -z "$SOURCE_RPC_URL" ]; then
+                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
+            fi
         fi
     fi
 fi
