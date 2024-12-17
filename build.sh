@@ -1,8 +1,9 @@
 #!/bin/bash
 
 DOCKER_NETWORK_PRUNE=false
-SETUP_COMPLETE=false
+SETUP_COMPLETE=true
 DATA_MARKET_CONTRACT_NUMBER=""
+SKIP_CREDENTIAL_UPDATE=false
 
 # Parse command line argument
 # this is used to prune the docker network if the user passes --docker-network-prune
@@ -95,6 +96,7 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     echo "🟡 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
     echo "creating .env-${NAMESPACE} file...";
     cp env.example ".env-${NAMESPACE}";
+    SETUP_COMPLETE=false
 
     unset SOURCE_RPC_URL
     unset SIGNER_ACCOUNT_ADDRESS
@@ -151,7 +153,6 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
 else
     # .env exists, ask if user wants to update any of the environment variables
     echo "🟢 .env-${NAMESPACE} file found." 
-    read UPDATE_ENV_VARS;
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
