@@ -1,8 +1,7 @@
-version: '3.9'
-
 services:
   snapshotter-lite-local-collector:
     image: snapshotter-lite-local-collector
+    profiles: ["local-collector"]
     expose:
       - ${LOCAL_COLLECTOR_PORT}
     ports:
@@ -40,9 +39,9 @@ services:
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./snapshotter:/snapshotter
-      - ./config:/config
-      - ./logs:/logs
+      - ./logs-${NAMESPACE}:/logs
+      - ./computes-${NAMESPACE}:/computes
+      - ./config-${NAMESPACE}:/config
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
@@ -75,6 +74,7 @@ services:
       - custom_network
   ipfs:
     image: ipfs/kubo:release
+    profiles: ["ipfs"]
     environment:
       - IPFS_PROFILE=server
       - DATA_CLEANUP_DAYS=3

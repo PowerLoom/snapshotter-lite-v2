@@ -1,10 +1,77 @@
 #!/bin/bash
 
-# ask user to select a data market contract
-echo "🔍 Select a data market contract: ";
-echo "1. Aave V3";
-echo "2. Uniswap V2";
-read DATA_MARKET_CONTRACT_CHOICE;
+DOCKER_NETWORK_PRUNE=false
+SETUP_COMPLETE=true
+DATA_MARKET_CONTRACT_NUMBER=""
+SKIP_CREDENTIAL_UPDATE=false
+
+# Parse command line argument
+# this is used to prune the docker network if the user passes --docker-network-prune
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --docker-network-prune)
+            DOCKER_NETWORK_PRUNE=true
+            shift
+            ;;
+        --data-market-contract-number)
+            DATA_MARKET_CONTRACT_NUMBER=$2
+            shift 2
+            ;;
+        --skip-credential-update)
+            SKIP_CREDENTIAL_UPDATE=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+handle_error() {
+    local exit_code=$?
+    # Only handle exit codes below 100 as errors
+    if [ $exit_code -lt 100 ]; then
+        echo "Error on line $1: Command exited with status $exit_code"
+        # Cleanup code here
+        exit $exit_code
+    fi
+    return $exit_code
+}
+
+# Add trap for error handling
+trap 'handle_error $LINENO' ERR
+
+# Add cleanup function
+cleanup() {
+    # Remove backup files
+    find . -name "*.backup" -type f -delete
+    # also check if the namespace is set and if the .env-${NAMESPACE} file exists
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${NAMESPACE}" ] && [ "$SETUP_COMPLETE" = false ]; then
+        rm -rf ".env-${NAMESPACE}"
+        echo "Aborted setup. Deleted .env-${NAMESPACE} file."
+    fi
+    # Other cleanup tasks
+}
+
+trap cleanup EXIT
+
+# Add docker daemon check
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker daemon is not running"
+    exit 1
+fi
+# if the data market number is passed as an argument with the data-market-contract-number flag, use it
+# Replace the interactive data market selection with automated selection if argument is provided
+if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
+    DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
+else
+    # ask user to select a data market contract
+    echo "🔍 Select a data market contract: ";
+    echo "1. Aave V3";
+    echo "2. Uniswap V2";
+    read DATA_MARKET_CONTRACT_CHOICE;
+fi
+
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
     DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
@@ -18,12 +85,18 @@ elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
-PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+
+# set default protocol values
+export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
+export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
+export PROST_CHAIN_ID=11169
+
 # check if .env exists
 if [ ! -f ".env-${NAMESPACE}" ]; then
     echo "🟡 .env-${NAMESPACE} file not found, please follow the instructions below to create one!";
     echo "creating .env-${NAMESPACE} file...";
     cp env.example ".env-${NAMESPACE}";
+    SETUP_COMPLETE=false
 
     unset SOURCE_RPC_URL
     unset SIGNER_ACCOUNT_ADDRESS
@@ -71,6 +144,8 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-$NAMESPACE"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-$NAMESPACE"
+    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-$NAMESPACE"
 
     echo "🟢 .env-${NAMESPACE} file created successfully."
 
@@ -78,28 +153,32 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
 else
     # .env exists, ask if user wants to update any of the environment variables
     echo "🟢 .env-${NAMESPACE} file found." 
-    echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
-    read UPDATE_ENV_VARS;
-    if [ "$UPDATE_ENV_VARS" = "y" ]; then
-        echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): ";
-        read SIGNER_ACCOUNT_ADDRESS;
-        if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
-            echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: ";
-            read SIGNER_ACCOUNT_PRIVATE_KEY;
-            sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
-            sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
-        fi
+    if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
+        echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
+    else
+        echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
+        read UPDATE_ENV_VARS
+        if [ "$UPDATE_ENV_VARS" = "y" ]; then
+            echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): "
+            read SIGNER_ACCOUNT_ADDRESS;
+            if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
+                echo "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: "
+                read SIGNER_ACCOUNT_PRIVATE_KEY;
+                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-$NAMESPACE"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-$NAMESPACE"
+            fi
 
-        echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): ";
-        read SLOT_ID;
-        if [ ! -z "$SLOT_ID" ]; then
-            sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
-        fi
+            echo "Enter new SLOT_ID (NFT_ID) (press enter to skip): "
+            read SLOT_ID
+            if [ ! -z "$SLOT_ID" ]; then
+                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-$NAMESPACE"
+            fi
 
-        echo "Enter new SOURCE_RPC_URL (press enter to skip): ";
-        read SOURCE_RPC_URL;
-        if [ ! -z "$SOURCE_RPC_URL" ]; then
-            sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
+            echo "Enter new SOURCE_RPC_URL (press enter to skip): "
+            read SOURCE_RPC_URL
+            if [ ! -z "$SOURCE_RPC_URL" ]; then
+                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-$NAMESPACE"
+            fi
         fi
     fi
 fi
@@ -137,24 +216,26 @@ done || echo "no")
 if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
-    
-    echo "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): "
-    read PRUNE_NETWORKS
-    if [ "$PRUNE_NETWORKS" = "y" ]; then
-        docker network prune -f
-        # Re-check if the subnet is still in use
-        SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-            if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-                echo "yes"
-                break
-            fi
-        done || echo "no")
+    if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+        echo "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): "
+        read PRUNE_NETWORKS
+        if [ "$PRUNE_NETWORKS" = "y" ]; then
+            docker network prune -f
+            # Re-check if the subnet is still in use
+            SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
+                    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
+                            echo "yes"
+                            break
+                    fi
+                done || echo "no")
+        else
+            echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 allowed to remain in use."
+        fi
     fi
 
     # Only continue with subnet change prompts if still in use after potential pruning
     if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is already in use."
-        echo "⏳ Searching for an available subnet..."
+        echo "⏳ Searching for an available subnet other than 172.18.${SUBNET_THIRD_OCTET}.0/24..."
         # First try to find an available subnet
         FOUND_AVAILABLE_SUBNET=false
         AVAILABLE_SUBNET_OCTET=""
@@ -182,8 +263,14 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
 
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
-            echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
-            read USE_FOUND_SUBNET
+            # select subnet by default unless the command line argument is passed
+            if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+                echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
+                read USE_FOUND_SUBNET
+            else
+                echo "🟠 Proceeding with subnet 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
+                USE_FOUND_SUBNET="y"
+            fi
             if [ "$USE_FOUND_SUBNET" = "y" ]; then
                 SUBNET_THIRD_OCTET=$AVAILABLE_SUBNET_OCTET
                 SUBNET_IN_USE="no"
@@ -198,8 +285,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
             exit 1
         fi
     fi
-else 
-    echo "🟢 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available or already assigned to ${DOCKER_NETWORK_NAME}."
+
 fi
 
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
@@ -280,20 +366,26 @@ echo "Found SOURCE RPC URL ${SOURCE_RPC_URL}"
 
 echo "Found SIGNER ACCOUNT ADDRESS ${SIGNER_ACCOUNT_ADDRESS}";
 
-if [ "$PROST_RPC_URL" ]; then
-    echo "Found PROST_RPC_URL ${PROST_RPC_URL}";
+if export -p | grep -q "PROST_RPC_URL="; then
+    echo "Found exported PROST_RPC_URL ${PROST_RPC_URL}";
+elif [ "$PROST_RPC_URL" ]; then
+    echo "PROST_RPC_URL is set but not exported: ${PROST_RPC_URL}";
 fi
 
-if [ "$PROST_CHAIN_ID" ]; then
-    echo "Found PROST_CHAIN_ID ${PROST_CHAIN_ID}";
+if export -p | grep -q "PROST_CHAIN_ID="; then
+    echo "Found exported PROST_CHAIN_ID ${PROST_CHAIN_ID}";
+elif [ "$PROST_CHAIN_ID" ]; then
+    echo "PROST_CHAIN_ID is set but not exported: ${PROST_CHAIN_ID}";
 fi
 
 if [ "$IPFS_URL" ]; then
     echo "Found IPFS_URL ${IPFS_URL}";
 fi
 
-if [ "$PROTOCOL_STATE_CONTRACT" ]; then
-    echo "Found PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
+if export -p | grep -q "PROTOCOL_STATE_CONTRACT="; then
+    echo "Found exported PROTOCOL_STATE_CONTRACT ${PROTOCOL_STATE_CONTRACT}";
+elif [ "$PROTOCOL_STATE_CONTRACT" ]; then
+    echo "PROTOCOL_STATE_CONTRACT is set but not exported: ${PROTOCOL_STATE_CONTRACT}";
 fi
 
 if [ "$WEB3_STORAGE_TOKEN" ]; then
@@ -393,17 +485,28 @@ fi
 echo "🏗️ Building image with tag ${IMAGE_TAG}";
 
 # Run collector test to determine if we need to spawn a collector
+# When collector is not found/unreachable
+# exit 101
+# When collector is found and working
+# exit 100
 ./collector_test.sh
-if [ $? -eq 1 ]; then
+test_result=$?
+if [ $test_result -eq 101 ]; then
     echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
     COLLECTOR_PROFILE_STRING="--profile local-collector"
-else
+elif [ $test_result -eq 100 ]; then
     echo "🔌 ✅ Local collector found - using existing collector instance"
     COLLECTOR_PROFILE_STRING=""
+else
+    echo "❌ Collector test failed with exit code $?, exiting..."
+    exit 1
 fi
 
 # Convert namespace to lowercase for docker compose
 NAMESPACE_LOWER=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
+# if the setup has reached here, do not delete the .env-${NAMESPACE} file
+SETUP_COMPLETE=true
 
 if ! [ -x "$(command -v docker-compose)" ]; then
     echo 'docker compose not found, trying to see if compose exists within docker'

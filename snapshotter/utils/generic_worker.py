@@ -240,7 +240,7 @@ class GenericAsyncWorker:
             'Snapshot submission creation with request: {}', request_msg,
         )
 
-        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash)
+        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket=settings.data_market)
         self.logger.debug(
             'Snapshot submission created: {}', msg,
         )

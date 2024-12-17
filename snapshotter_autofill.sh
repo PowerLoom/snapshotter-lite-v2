@@ -1,8 +1,7 @@
 #!/bin/bash
 
-source .env
 
-echo 'populating setting from environment values...';
+echo 'Snapshotter node: populating setting from environment values...';
 
 if [ -z "$SOURCE_RPC_URL" ]; then
     echo "RPC URL not found, please set this in your .env!";
