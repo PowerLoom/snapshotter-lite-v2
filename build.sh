@@ -329,6 +329,12 @@ if [ "$1" = "test" ]; then
     exit 0
 fi
 
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
     # delete old blanket allow rule
@@ -430,12 +436,7 @@ echo "ℹ️ Using available port: ${CORE_API_PORT}"
 export CORE_API_PORT
 sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-$NAMESPACE"
 
-if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
-    export LOCAL_COLLECTOR_PORT=50051;
-    echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
-else
-    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
-fi
+
 
 if [ "$MAX_STREAM_POOL_SIZE" ]; then
     echo "Found MAX_STREAM_POOL_SIZE ${MAX_STREAM_POOL_SIZE}";
