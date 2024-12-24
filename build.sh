@@ -269,7 +269,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
             # select subnet by default unless the command line argument is passed
-            if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+            if [ "$DOCKER_NETWORK_PRUNE" != "true" ]; then
                 echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
                 read USE_FOUND_SUBNET
             else
