@@ -123,7 +123,8 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     # ask user for SIGNER_ACCOUNT_PRIVATE_KEY and replace it in .env
     if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
         echo "Enter SIGNER_ACCOUNT_PRIVATE_KEY: ";
-        read SIGNER_ACCOUNT_PRIVATE_KEY;
+        read -s SIGNER_ACCOUNT_PRIVATE_KEY;
+        echo # Add a newline after hidden input
     fi
 
     # ask user for SLOT_ID and replace it in .env
