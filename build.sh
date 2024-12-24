@@ -4,7 +4,7 @@ DOCKER_NETWORK_PRUNE=false
 SETUP_COMPLETE=true
 DATA_MARKET_CONTRACT_NUMBER=""
 SKIP_CREDENTIAL_UPDATE=false
-
+NO_COLLECTOR=false
 # Parse command line argument
 # this is used to prune the docker network if the user passes --docker-network-prune
 while [[ $# -gt 0 ]]; do
@@ -19,6 +19,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-credential-update)
             SKIP_CREDENTIAL_UPDATE=true
+            shift
+            ;;
+        --no-collector)
+            NO_COLLECTOR=true
             shift
             ;;
         *)
@@ -119,7 +123,8 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     # ask user for SIGNER_ACCOUNT_PRIVATE_KEY and replace it in .env
     if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
         echo "Enter SIGNER_ACCOUNT_PRIVATE_KEY: ";
-        read SIGNER_ACCOUNT_PRIVATE_KEY;
+        read -s SIGNER_ACCOUNT_PRIVATE_KEY;
+        echo # Add a newline after hidden input
     fi
 
     # ask user for SLOT_ID and replace it in .env
@@ -156,7 +161,7 @@ else
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
-        echo "🫸 ▶︎ Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
+        echo "🫸 ▶︎  Would you like to update any of the environment variables (SIGNER_ACCOUNT, SLOT_ID, SOURCE_RPC_URL)? (y/n): ";
         read UPDATE_ENV_VARS
         if [ "$UPDATE_ENV_VARS" = "y" ]; then
             echo "Enter new SIGNER_ACCOUNT_ADDRESS (press enter to skip): "
@@ -213,7 +218,7 @@ SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
     fi
 done || echo "no")
 
-if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
+if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
     if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
@@ -264,7 +269,7 @@ if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
             # select subnet by default unless the command line argument is passed
-            if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
+            if [ "$DOCKER_NETWORK_PRUNE" != "true" ]; then
                 echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
                 read USE_FOUND_SUBNET
             else
@@ -325,6 +330,12 @@ if [ "$1" = "test" ]; then
     exit 0
 fi
 
+if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
+    export LOCAL_COLLECTOR_PORT=50051;
+    echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
+else
+    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
+fi
 # check if ufw command exists
 if [ -x "$(command -v ufw)" ]; then
     # delete old blanket allow rule
@@ -426,12 +437,7 @@ echo "ℹ️ Using available port: ${CORE_API_PORT}"
 export CORE_API_PORT
 sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-$NAMESPACE"
 
-if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
-    export LOCAL_COLLECTOR_PORT=50051;
-    echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}";
-else
-    echo "Found LOCAL_COLLECTOR_PORT ${LOCAL_COLLECTOR_PORT}";
-fi
+
 
 if [ "$MAX_STREAM_POOL_SIZE" ]; then
     echo "Found MAX_STREAM_POOL_SIZE ${MAX_STREAM_POOL_SIZE}";
@@ -489,17 +495,23 @@ echo "🏗️ Building image with tag ${IMAGE_TAG}";
 # exit 101
 # When collector is found and working
 # exit 100
-./collector_test.sh
-test_result=$?
-if [ $test_result -eq 101 ]; then
-    echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
-    COLLECTOR_PROFILE_STRING="--profile local-collector"
-elif [ $test_result -eq 100 ]; then
-    echo "🔌 ✅ Local collector found - using existing collector instance"
+# check for no collector flag being passed, in that case dont even attempt the test
+if [ "$NO_COLLECTOR" = "true" ]; then
+    echo "🔌 ⭕ No collector flag passed, skipping collector test"
     COLLECTOR_PROFILE_STRING=""
 else
-    echo "❌ Collector test failed with exit code $?, exiting..."
-    exit 1
+    ./collector_test.sh
+    test_result=$?
+    if [ $test_result -eq 101 ]; then
+        echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
+        COLLECTOR_PROFILE_STRING="--profile local-collector"
+    elif [ $test_result -eq 100 ]; then
+        echo "🔌 ✅ Local collector found - using existing collector instance"
+        COLLECTOR_PROFILE_STRING=""
+    else
+        echo "❌ Collector test failed with exit code $?, exiting..."
+        exit 1
+    fi
 fi
 
 # Convert namespace to lowercase for docker compose
@@ -508,23 +520,108 @@ NAMESPACE_LOWER=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
 # if the setup has reached here, do not delete the .env-${NAMESPACE} file
 SETUP_COMPLETE=true
 
-if ! [ -x "$(command -v docker-compose)" ]; then
-    echo 'docker compose not found, trying to see if compose exists within docker'
-    
-    if [ -n "$IPFS_URL" ]; then
-        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+DOCKER_PULL_LOCK="/tmp/powerloom_docker_pull.lock"
+
+# Function to handle Docker pulls with lock
+handle_docker_pull() {
+    # Wait for lock to be released if it exists
+    while [ -f "$DOCKER_PULL_LOCK" ]; do
+        echo "Another Docker pull is in progress, waiting..."
+        sleep 5
+    done
+
+    # Create lock file and ensure it's removed on exit
+    touch "$DOCKER_PULL_LOCK"
+    trap 'rm -f $DOCKER_PULL_LOCK' EXIT
+
+    # Perform Docker pull
+    if ! [ -x "$(command -v docker-compose)" ]; then
+        echo 'docker compose not found, trying to see if compose exists within docker'
+        
+        if [ -n "$IPFS_URL" ]; then
+            docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        else
+            docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        fi
     else
-        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        if [ -n "$IPFS_URL" ]; then
+            docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
+        else
+            docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
+        fi
+    fi
+
+    # Remove lock file
+    rm -f "$DOCKER_PULL_LOCK"
+}
+
+# Replace the existing Docker pull and up commands with:
+handle_docker_pull
+
+# Continue with docker-compose up
+if ! [ -x "$(command -v docker-compose)" ]; then
+    if [ -n "$IPFS_URL" ]; then
+        docker compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            --profile ipfs \
+            $COLLECTOR_PROFILE_STRING \
+            pull
+
+        docker compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            --profile ipfs \
+            $COLLECTOR_PROFILE_STRING \
+            up -V
+    else
+        docker compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            $COLLECTOR_PROFILE_STRING \
+            pull
+
+        docker compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            $COLLECTOR_PROFILE_STRING \
+            up -V
     fi
 else
     if [ -n "$IPFS_URL" ]; then
-        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING up -V
+        docker-compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            --profile ipfs \
+            $COLLECTOR_PROFILE_STRING \
+            pull
+
+        docker-compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            --profile ipfs \
+            $COLLECTOR_PROFILE_STRING \
+            up -V
     else
-        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING up -V
+        docker-compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            $COLLECTOR_PROFILE_STRING \
+            pull
+
+        docker-compose \
+            --env-file "${bootstrapped_env_file}" \
+            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
+            -f docker-compose.yaml \
+            $COLLECTOR_PROFILE_STRING \
+            up -V
     fi
 fi
 

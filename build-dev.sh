@@ -128,7 +128,8 @@ if [ ! -f ".env-${NAMESPACE}" ]; then
     # ask user for SIGNER_ACCOUNT_PRIVATE_KEY and replace it in .env
     if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
         echo "Enter SIGNER_ACCOUNT_PRIVATE_KEY: ";
-        read SIGNER_ACCOUNT_PRIVATE_KEY;
+        read -s SIGNER_ACCOUNT_PRIVATE_KEY;
+        echo # Add a newline after hidden input
     fi
 
     # ask user for SLOT_ID and replace it in .env
@@ -188,7 +189,8 @@ else
         # ask user for SIGNER_ACCOUNT_PRIVATE_KEY and replace it in .env
         if [ -z "$SIGNER_ACCOUNT_PRIVATE_KEY" ]; then
             echo "Enter SIGNER_ACCOUNT_PRIVATE_KEY: ";
-            read SIGNER_ACCOUNT_PRIVATE_KEY;
+            read -s SIGNER_ACCOUNT_PRIVATE_KEY;
+            echo # Add a newline after hidden input
         fi
 
         # ask user for SLOT_ID and replace it in .env
@@ -251,7 +253,8 @@ SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
     fi
 done || echo "no")
 
-if [ "$SUBNET_IN_USE" = "yes" ] && [ -z "$NETWORK_EXISTS" ]; then
+# this is because the docker network name may change later, and the subnet may still be in use
+if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
     
