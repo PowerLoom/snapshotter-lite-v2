@@ -18,3 +18,5 @@ snapshotter-lite-local-collector/
 computes
 shared-volume
 config
+config-*/
+logs-*/
