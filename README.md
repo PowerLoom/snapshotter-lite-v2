@@ -10,6 +10,7 @@
   - [Processor Distributor](#processor-distributor)
   - [RPC Helper](#rpc-helper)
   - [Core API](#core-api)
+  - [Local Collector](#local-collector)
 - [Setup](#setup)
   - [Using Docker](#using-docker)
     - [Setting up multi data market release for the first time](#setting-up-multi-data-market-release-for-the-first-time)
@@ -182,6 +183,13 @@ try {
     }
 ```
 
+### Local Collector
+
+The local collector is a separate containerized component that receives snapshot submissions from the snapshotter node over gRPC (port 50051 by default). It acts as an intermediary service that handles the reliable delivery of snapshots to the protocol's sequencer based on the data market contract configuration.
+
+This architecture separates the resource-intensive computation of snapshots (handled by the snapshotter's compute modules) from the submission process (handled by the collector). The collector container can be shared across multiple snapshotter instances and will be automatically spawned if not already running.
+
+* Read more on Powerloom Docs: [Local Collector](https://docs.powerloom.io/docs/Protocol/Specifications/Snapshotter/local-collector)
 
 ## Setup
 There are multiple ways to set up the Snapshotter Lite Node. You can either use the Docker image or run it directly on your local machine.
