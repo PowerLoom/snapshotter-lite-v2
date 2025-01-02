@@ -207,18 +207,23 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     echo "🔔 SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 
-# Check if network with same name already exists
+# Check if network with same name exists and get its subnet if it does
 NETWORK_EXISTS=$(docker network ls --format '{{.Name}}' | grep -x "$DOCKER_NETWORK_NAME" || echo "")
+EXISTING_NETWORK_SUBNET=""
+if [ -n "$NETWORK_EXISTS" ]; then
+    EXISTING_NETWORK_SUBNET=$(docker network inspect "$DOCKER_NETWORK_NAME" | grep -o '"Subnet": "[^"]*"' | cut -d'"' -f4)
+fi
 
-# Check if subnet is already in use in Docker networks
-SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-        echo "yes"
-        break
-    fi
-done || echo "no")
+# Check if subnet is already in use in ANY Docker networks - optimized version
+SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
 
-if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
+# Trigger subnet collision handling if:
+# 1. Subnet is in use by any network OR
+# 2. Network exists but uses a different subnet OR
+# 3. Network doesn't exist
+if [ "$SUBNET_IN_USE" = "yes" ] || \
+   ([ -n "$NETWORK_EXISTS" ] && [ "$EXISTING_NETWORK_SUBNET" != "172.18.${SUBNET_THIRD_OCTET}.0/24" ]) || \
+   [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
     if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
@@ -226,38 +231,22 @@ if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
         read PRUNE_NETWORKS
         if [ "$PRUNE_NETWORKS" = "y" ]; then
             docker network prune -f
-            # Re-check if the subnet is still in use
-            SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-                    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-                            echo "yes"
-                            break
-                    fi
-                done || echo "no")
-        else
-            echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 allowed to remain in use."
+            # Re-check if the subnet is still in use - optimized version
+            SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
         fi
     fi
 
     # Only continue with subnet change prompts if still in use after potential pruning
     if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "⏳ Searching for an available subnet other than 172.18.${SUBNET_THIRD_OCTET}.0/24..."
+        echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is already in use."
+        echo "⏳ Searching for an available subnet..."
         # First try to find an available subnet
         FOUND_AVAILABLE_SUBNET=false
         AVAILABLE_SUBNET_OCTET=""
         
         for i in $(seq 1 255); do
             echo "Checking subnet 172.18.${i}.0/24..."
-            SUBNET_IN_USE="no"
-            while read network; do
-                if [ "$network" != "$DOCKER_NETWORK_NAME" ]; then
-                    if docker network inspect "$network" 2>/dev/null | grep -q "172.18.${i}"; then
-                        SUBNET_IN_USE="yes"
-                        break
-                    fi
-                fi
-            done < <(docker network ls --format '{{.Name}}')
-            
-            echo "Subnet 172.18.${i}.0/24 in use: $SUBNET_IN_USE"
+            SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${i}" && echo "yes" || echo "no")
             
             if [ "$SUBNET_IN_USE" = "no" ]; then
                 FOUND_AVAILABLE_SUBNET=true
@@ -268,7 +257,6 @@ if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
 
         if [ "$FOUND_AVAILABLE_SUBNET" = "true" ]; then
             echo "🟢 Found available subnet: 172.18.${AVAILABLE_SUBNET_OCTET}.0/24"
-            # select subnet by default unless the command line argument is passed
             if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
                 echo "🫸 ▶︎ Would you like to use this subnet? (y/n): "
                 read USE_FOUND_SUBNET
@@ -290,7 +278,8 @@ if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
             exit 1
         fi
     fi
-
+else 
+    echo "🟢 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is available or already assigned to ${DOCKER_NETWORK_NAME}."
 fi
 
 export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
@@ -534,22 +523,32 @@ handle_docker_pull() {
     touch "$DOCKER_PULL_LOCK"
     trap 'rm -f $DOCKER_PULL_LOCK' EXIT
 
-    # Perform Docker pull
-    if ! [ -x "$(command -v docker-compose)" ]; then
-        echo 'docker compose not found, trying to see if compose exists within docker'
-        
-        if [ -n "$IPFS_URL" ]; then
-            docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        else
-            docker compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        fi
+    # Determine which docker compose command to use
+    if command -v docker-compose >/dev/null 2>&1; then
+        DOCKER_COMPOSE_CMD="docker-compose"
     else
-        if [ -n "$IPFS_URL" ]; then
-            docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml --profile ipfs $COLLECTOR_PROFILE_STRING pull
-        else
-            docker-compose --env-file "${bootstrapped_env_file}" -p "snapshotter-lite-v2-${NAMESPACE_LOWER}" -f docker-compose.yaml $COLLECTOR_PROFILE_STRING pull
-        fi
+        DOCKER_COMPOSE_CMD="docker compose"
     fi
+
+    # Build the common arguments
+    COMPOSE_ARGS=(
+        --env-file "${bootstrapped_env_file}"
+        -p "snapshotter-lite-v2-${NAMESPACE_LOWER}"
+        -f docker-compose.yaml
+    )
+
+    # Add IPFS profile if needed
+    if [ -n "$IPFS_URL" ]; then
+        COMPOSE_ARGS+=("--profile" "ipfs")
+    fi
+
+    # Add collector profile if needed
+    if [ -n "$COLLECTOR_PROFILE_STRING" ]; then
+        COMPOSE_ARGS+=($COLLECTOR_PROFILE_STRING)
+    fi
+
+    # Execute docker compose pull
+    $DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
 
     # Remove lock file
     rm -f "$DOCKER_PULL_LOCK"
@@ -558,74 +557,32 @@ handle_docker_pull() {
 # Replace the existing Docker pull and up commands with:
 handle_docker_pull
 
-# Continue with docker-compose up
-if ! [ -x "$(command -v docker-compose)" ]; then
-    if [ -n "$IPFS_URL" ]; then
-        docker compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            --profile ipfs \
-            $COLLECTOR_PROFILE_STRING \
-            pull
-
-        docker compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            --profile ipfs \
-            $COLLECTOR_PROFILE_STRING \
-            up -V
-    else
-        docker compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            $COLLECTOR_PROFILE_STRING \
-            pull
-
-        docker compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            $COLLECTOR_PROFILE_STRING \
-            up -V
-    fi
+# Determine which docker compose command to use
+if command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker-compose"
 else
-    if [ -n "$IPFS_URL" ]; then
-        docker-compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            --profile ipfs \
-            $COLLECTOR_PROFILE_STRING \
-            pull
-
-        docker-compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            --profile ipfs \
-            $COLLECTOR_PROFILE_STRING \
-            up -V
-    else
-        docker-compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            $COLLECTOR_PROFILE_STRING \
-            pull
-
-        docker-compose \
-            --env-file "${bootstrapped_env_file}" \
-            -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}" \
-            -f docker-compose.yaml \
-            $COLLECTOR_PROFILE_STRING \
-            up -V
-    fi
+    DOCKER_COMPOSE_CMD="docker compose"
 fi
 
-# Explicitly specify env file for cross-platform compatibility
-# This is especially important on Linux where environment variables
-# don't automatically pass through to Docker Compose
+# Build the common arguments
+COMPOSE_ARGS=(
+    --env-file "${bootstrapped_env_file}"
+    -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE_LOWER}"
+    -f docker-compose.yaml
+)
+
+# Add IPFS profile if needed
+if [ -n "$IPFS_URL" ]; then
+    COMPOSE_ARGS+=("--profile" "ipfs")
+fi
+
+# Add collector profile if needed
+if [ -n "$COLLECTOR_PROFILE_STRING" ]; then
+    COMPOSE_ARGS+=($COLLECTOR_PROFILE_STRING)
+fi
+
+# Execute docker compose commands
+$DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
+$DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" up -V
+
 

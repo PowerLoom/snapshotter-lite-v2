@@ -242,19 +242,23 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     echo "🔔 SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 
-# Check if network with same name already exists
+# Check if network with same name exists and get its subnet if it does
 NETWORK_EXISTS=$(docker network ls --format '{{.Name}}' | grep -x "$DOCKER_NETWORK_NAME" || echo "")
+EXISTING_NETWORK_SUBNET=""
+if [ -n "$NETWORK_EXISTS" ]; then
+    EXISTING_NETWORK_SUBNET=$(docker network inspect "$DOCKER_NETWORK_NAME" | grep -o '"Subnet": "[^"]*"' | cut -d'"' -f4)
+fi
 
-# Check if subnet is already in use in Docker networks
-SUBNET_IN_USE=$(docker network ls --format '{{.Name}}' | while read network; do
-    if [ "$network" != "$DOCKER_NETWORK_NAME" ] && docker network inspect "$network" | grep -q "172.18.${SUBNET_THIRD_OCTET}"; then
-        echo "yes"
-        break
-    fi
-done || echo "no")
+# Check if subnet is already in use in ANY Docker networks
+SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
 
-# this is because the docker network name may change later, and the subnet may still be in use
-if [ "$SUBNET_IN_USE" = "yes" ] || [ -z "$NETWORK_EXISTS" ]; then
+# Trigger subnet collision handling if:
+# 1. Subnet is in use by any network OR
+# 2. Network exists but uses a different subnet OR
+# 3. Network doesn't exist
+if [ "$SUBNET_IN_USE" = "yes" ] || \
+   ([ -n "$NETWORK_EXISTS" ] && [ "$EXISTING_NETWORK_SUBNET" != "172.18.${SUBNET_THIRD_OCTET}.0/24" ]) || \
+   [ -z "$NETWORK_EXISTS" ]; then
     echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use by another network."
     echo "This may be from an old snapshotter node, or you may already have a snapshotter running."
     
