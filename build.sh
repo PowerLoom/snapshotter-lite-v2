@@ -9,7 +9,7 @@ fi
 
 
 # Source the environment file
-source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+source ".env-${FULL_NAMESPACE}"
 
 # Set image tag based on git branch
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)

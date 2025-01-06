@@ -44,9 +44,9 @@ handle_error() {
 
 cleanup() {
     find . -name "*.backup" -type f -delete
-    if [ -n "$NAMESPACE" ] && [ -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ] && [ "$SETUP_COMPLETE" = false ]; then
-        rm -rf ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-        echo "Aborted setup. Deleted .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file."
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${FULL_NAMESPACE}" ] && [ "$SETUP_COMPLETE" = false ]; then
+        rm -rf ".env-${FULL_NAMESPACE}"
+        echo "Aborted setup. Deleted .env-${FULL_NAMESPACE} file."
     fi
 }
 
@@ -116,19 +116,19 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     read -p "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): " TELEGRAM_CHAT_ID
 
     # Update env file
-    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<powerloom-chain>#$POWERLOOM_CHAIN#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<source-chain>#$SOURCE_CHAIN#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<namespace>#${NAMESPACE}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<full-namespace>#${FULL_NAMESPACE}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<powerloom-chain>#$POWERLOOM_CHAIN#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<source-chain>#$SOURCE_CHAIN#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<namespace>#${NAMESPACE}#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<full-namespace>#${FULL_NAMESPACE}#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
