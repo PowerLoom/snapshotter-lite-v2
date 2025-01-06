@@ -89,6 +89,7 @@ export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
 export PROST_CHAIN_ID=11169
 export POWERLOOM_CHAIN=pre-mainnet
 export SOURCE_CHAIN=ETH
+export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 
 # Environment file management
 if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
@@ -109,7 +110,10 @@ if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
     sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<namespace>#${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<powerloom-chain>#$POWERLOOM_CHAIN#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<source-chain>#$SOURCE_CHAIN#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<namespace>#${NAMESPACE}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<full-namespace>#${FULL_NAMESPACE}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"

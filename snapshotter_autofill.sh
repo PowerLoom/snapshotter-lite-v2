@@ -75,7 +75,7 @@ cp config/projects.example.json config/projects.json
 cp config/settings.example.json config/settings.json
 
 
-export namespace="${NAMESPACE:-namespace_hash}"
+export namespace="${FULL_NAMESPACE:-namespace_hash}"
 export ipfs_url="${IPFS_URL:-}"
 export ipfs_api_key="${IPFS_API_KEY:-}"
 export ipfs_api_secret="${IPFS_API_SECRET:-}"
