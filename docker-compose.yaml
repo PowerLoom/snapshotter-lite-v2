@@ -73,7 +73,7 @@ services:
       retries: 3
       start_period: 30s
     command:
-      bash -c "bash snapshotter_autofill.sh && bash init_docker.sh"
+      bash -c "bash init_docker.sh"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

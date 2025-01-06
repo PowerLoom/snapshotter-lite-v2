@@ -26,6 +26,13 @@ if [ -z "$(ls -A /app/computes)" ] || [ -z "$(ls -A /app/config)" ]; then
     fi
 fi
 
+# Run autofill to setup config files
+bash snapshotter_autofill.sh
+if [ $? -ne 0 ]; then
+    echo "❌ Config setup failed"
+    exit 1
+fi
+
 # Continue with existing steps
 poetry run python -m snapshotter.snapshotter_id_ping
 ret_status=$?
