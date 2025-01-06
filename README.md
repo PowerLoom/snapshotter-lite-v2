@@ -217,11 +217,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
    ```bash
    cd powerloom-pre-mainnet
    ```
-4. Run `diagnose.sh` to clean up the existing snapshotter lite node setup:
-    ```bash
-   ./diagnose.sh
-   ```
-5. Run `build.sh` to start the snapshotter lite node:
+4. Run `build.sh` to start the snapshotter lite node:
     ```bash
     ./build.sh
     ```
@@ -241,6 +237,12 @@ This will create a namespace `.env-pre-mainnet-<data_market_name>-ETH` file in t
 ![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1.png)
 
 #### Running from a previously configured multi data market release
+
+> [!TIP]
+> You can run `diagnose.sh` script to clean up any existing snapshotter lite node setup:
+> ```bash
+> ./diagnose.sh 
+> ```
 
 You will be prompted to choose whether you wish to change the previously configured values for the above: `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`.
 
