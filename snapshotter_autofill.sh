@@ -67,8 +67,11 @@ if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
 fi
 
-if [ "$NAMESPACE" ]; then
-    echo "Found NAMESPACE ${NAMESPACE}";
+if [ "$FULL_NAMESPACE" ]; then
+    echo "Found FULL_NAMESPACE ${FULL_NAMESPACE}";
+else
+    echo "FULL_NAMESPACE not found, please set this in your .env!";
+    exit 1;
 fi
 
 cp config/projects.example.json config/projects.json
@@ -93,7 +96,7 @@ if [ -z "$IPFS_URL" ]; then
     ipfs_api_secret=""
 fi
 
-echo "Using Namespace: ${namespace}"
+echo "Using FULL_NAMESPACE: ${namespace}"
 echo "Using Prost RPC URL: ${PROST_RPC_URL}"
 echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
