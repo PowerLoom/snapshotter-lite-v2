@@ -41,9 +41,9 @@ services:
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./logs-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}:/logs
-      - computes-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}:/app/computes
-      - config-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}:/app/config
+      - ./logs-${FULL_NAMESPACE}:/logs
+      - computes-${FULL_NAMESPACE}:/app/computes
+      - config-${FULL_NAMESPACE}:/app/config
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
