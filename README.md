@@ -217,8 +217,11 @@ However, it is recommended to use the Docker image as it is the easiest and most
    ```bash
    cd powerloom-pre-mainnet
    ```
-
-4. Run `build.sh` to start the snapshotter lite node:
+4. Run `diagnose.sh` to clean up the existing snapshotter lite node setup:
+```bash
+./diagnose.sh
+```
+5. Run `build.sh` to start the snapshotter lite node:
 ```bash
 ./build.sh
 ```
@@ -268,7 +271,6 @@ In case it finds an existing subnet assigned to a Docker network, it will prompt
 * to prune existing networks. *Select `n` for this prompt unless you are being guided by someone from support to specifically clean up the existing networks.*
 
 * to choose the subnet you want to use. Select `y` for the automated suggestion.
-![Existing collector container or previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-Prev-NetworkSelect.png)
 
 #### Simulation submissions
 
