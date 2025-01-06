@@ -7,13 +7,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Run bootstrap
-echo "🚀 bootstrapping..."
-if ! ./bootstrap.sh; then
-    echo "❌ bootstrapping failed, exiting..."
-    exit 1
-fi
-echo "✅ bootstrap complete"
 
 # Source the environment file
 source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"

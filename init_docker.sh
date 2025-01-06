@@ -1,3 +1,32 @@
+#!/bin/bash
+
+# Run bootstrap if directories are empty
+if [ -z "$(ls -A /app/computes)" ] || [ -z "$(ls -A /app/config)" ]; then
+    echo "🚀 Running bootstrap..."
+    
+    # Clone config repo
+    git clone $SNAPSHOT_CONFIG_REPO "/app/config"
+    cd /app/config
+    if [ "$SNAPSHOT_CONFIG_REPO_BRANCH" ]; then
+        git checkout $SNAPSHOT_CONFIG_REPO_BRANCH
+    fi
+    cd ..
+
+    # Clone compute repo
+    git clone $SNAPSHOTTER_COMPUTE_REPO "/app/computes"
+    cd /app/computes
+    if [ "$SNAPSHOTTER_COMPUTE_REPO_BRANCH" ]; then
+        git checkout $SNAPSHOTTER_COMPUTE_REPO_BRANCH
+    fi
+    cd ..
+
+    if [ $? -ne 0 ]; then
+        echo "❌ Bootstrap failed"
+        exit 1
+    fi
+fi
+
+# Continue with existing steps
 poetry run python -m snapshotter.snapshotter_id_ping
 ret_status=$?
 
