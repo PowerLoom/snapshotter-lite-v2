@@ -4,16 +4,22 @@ FROM nikolaik/python-nodejs:python3.10-nodejs18
 RUN npm install pm2 -g
 
 # Copy the application's dependencies files
-COPY poetry.lock pyproject.toml ./
+COPY poetry.lock pyproject.toml /app/
 
 # Install the Python dependencies
-RUN poetry install --no-dev --no-root
+RUN cd /app && poetry install --no-dev --no-root
+
+# Create directories for repos
+RUN mkdir -p /app/computes /app/config
 
 # Copy the rest of the application's files
-COPY . .
+COPY . /app/
 
 # Make the shell scripts executable
-RUN chmod +x ./snapshotter_autofill.sh ./init_docker.sh
+RUN chmod +x /app/*.sh
+
+# Set workdir
+WORKDIR /app
 
 # Start the application using PM2
 # CMD pm2 start pm2.config.js && pm2 logs --lines 100

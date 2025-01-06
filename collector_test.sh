@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Source environment variables
-if [ -z "$NAMESPACE" ]; then
-    echo "NAMESPACE not found, please run build.sh first to set up environment"
+if [ -z "$FULL_NAMESPACE" ]; then
+    echo "FULL_NAMESPACE not found, please run build.sh first to set up environment"
     exit 1  # it is fine to exit with 1 here, as setup should not proceed past this
 fi
 
-source ".env-${NAMESPACE}"
+source ".env-${FULL_NAMESPACE}"
 
 # Set default values if not found in env
 if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
@@ -17,8 +17,8 @@ echo "⏳ Testing connection to local collector..."
 echo "Port: ${LOCAL_COLLECTOR_PORT}"
 
 # Test if container is running
-if ! docker ps | grep -q "snapshotter-lite-local-collector"; then
-    echo "Local collector container is not running!"
+if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"; then
+    echo "Local collector container for namespace '${FULL_NAMESPACE}' is not running!"
     exit 101
 fi
 

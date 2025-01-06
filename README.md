@@ -211,17 +211,22 @@ However, it is recommended to use the Docker image as it is the easiest and most
    ```bash
    git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
    ```
-    This will clone the repository into a directory named `powerloom`.
+    This will clone the repository into a directory named `powerloom-pre-mainnet`.
 
 3. Change your working directory to the `powerloom-pre-mainnet` directory:
    ```bash
    cd powerloom-pre-mainnet
    ```
 
-4. Run `build.sh` to start the snapshotter lite node:
-```bash
-./build.sh
-```
+4. Run the diagnose and cleanup script to check for any previous instances of the lite node, local collector and stale images and networks.
+    ```bash
+    ./diagnose.sh
+    ```
+
+5. Run `build.sh` to start the snapshotter lite node:
+    ```bash
+    ./build.sh
+    ```
 
 
 > [!NOTE]
@@ -233,11 +238,12 @@ After running `./build.sh`, your setup steps will appear slightly different base
 
 You will be prompted to choose the data market you want to operate on, followed by prompts to enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`. 
 
-This will create a namespace `.env-<data_market_name>` file in the root directory of the project.
+This will create a namespace `.env-pre-mainnet-<data_market_name>-ETH` file in the root directory of the project.
 
 ![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1.png)
 
 #### Running from a previously configured multi data market release
+
 
 You will be prompted to choose whether you wish to change the previously configured values for the above: `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`.
 
@@ -249,24 +255,17 @@ Choose `y` or `n` depending on whether you wish to change them.
 
 The installer automatically tries to resolve the subnet to assign to the Docker network that will run the snapshotter node.
 
-In case of conflicts or multiple subnets being available to allocate, the installer will prompt you to choose the subnet you want to use.
-
 Similarly, the installer also tries to resolve whether it should spawn a new local collector container or not. If it finds an already running collector container, it will not spawn a new one.
 
 **Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.**
 
 ![No existing collector containers and no previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-NoPrev.png)
 
-If the installer does find an existing local collector container, the logs will look like the following:
+If the installer does find an existing local collector container, the log will look like the following:
 
-![Existing collector container](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-Prev-LocalCollector.png)
-
-In case it finds an existing subnet assigned to a Docker network, it will prompt you two things:
-
-* to prune existing networks. *Select `n` for this prompt unless you are being guided by someone from support to specifically clean up the existing networks.*
-
-* to choose the subnet you want to use. Select `y` for the automated suggestion.
-![Existing collector container or previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-Prev-NetworkSelect.png)
+```bash
+🔌 ✅ Local collector found - using existing collector instance
+```
 
 #### Simulation submissions
 
@@ -276,14 +275,6 @@ Once all the steps around network selection and local collector setup are comple
 
 To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
-
-> [!TIP]
-> If you're a developer and want to play around with the code, instead of running `build.sh`, you can run the following commands to start the snapshotter lite node:
-> 
-> ```bash
-> ./bootstrap.sh
-> ./build-dev.sh
-> ```
 
 ### Without Docker
 
