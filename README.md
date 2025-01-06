@@ -252,8 +252,6 @@ Choose `y` or `n` depending on whether you wish to change them.
 
 The installer automatically tries to resolve the subnet to assign to the Docker network that will run the snapshotter node.
 
-In case of conflicts or multiple subnets being available to allocate, the installer will prompt you to choose the subnet you want to use.
-
 Similarly, the installer also tries to resolve whether it should spawn a new local collector container or not. If it finds an already running collector container, it will not spawn a new one.
 
 **Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.**
@@ -265,12 +263,6 @@ If the installer does find an existing local collector container, the log will l
 ```bash
 🔌 ✅ Local collector found - using existing collector instance
 ```
-
-In case it finds an existing subnet assigned to a Docker network, it will prompt you two things:
-
-* to prune existing networks. *Select `n` for this prompt unless you are being guided by someone from support to specifically clean up the existing networks.*
-
-* to choose the subnet you want to use. Select `y` for the automated suggestion.
 
 #### Simulation submissions
 
