@@ -218,13 +218,13 @@ However, it is recommended to use the Docker image as it is the easiest and most
    cd powerloom-pre-mainnet
    ```
 4. Run `diagnose.sh` to clean up the existing snapshotter lite node setup:
-```bash
-./diagnose.sh
-```
+    ```bash
+   ./diagnose.sh
+   ```
 5. Run `build.sh` to start the snapshotter lite node:
-```bash
-./build.sh
-```
+    ```bash
+    ./build.sh
+    ```
 
 
 > [!NOTE]
