@@ -7,8 +7,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Run deployment
-./deploy-services.sh "$NAMESPACE"
+# Run deployment with the correct env file
+./deploy-services.sh --env-file ".env-${POWERLOOM_CHAIN}-${NAMESPACE}"
 if [ $? -ne 0 ]; then
     echo "❌ Deployment failed"
     exit 1
