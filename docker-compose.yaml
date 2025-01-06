@@ -41,9 +41,9 @@ services:
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./logs-${FULL_NAMESPACE_LOWER}:/logs
-      - ./computes-${FULL_NAMESPACE_LOWER}:/computes
-      - ./config-${FULL_NAMESPACE_LOWER}:/config
+      - ./logs-${FULL_NAMESPACE_LOWER}:/app/logs
+      - ./computes-${FULL_NAMESPACE_LOWER}:/app/computes
+      - ./config-${FULL_NAMESPACE_LOWER}:/app/config
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
