@@ -17,8 +17,8 @@ echo "⏳ Testing connection to local collector..."
 echo "Port: ${LOCAL_COLLECTOR_PORT}"
 
 # Test if container is running
-if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"; then
-    echo "Local collector container for namespace '${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}' is not running!"
+if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"; then
+    echo "Local collector container for namespace '${FULL_NAMESPACE}' is not running!"
     exit 101
 fi
 
