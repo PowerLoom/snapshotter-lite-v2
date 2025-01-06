@@ -151,7 +151,7 @@ fi
 source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 
 # Network configuration
-export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}"
+export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${POWERLOOM_CHAIN}-${SLOT_ID}-${NAMESPACE}-${SOURCE_CHAIN}"
 
 # Subnet configuration
 if [ -z "$SUBNET_THIRD_OCTET" ]; then

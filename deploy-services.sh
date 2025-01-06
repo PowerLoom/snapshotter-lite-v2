@@ -5,20 +5,22 @@ show_help() {
     echo "Usage: ./deploy-services.sh [OPTIONS]"
     echo
     echo "Options:"
-    echo "  -f, --env-file FILE     Use specified environment file"
-    echo "  -e, --env KEY=VALUE     Set individual environment variable"
-    echo "  -n, --namespace NAME    Use .env-NAME file (legacy mode)"
-    echo "  -h, --help             Show this help message"
+    echo "  -f, --env-file FILE          Use specified environment file"
+    echo "  -p, --project-name NAME      Set docker compose project name"
+    echo "  -c, --collector-profile STR  Set collector profile string"
+    echo "  -t, --image-tag TAG         Set docker image tag"
+    echo "  -h, --help                  Show this help message"
     echo
     echo "Examples:"
-    echo "  ./deploy-services.sh --env-file .env-AAVEV3"
-    echo "  ./deploy-services.sh --env NAMESPACE=AAVEV3 --env SLOT_ID=123"
-    echo "  ./deploy-services.sh --namespace AAVEV3"
+    echo "  ./deploy-services.sh --env-file .env-pre-mainnet-AAVEV3-ETH"
+    echo "  ./deploy-services.sh --project-name snapshotter-lite-v2-123-aavev3"
 }
 
 # Initialize variables
-declare -A ENV_VARS
 ENV_FILE=""
+PROJECT_NAME=""
+COLLECTOR_PROFILE=""
+IMAGE_TAG="latest"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -27,19 +29,16 @@ while [[ $# -gt 0 ]]; do
             ENV_FILE="$2"
             shift 2
             ;;
-        -e|--env)
-            if [[ $2 =~ ^([^=]+)=(.*)$ ]]; then
-                key="${BASH_REMATCH[1]}"
-                value="${BASH_REMATCH[2]}"
-                ENV_VARS[$key]="$value"
-            else
-                echo "Error: Invalid environment variable format. Use KEY=VALUE"
-                exit 1
-            fi
+        -p|--project-name)
+            PROJECT_NAME="$2"
             shift 2
             ;;
-        -n|--namespace)
-            ENV_FILE=".env-$2"
+        -c|--collector-profile)
+            COLLECTOR_PROFILE="$2"
+            shift 2
+            ;;
+        -t|--image-tag)
+            IMAGE_TAG="$2"
             shift 2
             ;;
         -h|--help)
@@ -54,28 +53,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate input
-if [ -n "$ENV_FILE" ] && [ ${#ENV_VARS[@]} -gt 0 ]; then
-    echo "Error: Cannot use both env file and individual environment variables"
+# Validate required parameters
+if [ -z "$ENV_FILE" ]; then
+    echo "Error: Environment file must be specified"
     exit 1
 fi
 
-if [ -z "$ENV_FILE" ] && [ ${#ENV_VARS[@]} -eq 0 ]; then
-    echo "Error: Must provide either env file or environment variables"
-    exit 1
-fi
-
-# Create temporary env file if using individual variables
-if [ ${#ENV_VARS[@]} -gt 0 ]; then
-    ENV_FILE=$(mktemp)
-    trap 'rm -f $ENV_FILE' EXIT
-    
-    for key in "${!ENV_VARS[@]}"; do
-        echo "$key=${ENV_VARS[$key]}" >> "$ENV_FILE"
-    done
-fi
-
-# Validate env file exists
 if [ ! -f "$ENV_FILE" ]; then
     echo "Error: Environment file $ENV_FILE not found"
     exit 1
@@ -115,13 +98,17 @@ handle_docker_pull() {
     # Build compose arguments
     COMPOSE_ARGS=(
         --env-file "$ENV_FILE"
-        -p "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE,,}"  # ${NAMESPACE,,} converts to lowercase
+        -p "${PROJECT_NAME:-snapshotter-lite-v2-${POWERLOOM_CHAIN}-${SLOT_ID}-${NAMESPACE,,}-${SOURCE_CHAIN}}"
         -f docker-compose.yaml
     )
 
     # Add optional profiles
     [ -n "$IPFS_URL" ] && COMPOSE_ARGS+=("--profile" "ipfs")
-    [ -n "$COLLECTOR_PROFILE_STRING" ] && COMPOSE_ARGS+=($COLLECTOR_PROFILE_STRING)
+    [ -n "$COLLECTOR_PROFILE" ] && COMPOSE_ARGS+=($COLLECTOR_PROFILE)
+
+    # Set image tag and ensure network exists
+    export IMAGE_TAG
+    export DOCKER_NETWORK_NAME
 
     # Execute docker compose pull
     $DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
