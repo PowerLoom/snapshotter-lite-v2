@@ -109,7 +109,7 @@ if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
     sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<namespace>#${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
