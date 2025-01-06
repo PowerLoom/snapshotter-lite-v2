@@ -44,9 +44,9 @@ handle_error() {
 
 cleanup() {
     find . -name "*.backup" -type f -delete
-    if [ -n "$NAMESPACE" ] && [ -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}" ] && [ "$SETUP_COMPLETE" = false ]; then
-        rm -rf ".env-${POWERLOOM_CHAIN}-${NAMESPACE}"
-        echo "Aborted setup. Deleted .env-${POWERLOOM_CHAIN}-${NAMESPACE} file."
+    if [ -n "$NAMESPACE" ] && [ -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ] && [ "$SETUP_COMPLETE" = false ]; then
+        rm -rf ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+        echo "Aborted setup. Deleted .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file."
     fi
 }
 
@@ -88,11 +88,12 @@ export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
 export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
 export PROST_CHAIN_ID=11169
 export POWERLOOM_CHAIN=pre-mainnet
+export SOURCE_CHAIN=ETH
 
 # Environment file management
-if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}" ]; then
-    echo "🟡 .env-${POWERLOOM_CHAIN}-${NAMESPACE} file not found, creating one..."
-    cp env.example ".env-${POWERLOOM_CHAIN}-${NAMESPACE}"
+if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
+    echo "🟡 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file not found, creating one..."
+    cp env.example ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     SETUP_COMPLETE=false
 
     # Prompt for required values
@@ -104,22 +105,22 @@ if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}" ]; then
     read -p "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): " TELEGRAM_CHAT_ID
 
     # Update env file
-    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
+    sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<namespace>#$NAMESPACE#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<source-rpc-url>#$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<signer-account-address>#$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 
-    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE} file created successfully."
+    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file created successfully."
 else
-    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE} file found."
+    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file found."
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
@@ -129,25 +130,25 @@ else
             if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
                 read -s -p "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: " SIGNER_ACCOUNT_PRIVATE_KEY
                 echo
-                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
-                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
             fi
 
             read -p "Enter new SLOT_ID (NFT_ID) (press enter to skip): " SLOT_ID
             if [ ! -z "$SLOT_ID" ]; then
-                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
+                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
             fi
 
             read -p "Enter new SOURCE_RPC_URL (press enter to skip): " SOURCE_RPC_URL
             if [ ! -z "$SOURCE_RPC_URL" ]; then
-                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
+                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
             fi
         fi
     fi
 fi
 
 # Source the environment file
-source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}"
+source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 
 # Network configuration
 export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE}"
@@ -252,7 +253,7 @@ while check_port $CORE_API_PORT; do
 done
 
 echo "ℹ️ Using available port: ${CORE_API_PORT}"
-sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-${POWERLOOM_CHAIN}-$NAMESPACE"
+sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 
 # Set default values for optional environment variables
 if [ -z "$MAX_STREAM_POOL_SIZE" ]; then
@@ -300,4 +301,4 @@ fi
 export NO_COLLECTOR
 
 SETUP_COMPLETE=true
-echo "✅ Configuration complete. Environment file ready at .env-${POWERLOOM_CHAIN}-${NAMESPACE}" 
+echo "✅ Configuration complete. Environment file ready at .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" 
