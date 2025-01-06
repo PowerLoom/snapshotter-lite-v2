@@ -68,13 +68,19 @@ fi
 source "$ENV_FILE"
 
 # Validate required variables
-required_vars=("NAMESPACE" "SLOT_ID" "DOCKER_NETWORK_NAME")
+required_vars=("FULL_NAMESPACE" "SLOT_ID" "DOCKER_NETWORK_NAME")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo "Error: Required variable $var is not set"
         exit 1
     fi
 done
+
+# Create required directories
+mkdir -p "./logs-${FULL_NAMESPACE_LOWER}" \
+        "./computes-${FULL_NAMESPACE_LOWER}" \
+        "./config-${FULL_NAMESPACE_LOWER}"
+
 
 # Docker pull locking mechanism
 DOCKER_PULL_LOCK="/tmp/powerloom_docker_pull.lock"
@@ -98,7 +104,7 @@ handle_docker_pull() {
     # Build compose arguments
     COMPOSE_ARGS=(
         --env-file "$ENV_FILE"
-        -p "${PROJECT_NAME:-snapshotter-lite-v2-${POWERLOOM_CHAIN}-${SLOT_ID}-${NAMESPACE,,}-${SOURCE_CHAIN}}"
+        -p "${PROJECT_NAME:-snapshotter-lite-v2-${FULL_NAMESPACE}}"
         -f docker-compose.yaml
     )
 

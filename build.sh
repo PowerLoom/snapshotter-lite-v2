@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run configuration
-./configure-environment.sh "$@"
+source ./configure-environment.sh "$@"
 if [ $? -ne 0 ]; then
     echo "❌ Configuration failed"
     exit 1
@@ -39,9 +39,17 @@ else
     fi
 fi
 
+# Create lowercase versions of namespace variables
+PROJECT_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
+PROJECT_NAME_LOWER=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
+FULL_NAMESPACE_LOWER=$(echo "$FULL_NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
+# Export the lowercase version for docker-compose
+export FULL_NAMESPACE_LOWER
+
 # Run deployment with the correct env file
-./deploy-services.sh --env-file ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" \
-    --project-name "snapshotter-lite-v2-${SLOT_ID}-${NAMESPACE,,}" \
+./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
+    --project-name "$PROJECT_NAME_LOWER" \
     --collector-profile "$COLLECTOR_PROFILE_STRING" \
     --image-tag "$IMAGE_TAG"
 if [ $? -ne 0 ]; then

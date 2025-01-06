@@ -1,7 +1,7 @@
 services:
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
-    container_name: snapshotter-lite-local-collector-${SLOT_ID}-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}
+    container_name: snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}
     profiles: ["local-collector"]
     expose:
       - ${LOCAL_COLLECTOR_PORT}
@@ -35,15 +35,15 @@ services:
     restart: on-failure:10
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
-    container_name: snapshotter-lite-v2-${SLOT_ID}-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}
+    container_name: snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
     expose:
       - ${CORE_API_PORT}
     ports:
       - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
-      - ./logs-${FULL_NAMESPACE}:/logs
-      - computes-${FULL_NAMESPACE}:/app/computes
-      - config-${FULL_NAMESPACE}:/app/config
+      - ./logs-${FULL_NAMESPACE_LOWER}:/logs
+      - ./computes-${FULL_NAMESPACE_LOWER}:/computes
+      - ./config-${FULL_NAMESPACE_LOWER}:/config
     environment:
       - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
       - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY

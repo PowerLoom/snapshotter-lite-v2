@@ -90,11 +90,13 @@ export PROST_CHAIN_ID=11169
 export POWERLOOM_CHAIN=pre-mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+# Network configuration
+export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
 
 # Environment file management
-if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
-    echo "🟡 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file not found, creating one..."
-    cp env.example ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
+    echo "🟡 .env-${FULL_NAMESPACE} file not found, creating one..."
+    cp env.example ".env-${FULL_NAMESPACE}"
     SETUP_COMPLETE=false
 
     # Prompt for required values
@@ -119,12 +121,12 @@ if [ ! -f ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" ]; then
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-
-    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file created successfully."
+    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
+    echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
-    echo "🟢 .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN} file found."
+    echo "🟢 .env-${FULL_NAMESPACE} file found."
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
@@ -134,28 +136,25 @@ else
             if [ ! -z "$SIGNER_ACCOUNT_ADDRESS" ]; then
                 read -s -p "Enter new SIGNER_ACCOUNT_PRIVATE_KEY: " SIGNER_ACCOUNT_PRIVATE_KEY
                 echo
-                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_ADDRESS=.*#SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS#" ".env-${FULL_NAMESPACE}"
+                sed -i".backup" "s#^SIGNER_ACCOUNT_PRIVATE_KEY=.*#SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${FULL_NAMESPACE}"
             fi
 
             read -p "Enter new SLOT_ID (NFT_ID) (press enter to skip): " SLOT_ID
             if [ ! -z "$SLOT_ID" ]; then
-                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+                sed -i".backup" "s#^SLOT_ID=.*#SLOT_ID=$SLOT_ID#" ".env-${FULL_NAMESPACE}"
             fi
 
             read -p "Enter new SOURCE_RPC_URL (press enter to skip): " SOURCE_RPC_URL
             if [ ! -z "$SOURCE_RPC_URL" ]; then
-                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+                sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-${FULL_NAMESPACE}"
             fi
         fi
     fi
 fi
 
 # Source the environment file
-source ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-
-# Network configuration
-export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${POWERLOOM_CHAIN}-${SLOT_ID}-${NAMESPACE}-${SOURCE_CHAIN}"
+source ".env-${FULL_NAMESPACE}"
 
 # Subnet configuration
 if [ -z "$SUBNET_THIRD_OCTET" ]; then
@@ -257,7 +256,7 @@ while check_port $CORE_API_PORT; do
 done
 
 echo "ℹ️ Using available port: ${CORE_API_PORT}"
-sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-${FULL_NAMESPACE}"
 
 # Set default values for optional environment variables
 if [ -z "$MAX_STREAM_POOL_SIZE" ]; then
@@ -305,4 +304,4 @@ fi
 export NO_COLLECTOR
 
 SETUP_COMPLETE=true
-echo "✅ Configuration complete. Environment file ready at .env-${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}" 
+echo "✅ Configuration complete. Environment file ready at .env-${FULL_NAMESPACE}" 
