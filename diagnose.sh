@@ -175,18 +175,15 @@ if [ "$NETWORK_REMOVAL_FAILED" = true ]; then
     echo -e "\n${YELLOW}Due to network removal failures, a system-wide cleanup is recommended.${NC}"
 fi
 
-read -p "Would you like to perform a system-wide Docker cleanup (this will remove all unused containers, networks, images, and cache)? (y/n): " deep_clean
+read -p "Would you like to remove unused Docker resources (only unused images, networks, and cache)? (y/n): " deep_clean
 if [ "$deep_clean" = "y" ]; then
-    echo -e "\n${YELLOW}Performing system-wide Docker cleanup...${NC}"
+    echo -e "\n${YELLOW}Removing unused Docker resources...${NC}"
     echo -e "${YELLOW}This might take a few minutes...${NC}"
     
-    echo -e "\n${YELLOW}Stopping all containers...${NC}"
-    docker ps -q | xargs -r docker stop
-    
     echo -e "\n${YELLOW}Running docker system prune...${NC}"
-    docker system prune -af --volumes
+    docker system prune -a
     
-    echo -e "${GREEN}✅ System-wide cleanup complete${NC}"
+    echo -e "${GREEN}✅ Cleanup complete${NC}"
 fi
 
 echo -e "\n${GREEN}✅ Diagnostic check complete${NC}"
