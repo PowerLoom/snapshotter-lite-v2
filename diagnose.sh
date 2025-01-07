@@ -81,7 +81,7 @@ fi
 
 # Check existing containers and networks
 echo -e "\n🔍 Checking existing PowerLoom containers..."
-EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --format "{{.Names}}")
+EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" --format "{{.Names}}")
 if [ -n "$EXISTING_CONTAINERS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom containers:${NC}"
     echo "$EXISTING_CONTAINERS"
@@ -116,6 +116,25 @@ if [ -n "$USED_SUBNETS" ]; then
     done
 fi
 
+# Check for cloned directories
+echo -e "\n📁 Checking for PowerLoom deployment directories..."
+# Matches patterns like:
+# - powerloom-premainnet-v2-123-AAVEV3
+# - powerloom-premainnet-v2-456-UNISWAPV2
+# - powerloom-testnet-v2-789-AAVEV3
+# - powerloom-testnet-v2-3928
+EXISTING_DIRS=$(find . -maxdepth 1 -type d -regex "./powerloom-\(premainnet\|testnet\)-v2-[0-9]+\(-[A-Z0-9]+\)?" -exec basename {} \; || true)  
+if [ -n "$EXISTING_DIRS" ]; then
+    echo -e "${YELLOW}Found existing PowerLoom deployment directories:${NC}"
+    echo "$EXISTING_DIRS"
+    read -p "Would you like to remove these directories? (y/n): " remove_dirs
+    if [ "$remove_dirs" = "y" ]; then
+        echo -e "\n${YELLOW}Removing deployment directories...${NC}"
+        echo "$EXISTING_DIRS" | xargs -I {} rm -rf "{}"
+        echo -e "${GREEN}✅ Deployment directories removed${NC}"
+    fi
+fi
+
 # Phase 2: Cleanup Options
 echo -e "\n🧹 Cleanup Options:"
 
@@ -123,10 +142,10 @@ if [ -n "$EXISTING_CONTAINERS" ]; then
     read -p "Would you like to stop and remove existing PowerLoom containers? (y/n): " remove_containers
     if [ "$remove_containers" = "y" ]; then
         echo -e "\n${YELLOW}Stopping running containers...${NC}"
-        docker ps --filter "name=snapshotter-lite-v2" -q | xargs -r docker stop
+        docker ps --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | xargs -r docker stop
         
         echo -e "\n${YELLOW}Removing stopped containers...${NC}"
-        docker ps -a --filter "name=snapshotter-lite-v2" -q | xargs -r docker rm
+        docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | xargs -r docker rm
         
         echo -e "${GREEN}✅ Containers stopped and removed${NC}"
     fi
@@ -134,14 +153,14 @@ fi
 
 # Check for existing screen sessions
 echo -e "\n🖥️ Checking existing PowerLoom screen sessions..."
-EXISTING_SCREENS=$(screen -ls | grep -E 'powerloom-(premainnet|testnet)-v2' || true)
+EXISTING_SCREENS=$(screen -ls | grep -E 'powerloom-(premainnet|testnet)-v2|snapshotter' || true)
 if [ -n "$EXISTING_SCREENS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom screen sessions:${NC}"
     echo "$EXISTING_SCREENS"
     read -p "Would you like to terminate these screen sessions? (y/n): " kill_screens
     if [ "$kill_screens" = "y" ]; then
         echo -e "\n${YELLOW}Killing screen sessions...${NC}"
-        screen -ls | grep -E 'powerloom-(premainnet|testnet)-v2' | cut -d. -f1 | awk '{print $1}' | xargs -r kill
+        screen -ls | grep -E 'powerloom-(premainnet|testnet)-v2|snapshotter' | cut -d. -f1 | awk '{print $1}' | xargs -r kill
         echo -e "${GREEN}✅ Screen sessions terminated${NC}"
     fi
 fi
