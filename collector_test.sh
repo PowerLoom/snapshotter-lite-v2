@@ -16,15 +16,11 @@ fi
 echo "⏳ Testing connection to local collector..."
 echo "Port: ${LOCAL_COLLECTOR_PORT}"
 
-# Test if container is running
-if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"; then
-    echo "Local collector container for namespace '${FULL_NAMESPACE}' is not running!"
-    exit 101
-fi
-
 # Array of hosts to try
 hosts=("localhost" "127.0.0.1" "0.0.0.0")
+test_ping=false
 success=false
+test_namespace=false
 
 # Check if nc is available, otherwise use curl
 if command -v nc &> /dev/null; then
@@ -33,7 +29,7 @@ if command -v nc &> /dev/null; then
         echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
         if ${test_command} "${host}" "${LOCAL_COLLECTOR_PORT}" 2>&1; then
             echo "✅ Connected!"
-            success=true
+            test_ping=true
             break
         else
             echo "❌ Failed"
@@ -45,7 +41,7 @@ else
         echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
         if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>&1; then
             echo "✅ Connected!"
-            success=true
+            test_ping=true
             break
         else
             echo "❌ Failed"
@@ -53,10 +49,29 @@ else
     done
 fi
 
+# Test if container is running
+if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"; then
+    echo "Local collector container for namespace '${FULL_NAMESPACE}' is not running!"
+else
+    echo "Local collector container for namespace '${FULL_NAMESPACE}' is running!"
+    test_namespace=true
+fi
+
+
+success = $test_ping && $test_namespace
 if [ "$success" = true ]; then
     echo "🎉 Successfully connected to collector endpoint!"
     exit 100
 else
-    echo "💥 Failed to connect to collector endpoint on all addresses!"
+    echo "💥 No collector found or reachable in this namespace, checking for available ports..."
+    # check for available PORTS in the range 50051-50059
+    for port in {50051..50059}; do
+        if nc -zv -w 5 localhost $port 2>&1; then
+            echo "🔍 Port $port is available!"
+            # update local collector port
+            export LOCAL_COLLECTOR_PORT=$port
+            break
+        fi
+    done
     exit 101
 fi
