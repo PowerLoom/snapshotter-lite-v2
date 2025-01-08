@@ -19,7 +19,6 @@ echo "Port: ${LOCAL_COLLECTOR_PORT}"
 # Array of hosts to try
 hosts=("localhost" "127.0.0.1" "0.0.0.0")
 test_ping=false
-success=false
 test_namespace=false
 
 # Check if nc is available, otherwise use curl
@@ -58,7 +57,11 @@ else
 fi
 
 
-success = $test_ping && $test_namespace
+success=false
+if [ "$test_ping" = true ] && [ "$test_namespace" = true ]; then
+    success=true
+fi
+
 if [ "$success" = true ]; then
     echo "🎉 Successfully connected to collector endpoint!"
     exit 100
@@ -66,7 +69,7 @@ else
     echo "💥 No collector found or reachable in this namespace, checking for available ports..."
     # check for available PORTS in the range 50051-50059
     for port in {50051..50059}; do
-        if nc -zv -w 5 localhost $port 2>&1; then
+        if ! nc -zv -w 5 localhost $port 2>&1; then
             echo "🔍 Port $port is available!"
             # update local collector port
             export LOCAL_COLLECTOR_PORT=$port

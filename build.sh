@@ -31,7 +31,7 @@ else
         echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
         COLLECTOR_PROFILE_STRING="--profile local-collector"
         # update local collector port in .env-${FULL_NAMESPACE}
-        sed -i "s/LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${LOCAL_COLLECTOR_PORT}/" ".env-${FULL_NAMESPACE}"
+        sed -i".backup" "s/^LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${LOCAL_COLLECTOR_PORT}/" ".env-${FULL_NAMESPACE}"
     elif [ $test_result -eq 100 ]; then
         echo "🔌 ✅ Local collector found - using existing collector instance"
         COLLECTOR_PROFILE_STRING=""
