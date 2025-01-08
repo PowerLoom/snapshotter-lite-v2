@@ -200,22 +200,22 @@ However, it is recommended to use the Docker image as it is the easiest and most
 > [!IMPORTANT]
 > It is recommended to run `build.sh` in a screen or tmux session so that the process continues running even after you close the terminal. The steps look like the following with `GNU screen` on linux:
 > 
-> * Start a new session by running the command `screen -S snapshotter-lite-node-premainnet`
+> * Start a new session by running the command `screen -S snapshotter-lite-node-mainnet`
 > * Run the `build.sh` script by running the command `./build.sh`
 > * Detach from the session by running the command `Ctrl+A+D`
-> * You can reattach to the session by running the command `screen -r snapshotter-lite-node-premainnet` or `screen -rx snapshotter-lite-node-premainnet`
+> * You can reattach to the session by running the command `screen -r snapshotter-lite-node-mainnet` or `screen -rx snapshotter-lite-node-mainnet`
 
 1. Install Docker on your machine. You can find the installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
 
 2. Clone this repository using the following command:
    ```bash
-   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
+   git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-mainnet
    ```
-    This will clone the repository into a directory named `powerloom-pre-mainnet`.
+    This will clone the repository into a directory named `powerloom-mainnet`.
 
-3. Change your working directory to the `powerloom-pre-mainnet` directory:
+3. Change your working directory to the `powerloom-mainnet` directory:
    ```bash
-   cd powerloom-pre-mainnet
+   cd powerloom-mainnet
    ```
 
 4. Run the diagnose and cleanup script to check for any previous instances of the lite node, local collector and stale images and networks.
@@ -230,7 +230,7 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 
 > [!NOTE]
-> The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3. This will be further  expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
+> The lite node now allows you to choose between two data markets: Uniswap V2 and Aave V3 with Uniswap V2 being the default. This will be further  expanded to include more data markets in the future and to allow node operators to choose the data market they want to operate on.
 
 After running `./build.sh`, your setup steps will appear slightly different based on whether you are setting up the multi data market release for the first time or not.
 
@@ -238,7 +238,7 @@ After running `./build.sh`, your setup steps will appear slightly different base
 
 You will be prompted to choose the data market you want to operate on, followed by prompts to enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY` and `SLOT_ID`. 
 
-This will create a namespace `.env-pre-mainnet-<data_market_name>-ETH` file in the root directory of the project.
+This will create a namespace `.env-mainnet-<data_market_name>-ETH` file in the root directory of the project.
 
 ![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1.png)
 
@@ -285,13 +285,13 @@ If you want to run the Snapshotter Lite Node without Docker, you need to make su
 
 1. Clone this repository using the following command:
   ```bash
-  git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-pre-mainnet
+  git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-mainnet
   ```
-  This will clone the repository into a directory named `powerloom-pre-mainnet`.
+  This will clone the repository into a directory named `powerloom-mainnet`.
 
-2. Change your working directory to the `powerloom-pre-mainnet` directory:
+2. Change your working directory to the `powerloom-mainnet` directory:
    ```bash
-   cd powerloom-pre-mainnet
+   cd powerloom-mainnet
    ```
 
 3. Run `init.sh` to start the snapshotter lite node:
