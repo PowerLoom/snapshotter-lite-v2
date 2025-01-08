@@ -258,7 +258,13 @@ class EventDetectorProcess(multiprocessing.Process):
                     try:
                         self._reporting_httpx_client.post(
                             url=urljoin(settings.reporting.service_url, '/ping'),
-                            json=SnapshotterPing(instanceID=settings.instance_id, slotId=settings.slot_id).dict(),
+                            json=SnapshotterPing(
+                                instanceID=settings.instance_id,
+                                slotId=settings.slot_id,
+                                dataMarketAddress=settings.data_market,
+                                namespace=settings.namespace,
+                                nodeVersion=settings.node_version,
+                            ).dict(),
                         )
 
                     except Exception as e:
