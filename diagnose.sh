@@ -81,7 +81,7 @@ fi
 
 # Check existing containers and networks
 echo -e "\n🔍 Checking existing PowerLoom containers..."
-EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" --format "{{.Names}}")
+EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" --filter "name=local-collector" --format "{{.Names}}")
 if [ -n "$EXISTING_CONTAINERS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom containers:${NC}"
     echo "$EXISTING_CONTAINERS"
@@ -119,11 +119,16 @@ fi
 # Check for cloned directories
 echo -e "\n📁 Checking for PowerLoom deployment directories..."
 # Matches patterns like:
-# - powerloom-premainnet-v2-123-AAVEV3
-# - powerloom-premainnet-v2-456-UNISWAPV2
-# - powerloom-testnet-v2-789-AAVEV3
-# - powerloom-testnet-v2-3928
-EXISTING_DIRS=$(find . -maxdepth 1 -type d -regex "./powerloom-\(premainnet\|testnet\)-v2-[0-9]+\(-[A-Z0-9]+\)?" -exec basename {} \; || true)  
+# - powerloom-premainnet-v2-*
+# - powerloom-testnet-v2-*
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS version
+    EXISTING_DIRS=$(find . -maxdepth 1 -type d \( -name "powerloom-premainnet-v2-*" -o -name "powerloom-testnet*" \) -exec basename {} \; || true)
+else
+    # Linux version (unchanged)
+    EXISTING_DIRS=$(find . -maxdepth 1 -type d -name "powerloom-premainnet-v2-*" -o -name "powerloom-testnet*" -exec basename {} \; || true)
+fi
+
 if [ -n "$EXISTING_DIRS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom deployment directories:${NC}"
     echo "$EXISTING_DIRS"
@@ -142,12 +147,29 @@ if [ -n "$EXISTING_CONTAINERS" ]; then
     read -p "Would you like to stop and remove existing PowerLoom containers? (y/n): " remove_containers
     if [ "$remove_containers" = "y" ]; then
         echo -e "\n${YELLOW}Stopping running containers...${NC}"
-        docker ps --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | xargs -r docker stop
+        # Add timeout and handle errors for stop
+        docker ps --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | \
+            xargs -r docker stop --time 30 || echo -e "${YELLOW}⚠️ Some containers could not be stopped gracefully${NC}"
         
         echo -e "\n${YELLOW}Removing stopped containers...${NC}"
-        docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | xargs -r docker rm
+        # First try normal removal
+        docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | \
+            xargs -r docker rm || true
+            
+        # Force remove any remaining containers
+        REMAINING=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q)
+        if [ -n "$REMAINING" ]; then
+            echo -e "${YELLOW}⚠️ Some containers persist. Attempting force removal...${NC}"
+            docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q | \
+                xargs -r docker rm -f || echo -e "${RED}❌ Failed to remove some containers${NC}"
+        fi
         
-        echo -e "${GREEN}✅ Containers stopped and removed${NC}"
+        # Verify cleanup
+        if [ -z "$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" -q)" ]; then
+            echo -e "${GREEN}✅ All containers successfully removed${NC}"
+        else
+            echo -e "${RED}❌ Some containers could not be removed. Manual intervention may be required${NC}"
+        fi
     fi
 fi
 
@@ -197,7 +219,9 @@ fi
 read -p "Would you like to remove unused Docker resources (only unused images, networks, and cache)? (y/n): " deep_clean
 if [ "$deep_clean" = "y" ]; then
     echo -e "\n${YELLOW}Removing unused Docker resources...${NC}"
-    echo -e "${YELLOW}This might take a few minutes...${NC}"
+    
+    echo -e "\n${YELLOW}Running docker network prune...${NC}"
+    docker network prune -f
     
     echo -e "\n${YELLOW}Running docker system prune...${NC}"
     docker system prune -a
