@@ -271,7 +271,7 @@ If the installer does find an existing local collector container, the log will l
 
 Once all the steps around network selection and local collector setup are complete, the installer will start the snapshotter node and you should see submissions against `epochId=0` in your terminal logs that denotes the node is able to send simulation submissions to the sequencer.
 
-![Simulation submissions]
+![Simulation submissions](snapshotter/static/docs/assets/multiDataMarketSetup/SimulationSubmission.png)
 
 To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
