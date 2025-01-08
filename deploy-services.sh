@@ -78,14 +78,10 @@ done
 
 # Cleanup and create required directories
 echo "🧹 Cleaning up existing directories..."
-rm -rf "./logs-${FULL_NAMESPACE_LOWER}" \
-       "./computes-${FULL_NAMESPACE_LOWER}" \
-       "./config-${FULL_NAMESPACE_LOWER}"
+rm -rf "./logs-${FULL_NAMESPACE_LOWER}"
 
 echo "📁 Creating fresh directories..."
-mkdir -p "./logs-${FULL_NAMESPACE_LOWER}" \
-        "./computes-${FULL_NAMESPACE_LOWER}" \
-        "./config-${FULL_NAMESPACE_LOWER}"
+mkdir -p "./logs-${FULL_NAMESPACE_LOWER}"
 
 # Docker pull locking mechanism
 DOCKER_PULL_LOCK="/tmp/powerloom_docker_pull.lock"
