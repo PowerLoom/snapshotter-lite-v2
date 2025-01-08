@@ -22,66 +22,52 @@ if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     export LOCAL_COLLECTOR_PORT=50051
 fi
 
-echo "⏳ Testing connection to local collector..."
-echo "Port: ${LOCAL_COLLECTOR_PORT}"
+echo "🔄 Starting collector connectivity checks..."
 
 # Array of hosts to try
 hosts=("localhost" "127.0.0.1" "0.0.0.0")
 test_ping=false
 test_namespace=false
 
-# Check if nc is available, otherwise use curl
+# Test port connectivity
 if command -v nc &> /dev/null; then
-    test_command="nc -zv -w 5"
+    test_command="nc -z"
     for host in "${hosts[@]}"; do
-        echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
-        if ${test_command} "${host}" "${LOCAL_COLLECTOR_PORT}" 2>&1; then
-            echo "✅ Connected!"
+        echo "  ⏳ Testing ${host}:${LOCAL_COLLECTOR_PORT}"
+        if ${test_command} "${host}" "${LOCAL_COLLECTOR_PORT}" 2>/dev/null; then
             test_ping=true
             break
-        else
-            echo "❌ Failed"
         fi
     done
 else
     test_command="curl -s --connect-timeout 5"
     for host in "${hosts[@]}"; do
-        echo -n "🔍 Testing ${host}:${LOCAL_COLLECTOR_PORT}... "
-        if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>&1; then
-            echo "✅ Connected!"
+        echo "  ⏳ Testing ${host}:${LOCAL_COLLECTOR_PORT}"
+        if $test_command "${host}:${LOCAL_COLLECTOR_PORT}" 2>/dev/null; then
             test_ping=true
             break
-        else
-            echo "❌ Failed"
         fi
     done
 fi
 
-# Test if container is running
-if ! docker ps | grep -q "snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"; then
-    echo "Local collector container for namespace '${FULL_NAMESPACE}' is not running!"
+# Test container status
+container_name="snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"
+if ! docker ps | grep -q "$container_name"; then
+    echo "❌ Collector container not found: $container_name"
 else
-    echo "Local collector container for namespace '${FULL_NAMESPACE}' is running!"
+    echo "✅ Collector container running: $container_name"
     test_namespace=true
 fi
 
-
-success=false
+# Final status check
 if [ "$test_ping" = true ] && [ "$test_namespace" = true ]; then
-    success=true
-fi
-
-if [ "$success" = true ]; then
-    echo "🎉 Successfully connected to collector endpoint!"
+    echo "✅ Collector is running and reachable"
     exit 100
 else
-    echo "💥 No collector found or reachable in this namespace, checking for available ports..."
-    # check for available PORTS in the range 50051-50059
+    echo "⚠️  No active collector found - searching for available ports..."
     for port in {50051..50059}; do
-        if ! nc -zv -w 5 localhost $port 2>&1; then
-            echo "🔍 Port $port is available!"
-            # update local collector port
-            echo "🔌 ⭕ Local collector port: ${port}"
+        if ! nc -z localhost $port 2>/dev/null; then
+            echo "✅ Found available port: $port"
             sed -i".backup" "s/^LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${port}/" "${ENV_FILE}"
             break
         fi

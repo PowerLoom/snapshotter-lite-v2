@@ -22,20 +22,19 @@ echo "🏗️ Building image with tag ${IMAGE_TAG}"
 
 # Run collector test
 if [ "$NO_COLLECTOR" = "true" ]; then
-    echo "🔌 ⭕ No collector flag passed, skipping collector test"
+    echo "�️  Skipping collector check (--no-collector flag)"
     COLLECTOR_PROFILE_STRING=""
 else
     ./collector_test.sh --env-file ".env-${FULL_NAMESPACE}"
     test_result=$?
     if [ $test_result -eq 101 ]; then
-        echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
+        echo "ℹ️  Starting new collector instance"
         COLLECTOR_PROFILE_STRING="--profile local-collector"
-
     elif [ $test_result -eq 100 ]; then
-        echo "🔌 ✅ Local collector found - using existing collector instance"
+        echo "✅ Using existing collector instance"
         COLLECTOR_PROFILE_STRING=""
     else
-        echo "❌ Collector test failed with exit code $?, exiting..."
+        echo "❌ Collector check failed (exit code: $test_result)"
         exit 1
     fi
 fi
