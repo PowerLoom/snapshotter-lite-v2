@@ -25,14 +25,12 @@ if [ "$NO_COLLECTOR" = "true" ]; then
     echo "🔌 ⭕ No collector flag passed, skipping collector test"
     COLLECTOR_PROFILE_STRING=""
 else
-    ./collector_test.sh
+    ./collector_test.sh --env-file ".env-${FULL_NAMESPACE}"
     test_result=$?
     if [ $test_result -eq 101 ]; then
         echo "🔌 ⭕ Local collector not found or unreachable - will spawn a new local collector instance"
         COLLECTOR_PROFILE_STRING="--profile local-collector"
-        # update local collector port in .env-${FULL_NAMESPACE}
-        echo "🔌 ⭕ Local collector port: ${LOCAL_COLLECTOR_PORT}"
-        sed -i".backup" "s/^LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${LOCAL_COLLECTOR_PORT}/" ".env-${FULL_NAMESPACE}"
+
     elif [ $test_result -eq 100 ]; then
         echo "🔌 ✅ Local collector found - using existing collector instance"
         COLLECTOR_PROFILE_STRING=""

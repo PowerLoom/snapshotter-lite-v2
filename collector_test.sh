@@ -6,7 +6,16 @@ if [ -z "$FULL_NAMESPACE" ]; then
     exit 1  # it is fine to exit with 1 here, as setup should not proceed past this
 fi
 
-source ".env-${FULL_NAMESPACE}"
+# parse --env-file argument
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --env-file) ENV_FILE="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+source "$ENV_FILE"
 
 # Set default values if not found in env
 if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
@@ -72,7 +81,8 @@ else
         if ! nc -zv -w 5 localhost $port 2>&1; then
             echo "🔍 Port $port is available!"
             # update local collector port
-            export LOCAL_COLLECTOR_PORT=$port
+            echo "🔌 ⭕ Local collector port: ${port}"
+            sed -i".backup" "s/^LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${port}/" "${ENV_FILE}"
             break
         fi
     done
