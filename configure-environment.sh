@@ -63,43 +63,39 @@ fi
 if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
     DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
 else
-    while true; do
-        echo "🔍 Select a data market contract: "
-        echo "1. Aave V3"
-        echo "2. Uniswap V2"
-        read DATA_MARKET_CONTRACT_CHOICE
-        
-        if [[ "$DATA_MARKET_CONTRACT_CHOICE" =~ ^[12]$ ]]; then
-            break
-        else
-            echo "❌ Invalid choice. Please enter 1 for Aave V3 or 2 for Uniswap V2."
-        fi
-    done
+    echo "🔍 Select a data market contract: "
+    echo "1. Aave V3"
+    echo "2. Uniswap V2 (default)"
+    read DATA_MARKET_CONTRACT_CHOICE
+    
+    # Set default to Uniswap V2 if empty or invalid input
+    if [ -z "$DATA_MARKET_CONTRACT_CHOICE" ] || ! [[ "$DATA_MARKET_CONTRACT_CHOICE" =~ ^[12]$ ]]; then
+        DATA_MARKET_CONTRACT_CHOICE="2"
+        echo "Using default: Uniswap V2"
+    fi
 fi
 
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
-    DATA_MARKET_CONTRACT="0xc390a15BcEB89C2d4910b2d3C696BfD21B190F07"
+    DATA_MARKET_CONTRACT="0xdE95f6d0D1A7B8411fCbfc60d5c2C5Df69d667a9"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
-    DATA_MARKET_CONTRACT="0x8023BD7A9e8386B10336E88294985e3Fbc6CF23F"
+    DATA_MARKET_CONTRACT="0xC53ad4C6A8A978fC4A91F08A21DcE847f5Bc0E27"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
 
 # Set protocol values
-export PROTOCOL_STATE_CONTRACT="0xF68342970beF978697e1104223b2E1B6a1D7764d"
-export PROST_RPC_URL="https://rpc-prost1m.powerloom.io"
-export PROST_CHAIN_ID=11169
-export POWERLOOM_CHAIN=pre-mainnet
+export PROTOCOL_STATE_CONTRACT="0x670E0Cf8c8dF15B326D5E2Db4982172Ff8504909"
+export PROST_RPC_URL="https://rpc.powerloom.network"
+export PROST_CHAIN_ID=7865
+export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
-# Network configuration
-export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
 
 # Environment file management
 if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
@@ -113,6 +109,8 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     read -s -p "Enter SIGNER_ACCOUNT_PRIVATE_KEY: " SIGNER_ACCOUNT_PRIVATE_KEY
     echo
     read -p "Enter Your SLOT_ID (NFT_ID): " SLOT_ID
+    export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
+    
     read -p "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): " TELEGRAM_CHAT_ID
 
     # Update env file
@@ -157,6 +155,7 @@ else
             if [ ! -z "$SOURCE_RPC_URL" ]; then
                 sed -i".backup" "s#^SOURCE_RPC_URL=.*#SOURCE_RPC_URL=$SOURCE_RPC_URL#" ".env-${FULL_NAMESPACE}"
             fi
+            echo "Feel free to ask for help in our Discord: https://discord.gg/powerloom if you need assistance in modifying your .env-${FULL_NAMESPACE} environment variables. DO NOT SHARE YOUR PRIVATE KEYS OR ANY SENSITIVE INFORMATION."
         fi
     fi
 fi

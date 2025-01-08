@@ -1,29 +1,23 @@
 #!/bin/bash
 
-# Run bootstrap if directories are empty
-if [ -z "$(ls -A /app/computes)" ] || [ -z "$(ls -A /app/config)" ]; then
-    echo "🚀 Running bootstrap..."
-    
-    # Clone config repo
-    git clone $SNAPSHOT_CONFIG_REPO "/app/config"
-    cd /app/config
-    if [ "$SNAPSHOT_CONFIG_REPO_BRANCH" ]; then
-        git checkout $SNAPSHOT_CONFIG_REPO_BRANCH
-    fi
-    cd ..
+# Always run bootstrap
+echo "🚀 Running bootstrap..."
 
-    # Clone compute repo
-    git clone $SNAPSHOTTER_COMPUTE_REPO "/app/computes"
-    cd /app/computes
-    if [ "$SNAPSHOTTER_COMPUTE_REPO_BRANCH" ]; then
-        git checkout $SNAPSHOTTER_COMPUTE_REPO_BRANCH
-    fi
-    cd ..
+echo "📦 Cloning fresh config repo..."
+git clone $SNAPSHOT_CONFIG_REPO "/app/config"
+cd /app/config
+git checkout $SNAPSHOT_CONFIG_REPO_BRANCH
+cd ..
 
-    if [ $? -ne 0 ]; then
-        echo "❌ Bootstrap failed"
-        exit 1
-    fi
+echo "📦 Cloning fresh compute repo..."
+git clone $SNAPSHOTTER_COMPUTE_REPO "/app/computes"
+cd /app/computes
+git checkout $SNAPSHOTTER_COMPUTE_REPO_BRANCH
+cd ..
+
+if [ $? -ne 0 ]; then
+    echo "❌ Bootstrap failed"
+    exit 1
 fi
 
 # Run autofill to setup config files
