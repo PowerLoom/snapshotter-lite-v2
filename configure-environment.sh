@@ -63,18 +63,16 @@ fi
 if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
     DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
 else
-    while true; do
-        echo "🔍 Select a data market contract: "
-        echo "1. Aave V3"
-        echo "2. Uniswap V2"
-        read DATA_MARKET_CONTRACT_CHOICE
-        
-        if [[ "$DATA_MARKET_CONTRACT_CHOICE" =~ ^[12]$ ]]; then
-            break
-        else
-            echo "❌ Invalid choice. Please enter 1 for Aave V3 or 2 for Uniswap V2."
-        fi
-    done
+    echo "🔍 Select a data market contract: "
+    echo "1. Aave V3"
+    echo "2. Uniswap V2 (default)"
+    read DATA_MARKET_CONTRACT_CHOICE
+    
+    # Set default to Uniswap V2 if empty or invalid input
+    if [ -z "$DATA_MARKET_CONTRACT_CHOICE" ] || ! [[ "$DATA_MARKET_CONTRACT_CHOICE" =~ ^[12]$ ]]; then
+        DATA_MARKET_CONTRACT_CHOICE="2"
+        echo "Using default: Uniswap V2"
+    fi
 fi
 
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
