@@ -65,7 +65,7 @@ if [ "$test_ping" = true ] && [ "$test_namespace" = true ]; then
     exit 100
 else
     echo "⚠️  No active collector found - searching for available ports..."
-    for port in {50051..50059}; do
+    for port in {50051..51050}; do
         if ! nc -z localhost $port 2>/dev/null; then
             echo "✅ Found available port: $port"
             sed -i".backup" "s/^LOCAL_COLLECTOR_PORT=.*/LOCAL_COLLECTOR_PORT=${port}/" "${ENV_FILE}"
