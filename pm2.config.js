@@ -30,7 +30,12 @@ module.exports = {
         NODE_ENV: NODE_ENV,
       },
       cron_restart: "0 * * * *",
-      autorestart: true
+      autorestart: true,
+      kill_timeout: 5000,
+      stop_exit_codes: [0, 143],
+      treekill: true,
+      listen_timeout: 5000,
     },
   ]
 }
+
