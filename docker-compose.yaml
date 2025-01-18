@@ -81,8 +81,12 @@ services:
       timeout: 5s
       retries: 2
       start_period: 30s
-    command:
-      bash -c "bash init_docker.sh"
+    command: >
+      bash -c "
+        rm -f /app/last_successful_submission.txt;
+        trap 'rm -f /app/last_successful_submission.txt' SIGTERM;
+        bash init_docker.sh;
+      "
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
