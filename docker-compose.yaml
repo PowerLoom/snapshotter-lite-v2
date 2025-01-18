@@ -70,7 +70,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 2
       start_period: 30s
     command:
       bash -c "bash init_docker.sh"
@@ -78,6 +78,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - custom_network
+    restart: on-failure:10
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
