@@ -96,7 +96,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
 
             await self._send_failure_notifications(
                 error=e,
-                epoch_id=msg_obj.epochId,
+                epoch_id=str(msg_obj.epochId),
                 project_id=self._gen_project_id(
                     task_type=task_type,
                 ),

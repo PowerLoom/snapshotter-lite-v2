@@ -236,15 +236,12 @@ class EventDetectorProcess(multiprocessing.Process):
                 # Cancel all running tasks
                 for task in asyncio.all_tasks(self.ev_loop):
                     task.cancel()
-                
-                # Stop the event loop immediately
-                self.ev_loop.stop()
-                
                 # Clean up resources with timeout
                 if hasattr(self, '_reporting_httpx_client'):
                     self._reporting_httpx_client.close()
                 if hasattr(self, '_telegram_httpx_client'):
                     self._telegram_httpx_client.close()
+                self.ev_loop.stop()
                 
             except Exception as e:
                 self._logger.error(f"Error during shutdown: {e}")

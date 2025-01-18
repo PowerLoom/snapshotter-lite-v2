@@ -87,25 +87,24 @@ class ProcessorDistributor:
         """
         Initializes the HTTPX clients with the specified settings.
         """
-        transport_settings = dict(
-            limits=Limits(
-                max_connections=100,
-                max_keepalive_connections=50,
-                keepalive_expiry=None,
-            ),
+        
+        transport_limits = Limits(
+            max_connections=100,
+            max_keepalive_connections=50,
+            keepalive_expiry=None,
         )
 
         self._reporting_httpx_client = AsyncClient(
             base_url=settings.reporting.service_url,
             timeout=Timeout(timeout=5.0),
             follow_redirects=False,
-            transport=AsyncHTTPTransport(**transport_settings),
+            transport=AsyncHTTPTransport(limits=transport_limits),
         )
         self._telegram_httpx_client = AsyncClient(
             base_url=settings.reporting.telegram_url,
             timeout=Timeout(timeout=5.0),
             follow_redirects=False,
-            transport=AsyncHTTPTransport(**transport_settings),
+            transport=AsyncHTTPTransport(limits=transport_limits),
         )
 
     async def _init_preloader_compute_mapping(self):
