@@ -34,7 +34,7 @@ module.exports = {
       kill_timeout: 5000,
       stop_exit_codes: [0, 143],
       treekill: true,
-      listen_timeout: 5000,
+      listen_timeout: 10000,
     },
   ]
 }

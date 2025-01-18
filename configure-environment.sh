@@ -26,6 +26,10 @@ while [[ $# -gt 0 ]]; do
             NO_COLLECTOR=true
             shift
             ;;
+        --cron-restart)
+            CRON_RESTART_FLAG=true
+            shift
+            ;;
         *)
             shift
             ;;
@@ -96,6 +100,7 @@ export PROST_CHAIN_ID=7865
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+export CRON_RESTART=${CRON_RESTART_FLAG:-false}
 
 # Environment file management
 if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
@@ -130,6 +135,7 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#^CRON_RESTART=.*#CRON_RESTART=$CRON_RESTART#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
