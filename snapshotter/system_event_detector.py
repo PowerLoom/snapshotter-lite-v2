@@ -28,6 +28,7 @@ from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
 from urllib.parse import urljoin
 from snapshotter.utils.models.data_models import SnapshotterPing
+from pathlib import Path
 
 
 class EventDetectorProcess(multiprocessing.Process):
@@ -233,6 +234,12 @@ class EventDetectorProcess(multiprocessing.Process):
             self._logger.info(f"Received signal {signal.Signals(signum).name}, initiating shutdown...")
             
             try:
+                # Clean up the last submission file
+                submission_file = Path('last_successful_submission.txt')
+                if submission_file.exists():
+                    submission_file.unlink()
+                    self._logger.info('Cleaned up last_successful_submission.txt')
+                
                 # Cancel all running tasks
                 for task in asyncio.all_tasks(self.ev_loop):
                     task.cancel()
