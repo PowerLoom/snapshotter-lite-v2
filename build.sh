@@ -60,11 +60,11 @@ check_wsl() {
 # Configure Docker Compose profiles based on WSL environment
 if check_wsl; then
     # WSL environment - disable autoheal
-    COMPOSE_PROFILES="--profile local-collector"
+    COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
     export AUTOHEAL_LABEL=""
 else
     # Non-WSL environment - enable autoheal
-    COMPOSE_PROFILES="--profile local-collector --profile autoheal"
+    COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING} --profile autoheal"
     export AUTOHEAL_LABEL="autoheal=true"
 fi
 
