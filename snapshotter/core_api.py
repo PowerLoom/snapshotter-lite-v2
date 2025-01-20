@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI
 from fastapi import Request
 from fastapi import Response
@@ -7,13 +8,19 @@ from fastapi_pagination import Page
 from ipfs_client.main import AsyncIPFSClientSingleton
 from pydantic import Field
 from web3 import Web3
+import asyncio
+import time
+from pathlib import Path
+from httpx import AsyncClient, Limits, Timeout, AsyncHTTPTransport
 
 from snapshotter.settings.config import settings
+from snapshotter.utils.callback_helpers import send_telegram_notification_async
 from snapshotter.utils.data_utils import get_project_epoch_snapshot
 from snapshotter.utils.data_utils import get_project_finalized_cid
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
-from snapshotter.utils.models.data_models import TaskStatusRequest
+from snapshotter.utils.models.data_models import SnapshotterIssue, SnapshotterReportState, SnapshotterStatus, TaskStatusRequest
+from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 
 
@@ -44,6 +51,56 @@ app.add_middleware(
 )
 
 
+async def check_last_submission():
+    while True:
+        try:
+            submission_file = Path('last_successful_submission.txt')
+            if submission_file.exists():
+                last_timestamp = int(submission_file.read_text().strip())
+                current_time = int(time.time())
+                
+                # If more than 5 minutes have passed since last submission
+                if current_time - last_timestamp > 300:
+                    rest_logger.error(
+                        'No successful submission in the last 5 minutes. Last submission: {}',
+                        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp))
+                    )
+                    # Send Telegram notification
+                    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
+                        notification_message = SnapshotterIssue(
+                            instanceID=settings.instance_id,
+                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                            projectID='',
+                            epochId='',
+                            timeOfReporting=str(time.time()),
+                            extra=json.dumps({
+                                'issueDetails': f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
+                            }),
+                        )
+                        
+                        telegram_message = TelegramSnapshotterReportMessage(
+                            chatId=settings.reporting.telegram_chat_id,
+                            slotId=settings.slot_id,
+                            issue=notification_message,
+                            status=SnapshotterStatus(
+                                projects=[],
+                                totalMissedSubmissions=0,
+                                consecutiveMissedSubmissions=0,
+                            ),
+                        )
+                        
+                        await send_telegram_notification_async(
+                            client=app.state.telegram_client,
+                            message=telegram_message,
+                        )
+                    app.state.healthy = False
+            await asyncio.sleep(10)  # Check every 10 seconds
+            
+        except Exception as e:
+            rest_logger.error('Error checking last submission: {}', e)
+            await asyncio.sleep(10)  # Still wait before retrying
+
+
 @app.on_event('startup')
 async def startup_boilerplate():
     """
@@ -59,6 +116,20 @@ async def startup_boilerplate():
         abi=protocol_state_contract_abi,
     )
 
+    # Initialize httpx client for Telegram notifications
+    transport_limits = Limits(
+        max_connections=10,
+        max_keepalive_connections=5,
+        keepalive_expiry=None,
+    )
+    
+    app.state.telegram_client = AsyncClient(
+        base_url=settings.reporting.telegram_url,
+        timeout=Timeout(timeout=5.0),
+        follow_redirects=False,
+        transport=AsyncHTTPTransport(limits=transport_limits),
+    )
+
     if not settings.ipfs.url:
         rest_logger.warning('IPFS url not set, /data API endpoint will be unusable!')
     else:
@@ -66,6 +137,11 @@ async def startup_boilerplate():
         await app.state.ipfs_singleton.init_sessions()
         app.state.ipfs_reader_client = app.state.ipfs_singleton._ipfs_read_client
     app.state.epoch_size = 0
+    app.state.healthy = True
+    # Start the background task
+    app.state.background_tasks = []
+    background_task = asyncio.create_task(check_last_submission())
+    app.state.background_tasks.append(background_task)
 
 
 # Health check endpoint
@@ -84,7 +160,11 @@ async def health_check(
     Returns:
     dict: A dictionary containing the status of the service.
     """
-    return {'status': 'OK'}
+    if app.state.healthy:
+        return {'status': 'OK'}
+    else:
+        response.status_code = 500
+        return {'status': 'UNHEALTHY'}
 
 
 @app.get('/current_epoch')
@@ -259,6 +339,7 @@ async def get_data_for_project_id_epoch_id(
             'status': 'error',
             'message': f'IPFS url not set, /data API endpoint is unusable, please use /cid endpoint instead!',
         }
+    # FIXME: outdated method signature
     try:
         data = await get_project_epoch_snapshot(
             request.app.state.protocol_state_contract,
@@ -397,3 +478,14 @@ async def get_task_status_post(
                 'completed': False,
                 'message': f'Task {task_status_request.task_type} for wallet {task_status_request.wallet_address} is not completed yet',
             }
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup background tasks"""
+    for task in app.state.background_tasks:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass

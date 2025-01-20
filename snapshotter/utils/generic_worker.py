@@ -256,6 +256,12 @@ class GenericAsyncWorker:
                 self.logger.error(
                     f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}',
                 )
+                # send telegram notification
+                await self._send_failure_notifications(
+                    error=e,
+                    epoch_id=str(epoch_id),
+                    project_id=project_id,
+                )
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
@@ -289,6 +295,9 @@ class GenericAsyncWorker:
             raise
         else:
             self.logger.info(f'Successfully submitted snapshot to local collector: {msg}')
+            # write to a file on last successful submission to local collector
+            with open('last_successful_submission.txt', 'w') as f:
+                f.write(str(int(time.time())))
         
         return response
 

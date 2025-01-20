@@ -28,6 +28,7 @@ from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
 from urllib.parse import urljoin
 from snapshotter.utils.models.data_models import SnapshotterPing
+from pathlib import Path
 
 
 class EventDetectorProcess(multiprocessing.Process):
@@ -224,16 +225,29 @@ class EventDetectorProcess(multiprocessing.Process):
         Args:
             signum (int): The signal number.
             sigframe (object): The signal frame.
-
-        Raises:
-            GenericExitOnSignal: If the shutdown is initiated.
         """
         if (
             signum in [SIGINT, SIGTERM, SIGQUIT] and
             not self._shutdown_initiated
         ):
             self._shutdown_initiated = True
-            raise GenericExitOnSignal
+            self._logger.info(f"Received signal {signal.Signals(signum).name}, initiating shutdown...")
+            
+            try:
+                # Cancel all running tasks
+                for task in asyncio.all_tasks(self.ev_loop):
+                    task.cancel()
+                # Clean up resources with timeout
+                if hasattr(self, '_reporting_httpx_client'):
+                    self._reporting_httpx_client.close()
+                if hasattr(self, '_telegram_httpx_client'):
+                    self._telegram_httpx_client.close()
+                self.ev_loop.stop()
+                
+            except Exception as e:
+                self._logger.error(f"Error during shutdown: {e}")
+            finally:
+                os._exit(0)
 
     async def _save_last_processed_block(self):
         with open("last_processed_block.log", 'w') as f:
@@ -407,14 +421,21 @@ class EventDetectorProcess(multiprocessing.Process):
             resource.RLIMIT_NOFILE,
             (settings.rlimit.file_descriptors, hard),
         )
-        for signame in [signal.SIGINT, signal.SIGTERM, signal.SIGQUIT]:
-            signal.signal(signame, self._generic_exit_handler)
+        
+        # Set up signal handlers
+        signal.signal(signal.SIGTERM, self._generic_exit_handler)
+        signal.signal(signal.SIGINT, self._generic_exit_handler)
+        signal.signal(signal.SIGQUIT, self._generic_exit_handler)
 
         self.ev_loop = asyncio.get_event_loop()
 
-        self.ev_loop.run_until_complete(
-            self._detect_events(),
-        )
+        try:
+            self.ev_loop.run_until_complete(
+                self._detect_events(),
+            )
+        except Exception as e:
+            self._logger.error(f"Fatal error in event loop: {e}")
+            os._exit(1)
 
 
 if __name__ == '__main__':
