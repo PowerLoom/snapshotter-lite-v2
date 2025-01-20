@@ -1,8 +1,8 @@
 services:
   autoheal:
+    container_name: autoheal-snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
     profiles: ["autoheal"]
     image: willfarrell/autoheal
-    container_name: autoheal
     restart: always
     environment:
       - AUTOHEAL_CONTAINER_LABEL=autoheal
