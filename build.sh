@@ -48,21 +48,22 @@ export CRON_RESTART=${CRON_RESTART:-false}
 # Export the lowercase version for docker-compose
 export FULL_NAMESPACE_LOWER
 
-# Add this function near the start of the file, after the initial source command
+# Check if running in Windows Subsystem for Linux (WSL)
 check_wsl() {
     if grep -qi microsoft /proc/version; then
         echo "🐧🪆 Running in WSL environment"
-        return 0
-    else
-        return 1
+        return 0  # true in shell
     fi
+    return 1  # false in shell
 }
 
-# Add WSL check before running deploy-services.sh
+# Configure Docker Compose profiles based on WSL environment
 if check_wsl; then
+    # WSL environment - disable autoheal
     COMPOSE_PROFILES="--profile local-collector"
     export AUTOHEAL_LABEL=""
 else
+    # Non-WSL environment - enable autoheal
     COMPOSE_PROFILES="--profile local-collector --profile autoheal"
     export AUTOHEAL_LABEL="autoheal=true"
 fi
