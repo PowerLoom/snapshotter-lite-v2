@@ -1,5 +1,6 @@
 services:
   autoheal:
+    profiles: ["autoheal"]
     image: willfarrell/autoheal
     container_name: autoheal
     restart: always
@@ -93,7 +94,7 @@ services:
       - custom_network
     restart: on-failure:10
     labels:
-      - "autoheal=true"
+      - "${AUTOHEAL_LABEL:-}"
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}

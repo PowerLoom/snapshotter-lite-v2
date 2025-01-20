@@ -22,7 +22,7 @@ echo "🏗️ Building image with tag ${IMAGE_TAG}"
 
 # Run collector test
 if [ "$NO_COLLECTOR" = "true" ]; then
-    echo "�️  Skipping collector check (--no-collector flag)"
+    echo "🤔 Skipping collector check (--no-collector flag)"
     COLLECTOR_PROFILE_STRING=""
 else
     ./collector_test.sh --env-file ".env-${FULL_NAMESPACE}"
@@ -48,9 +48,27 @@ export CRON_RESTART=${CRON_RESTART:-false}
 # Export the lowercase version for docker-compose
 export FULL_NAMESPACE_LOWER
 
+# Add this function near the start of the file, after the initial source command
+check_wsl() {
+    if grep -qi microsoft /proc/version; then
+        echo "🐧🪆 Running in WSL environment"
+        return 0
+    else
+        return 1
+    fi
+}
 
-# Run deployment with the correct env file
+# Add WSL check before running deploy-services.sh
+if check_wsl; then
+    COMPOSE_PROFILES="--profile local-collector"
+    export AUTOHEAL_LABEL=""
+else
+    COMPOSE_PROFILES="--profile local-collector --profile autoheal"
+    export AUTOHEAL_LABEL="autoheal=true"
+fi
+
+# Modify the deploy-services call to use the profiles
 ./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
     --project-name "$PROJECT_NAME_LOWER" \
-    --collector-profile "$COLLECTOR_PROFILE_STRING" \
+    --collector-profile "$COMPOSE_PROFILES" \
     --image-tag "$IMAGE_TAG"
