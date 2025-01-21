@@ -65,7 +65,7 @@ if check_wsl; then
 else
     # Non-WSL environment - enable autoheal
     COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING} --profile autoheal"
-    export AUTOHEAL_LABEL="autoheal=true"
+    export AUTOHEAL_LABEL="autoheal-${SLOT_ID}-${FULL_NAMESPACE}=true"
 fi
 
 # Modify the deploy-services call to use the profiles

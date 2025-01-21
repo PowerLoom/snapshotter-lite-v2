@@ -5,10 +5,12 @@ services:
     image: willfarrell/autoheal
     restart: always
     environment:
-      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_CONTAINER_LABEL=autoheal-${SLOT_ID}-${FULL_NAMESPACE}
     volumes:
       # Needs access to docker socket to monitor containers
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - custom_network
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
     container_name: snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}
