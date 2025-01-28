@@ -96,7 +96,7 @@ services:
       - custom_network
     restart: on-failure:10
     labels:
-      - "autoheal-snapshotter-lite-v2"
+      autoheal-snapshotter-lite-v2: true
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
