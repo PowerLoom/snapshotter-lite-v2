@@ -7,7 +7,7 @@ RUN npm install pm2 -g
 COPY poetry.lock pyproject.toml /app/
 
 # Install the Python dependencies
-RUN cd /app && poetry install --no-dev --no-root
+RUN cd /app && poetry install --no-root
 
 # Create directories for repos
 RUN mkdir -p /app/computes /app/config
