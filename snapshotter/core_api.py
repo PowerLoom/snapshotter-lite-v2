@@ -94,6 +94,9 @@ async def check_last_submission():
                             message=telegram_message,
                         )
                     app.state.healthy = False
+                else:
+                    rest_logger.info('Last submission was successful within the last 5 minutes. Last submission: {}', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp)))
+                    app.state.healthy = True
             await asyncio.sleep(10)  # Check every 10 seconds
             
         except Exception as e:
