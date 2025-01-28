@@ -6,6 +6,7 @@ SETUP_COMPLETE=true
 DATA_MARKET_CONTRACT_NUMBER=""
 SKIP_CREDENTIAL_UPDATE=false
 NO_COLLECTOR=false
+AUTOHEAL_LAUNCH=true
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -28,6 +29,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cron-restart)
             CRON_RESTART_FLAG=true
+            shift
+            ;;
+        --no-autoheal-launch)
+            AUTOHEAL_LAUNCH=false
             shift
             ;;
         *)
@@ -101,6 +106,7 @@ export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 export CRON_RESTART=${CRON_RESTART_FLAG:-false}
+export AUTOHEAL_LAUNCH=${AUTOHEAL_LAUNCH:-true}
 
 # Environment file management
 if [ ! -f ".env-${FULL_NAMESPACE}" ]; then

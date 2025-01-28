@@ -61,11 +61,19 @@ check_wsl() {
 if check_wsl; then
     # WSL environment - disable autoheal
     COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
-    export AUTOHEAL_LABEL=""
 else
     # Non-WSL environment - enable autoheal
-    COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING} --profile autoheal"
-    export AUTOHEAL_LABEL="autoheal-${SLOT_ID}-${FULL_NAMESPACE}=true"
+    # but first detect if there is already an autoheal container running
+    if docker ps | grep -q "autoheal-snapshotter-lite-v2"; then
+        echo "📦⛑️ Autoheal container already detected in docker ps"
+        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
+    elif [ "$AUTOHEAL_LAUNCH" = "true" ]; then
+        echo "🏴‍☠️⛑️ Autoheal container not detected and autoheal launch flag is true, launching..."
+        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING} --profile autoheal"
+    else
+        echo "🏴‍☠️⛑️ Autoheal container not detected and autoheal launch flag is false, skipping..."
+        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
+    fi
 fi
 
 # Modify the deploy-services call to use the profiles
