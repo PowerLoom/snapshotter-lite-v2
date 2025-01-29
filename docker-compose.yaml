@@ -5,7 +5,7 @@ services:
     image: willfarrell/autoheal
     restart: always
     environment:
-      - AUTOHEAL_CONTAINER_LABEL=autoheal-${SLOT_ID}-${FULL_NAMESPACE}
+      - AUTOHEAL_CONTAINER_LABEL=autoheal-snapshotter-lite-v2
     volumes:
       # Needs access to docker socket to monitor containers
       - /var/run/docker.sock:/var/run/docker.sock
@@ -96,7 +96,7 @@ services:
       - custom_network
     restart: on-failure:10
     labels:
-      - "${AUTOHEAL_LABEL:-}"
+      autoheal-snapshotter-lite-v2: true
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
