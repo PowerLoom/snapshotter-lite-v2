@@ -35,8 +35,9 @@ EOF
     )
 
     local response=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "$payload")
-    local availability=$(echo "$response" | jq -r '.info.response.currentDay | ((.totalSubmissions + .remainingEpochs) * 100 / .snapshotDailyQuota)')
+    local availability=$(echo "$response" | jq -r '.info.response.currentDay | ((.totalSubmissions + .remainingEpochs *2 ) * 100 / .snapshotDailyQuota)')
 
+    # echo "Response: $response"
     # # Print availability
     echo "Availability for slot $slot_id: $availability%"
 
@@ -51,8 +52,8 @@ EOF
         send_discord_alert "**CRITICAL**: Powerloom snapshotter $slot_id Node availability is below $CRITICAL_THRESHOLD% (currently $availability%)"
     elif (( $(echo "$availability < $WARNING_THRESHOLD" | bc -l) )); then
         send_discord_alert "**WARNING**: Powerloom snapshotter $slot_id Node availability is below $WARNING_THRESHOLD% (currently $availability%)"
-    else
-        send_discord_alert "All good: Availability for slot $slot_id is $availability%"
+    # else
+    #     send_discord_alert "All good: Availability for slot $slot_id is $availability%"
     fi
 }
 
