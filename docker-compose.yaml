@@ -6,6 +6,9 @@ services:
     restart: always
     environment:
       - AUTOHEAL_CONTAINER_LABEL=autoheal-snapshotter-lite-v2
+      - AUTOHEAL_INTERVAL=${AUTOHEAL_INTERVAL:-120}
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=${AUTOHEAL_DEFAULT_STOP_TIMEOUT:-10}
+      - AUTOHEAL_START_PERIOD=${AUTOHEAL_START_PERIOD:-60}
     volumes:
       # Needs access to docker socket to monitor containers
       - /var/run/docker.sock:/var/run/docker.sock
