@@ -22,7 +22,7 @@ async def main():
 
     protocol_state_contract = w3.eth.contract(address=settings.protocol_state.address, abi=protocol_abi)
     # get snapshotter address from private key
-    snapshotter_address = w3.eth.account.private_key_to_account(settings.signer_private_key).address
+    snapshotter_address = w3.eth.account.from_key(settings.signer_private_key).address
     print('Extracted snapshotter address from private key: ', snapshotter_address)
     # Query allowed snapshotters
     allowed_snapshotters = protocol_state_contract.functions.allSnapshotters(
