@@ -12,6 +12,7 @@ import asyncio
 import time
 from pathlib import Path
 from httpx import AsyncClient, Limits, Timeout, AsyncHTTPTransport
+import aiofiles
 
 from snapshotter.settings.config import settings
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
@@ -52,30 +53,53 @@ app.add_middleware(
 
 
 async def check_last_submission():
+    last_notification_time = 0
+    notification_cooldown = 300  # 5 minutes between notifications
+    
     while True:
         try:
             submission_file = Path('last_successful_submission.txt')
-            if submission_file.exists():
-                last_timestamp = int(submission_file.read_text().strip())
-                current_time = int(time.time())
+            current_time = int(time.time())
+            
+            if not submission_file.exists():
+                await asyncio.sleep(10)
+                continue
                 
-                # If more than 5 minutes have passed since last submission
-                if current_time - last_timestamp > 300:
-                    rest_logger.error(
-                        'No successful submission in the last 5 minutes. Last submission: {}',
-                        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp))
-                    )
-                    # Send Telegram notification
-                    if settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
+            try:
+                async with aiofiles.open(submission_file, mode='r') as f:
+                    content = await f.read()
+                    last_timestamp = int(content.strip())
+            except (ValueError, IOError) as e:
+                rest_logger.error('Error reading submission file: {}', e)
+                await asyncio.sleep(10)
+                continue
+                
+            # If more than 5 minutes have passed since last submission
+            if current_time - last_timestamp > 300:
+                rest_logger.error(
+                    'No successful submission in the last 5 minutes. Last submission: {}',
+                    time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp))
+                )
+                
+                # Only send notification if cooldown has elapsed
+                if (current_time - last_notification_time) >= notification_cooldown and \
+                   settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
+                    
+                    try:
+                        # Reuse existing client from app state
+                        if not app.state.telegram_client:
+                            rest_logger.error('Telegram client not initialized')
+                            continue
+                            
                         notification_message = SnapshotterIssue(
                             instanceID=settings.instance_id,
                             issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
                             projectID='',
                             epochId='',
-                            timeOfReporting=str(time.time()),
+                            timeOfReporting=str(current_time),
                             extra=json.dumps({
                                 'issueDetails': f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
-                            }),
+                            }, separators=(',', ':'))  # Minimize JSON size
                         )
                         
                         telegram_message = TelegramSnapshotterReportMessage(
@@ -93,15 +117,28 @@ async def check_last_submission():
                             client=app.state.telegram_client,
                             message=telegram_message,
                         )
-                    app.state.healthy = False
-                else:
-                    rest_logger.info('Last submission was successful within the last 5 minutes. Last submission: {}', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp)))
-                    app.state.healthy = True
-            await asyncio.sleep(10)  # Check every 10 seconds
+                        last_notification_time = current_time
+                        
+                    except Exception as e:
+                        rest_logger.error('Error sending Telegram notification: {}', e)
+                        
+                app.state.healthy = False
+            else:
+                rest_logger.info(
+                    'Last submission was successful within the last 5 minutes. Last submission: {}',
+                    time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_timestamp))
+                )
+                app.state.healthy = True
+                
+            # Use constant sleep time
+            await asyncio.sleep(10)
             
         except Exception as e:
             rest_logger.error('Error checking last submission: {}', e)
-            await asyncio.sleep(10)  # Still wait before retrying
+            # Force garbage collection on error
+            import gc
+            gc.collect()
+            await asyncio.sleep(10)
 
 
 @app.on_event('startup')
