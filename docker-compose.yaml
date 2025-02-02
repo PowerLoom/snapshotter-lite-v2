@@ -83,9 +83,9 @@ services:
       - CRON_RESTART=$CRON_RESTART
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 2
+      retries: 3
       start_period: 30s
     command: >
       bash -c "
