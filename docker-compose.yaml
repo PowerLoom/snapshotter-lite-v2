@@ -1,16 +1,4 @@
 services:
-  autoheal:
-    container_name: autoheal-snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
-    profiles: ["autoheal"]
-    image: willfarrell/autoheal
-    restart: always
-    environment:
-      - AUTOHEAL_CONTAINER_LABEL=autoheal-snapshotter-lite-v2
-    volumes:
-      # Needs access to docker socket to monitor containers
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - custom_network
   snapshotter-lite-local-collector:
     image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
     container_name: snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}
@@ -48,10 +36,6 @@ services:
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
     container_name: snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
-    expose:
-      - ${CORE_API_PORT}
-    ports:
-      - ${CORE_API_PORT}:${CORE_API_PORT}
     volumes:
       - ./logs-${FULL_NAMESPACE_LOWER}:/app/logs
     environment:
@@ -78,12 +62,6 @@ services:
       - SNAPSHOTTER_COMPUTE_REPO=$SNAPSHOTTER_COMPUTE_REPO
       - SNAPSHOTTER_COMPUTE_REPO_BRANCH=$SNAPSHOTTER_COMPUTE_REPO_BRANCH
       - CRON_RESTART=$CRON_RESTART
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 2
-      start_period: 30s
     command: >
       bash -c "
         rm -f /app/last_successful_submission.txt;
@@ -95,12 +73,8 @@ services:
     networks:
       - custom_network
     restart: on-failure:10
-    labels:
-      autoheal-snapshotter-lite-v2: true
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
     driver: bridge
-    ipam:
-      config:
-        - subnet: ${DOCKER_NETWORK_SUBNET}
+    external: true

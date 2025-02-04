@@ -6,7 +6,6 @@ SETUP_COMPLETE=true
 DATA_MARKET_CONTRACT_NUMBER=""
 SKIP_CREDENTIAL_UPDATE=false
 NO_COLLECTOR=false
-AUTOHEAL_LAUNCH=true
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -29,10 +28,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cron-restart)
             CRON_RESTART_FLAG=true
-            shift
-            ;;
-        --no-autoheal-launch)
-            AUTOHEAL_LAUNCH=false
             shift
             ;;
         *)
@@ -106,7 +101,6 @@ export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
 export CRON_RESTART=${CRON_RESTART_FLAG:-false}
-export AUTOHEAL_LAUNCH=${AUTOHEAL_LAUNCH:-true}
 
 # Environment file management
 if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
@@ -120,7 +114,7 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     read -s -p "Enter SIGNER_ACCOUNT_PRIVATE_KEY: " SIGNER_ACCOUNT_PRIVATE_KEY
     echo
     read -p "Enter Your SLOT_ID (NFT_ID): " SLOT_ID
-    export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
+    export DOCKER_NETWORK_NAME="snapshotter-lite-v2-${FULL_NAMESPACE}"
     
     read -p "Enter Your TELEGRAM_CHAT_ID (Optional, leave blank to skip.): " TELEGRAM_CHAT_ID
 
@@ -181,101 +175,11 @@ if [ -z "$SUBNET_THIRD_OCTET" ]; then
     echo "🔔 SUBNET_THIRD_OCTET not found in .env, setting to default value ${SUBNET_THIRD_OCTET}"
 fi
 
-# Check if network exists and get its subnet
-NETWORK_EXISTS=$(docker network ls --format '{{.Name}}' | grep -x "$DOCKER_NETWORK_NAME" || echo "")
-EXISTING_NETWORK_SUBNET=""
-if [ -n "$NETWORK_EXISTS" ]; then
-    EXISTING_NETWORK_SUBNET=$(docker network inspect "$DOCKER_NETWORK_NAME" | grep -o '"Subnet": "[^"]*"' | cut -d'"' -f4)
-fi
-
-# Check if subnet is in use
-SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-
-if [ "$SUBNET_IN_USE" = "yes" ] || \
-   ([ -n "$NETWORK_EXISTS" ] && [ "$EXISTING_NETWORK_SUBNET" != "172.18.${SUBNET_THIRD_OCTET}.0/24" ]) || \
-   [ -z "$NETWORK_EXISTS" ]; then
-    echo "🟡 Warning: Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 appears to be already in use."
-    if [ "$DOCKER_NETWORK_PRUNE" = "true" ]; then
-        read -p "🫸 ▶︎  Would you like to prune unused Docker networks? (y/n): " PRUNE_NETWORKS
-        if [ "$PRUNE_NETWORKS" = "y" ]; then
-            docker network prune -f
-            SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${SUBNET_THIRD_OCTET}" && echo "yes" || echo "no")
-        fi
-    fi
-
-    if [ "$SUBNET_IN_USE" = "yes" ]; then
-        echo "🟡 Subnet 172.18.${SUBNET_THIRD_OCTET}.0/24 is already in use."
-        echo "⏳ Searching for an available subnet..."
-        FOUND_AVAILABLE_SUBNET=false
-        
-        for i in $(seq 1 255); do
-            echo "Checking subnet 172.18.${i}.0/24..."
-            SUBNET_IN_USE=$(docker network ls -q | xargs -I {} docker network inspect {} 2>/dev/null | grep -q "172.18.${i}" && echo "yes" || echo "no")
-            
-            if [ "$SUBNET_IN_USE" = "no" ]; then
-                FOUND_AVAILABLE_SUBNET=true
-                SUBNET_THIRD_OCTET=$i
-                break
-            fi
-        done
-
-        if [ "$FOUND_AVAILABLE_SUBNET" = "false" ]; then
-            echo "❌ No available subnets found between 172.18.1.0/24 and 172.18.255.0/24"
-            echo "🚧 Please check your docker networks and/or prune any unused networks."
-            exit 1
-        fi
-    fi
-fi
-
-export DOCKER_NETWORK_SUBNET="172.18.${SUBNET_THIRD_OCTET}.0/24"
-
-echo "Selected DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}"
-echo "Selected DOCKER_NETWORK_SUBNET: ${DOCKER_NETWORK_SUBNET}"
-
 # Port configuration
 if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     export LOCAL_COLLECTOR_PORT=50051
     echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}"
 fi
-
-# UFW firewall configuration
-if [ -x "$(command -v ufw)" ]; then
-    ufw delete allow $LOCAL_COLLECTOR_PORT >> /dev/null
-    ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT
-    if [ $? -eq 0 ]; then
-        echo "✅ ufw allow rule added for local collector port ${LOCAL_COLLECTOR_PORT} to allow connections from ${DOCKER_NETWORK_SUBNET}."
-    else
-        echo "❌ ufw firewall allow rule could not be added for local collector port ${LOCAL_COLLECTOR_PORT}."
-        echo "Please attempt to add it manually with: sudo ufw allow from $DOCKER_NETWORK_SUBNET to any port $LOCAL_COLLECTOR_PORT"
-        exit 1
-    fi
-else
-    echo "🟡 ufw command not found, skipping firewall rule addition for local collector port ${LOCAL_COLLECTOR_PORT}."
-    echo "If you are on a Linux VPS, please ensure that the port is open for connections from ${DOCKER_NETWORK_SUBNET} manually to ${LOCAL_COLLECTOR_PORT}."
-fi
-
-# Core API port configuration
-if [ -z "$CORE_API_PORT" ]; then
-    export CORE_API_PORT=8002
-    echo "🔔 CORE_API_PORT not found in .env, setting to default value ${CORE_API_PORT}"
-fi
-
-# Check if port is in use
-check_port() {
-    if command -v lsof >/dev/null 2>&1; then
-        lsof -i:"$1" >/dev/null 2>&1
-    else
-        netstat -tuln | grep -q ":$1 "
-    fi
-}
-
-while check_port $CORE_API_PORT; do
-    echo "Port ${CORE_API_PORT} is already in use"
-    CORE_API_PORT=$((CORE_API_PORT + 1))
-done
-
-echo "ℹ️ Using available port: ${CORE_API_PORT}"
-sed -i'.backup' "s#^CORE_API_PORT=.*#CORE_API_PORT=$CORE_API_PORT#" ".env-${FULL_NAMESPACE}"
 
 # Set default values for optional environment variables
 if [ -z "$MAX_STREAM_POOL_SIZE" ]; then

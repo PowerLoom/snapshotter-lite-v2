@@ -11,15 +11,6 @@ fi
 # Source the environment file
 source ".env-${FULL_NAMESPACE}"
 
-# Set image tag based on git branch
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$GIT_BRANCH" = "dockerify" ]; then
-    export IMAGE_TAG="dockerify"
-else
-    export IMAGE_TAG="latest"
-fi
-echo "🏗️ Building image with tag ${IMAGE_TAG}"
-
 # Run collector test
 if [ "$NO_COLLECTOR" = "true" ]; then
     echo "🤔 Skipping collector check (--no-collector flag)"
@@ -48,19 +39,10 @@ export CRON_RESTART=${CRON_RESTART:-false}
 # Export the lowercase version for docker-compose
 export FULL_NAMESPACE_LOWER
 
-# Check if running in Windows Subsystem for Linux (WSL)
-check_wsl() {
-    if grep -qi microsoft /proc/version; then
-        echo "🐧🪆 Running in WSL environment"
-        return 0  # true in shell
-    fi
-    return 1  # false in shell
-}
-
 COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
 
 # Modify the deploy-services call to use the profiles
 ./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
     --project-name "$PROJECT_NAME_LOWER" \
     --collector-profile "$COMPOSE_PROFILES" \
-    --image-tag "$IMAGE_TAG"
+    --dev-mode
