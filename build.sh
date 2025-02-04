@@ -45,7 +45,6 @@ fi
 PROJECT_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
 PROJECT_NAME_LOWER=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
 FULL_NAMESPACE_LOWER=$(echo "$FULL_NAMESPACE" | tr '[:upper:]' '[:lower:]')
-export CRON_RESTART=${CRON_RESTART:-false}
 
 # Export the lowercase version for docker-compose
 export FULL_NAMESPACE_LOWER
