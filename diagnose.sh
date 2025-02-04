@@ -82,7 +82,7 @@ if [ -n "$EXISTING_CONTAINERS" ]; then
     echo "$EXISTING_CONTAINERS"
 fi
 
-echo -e "\n🌐 Checking existing PowerLoom networks..."
+echo -e "\n🌐 Checking existing Legacy Docker networks for PowerLoom Snapshotter containers..."
 EXISTING_NETWORKS=$(docker network ls --filter "name=snapshotter-lite-v2" --format "{{.Name}}")
 if [ -n "$EXISTING_NETWORKS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom networks:${NC}"
@@ -90,7 +90,7 @@ if [ -n "$EXISTING_NETWORKS" ]; then
 fi
 
 # Check Docker subnet usage in 172.18.0.0/16 range
-echo -e "\n🌐 Checking Docker subnet usage in 172.18.0.0/16 range..."
+echo -e "\n🌐 Checking Legacy Docker subnet usage in 172.18.0.0/16 range..."
 NETWORK_LIST=$(docker network ls --format '{{.Name}}')
 USED_SUBNETS=$(get_used_subnets "$NETWORK_LIST" | sort -n)
 if [ -n "$USED_SUBNETS" ]; then
