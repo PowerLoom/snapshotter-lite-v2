@@ -15,7 +15,6 @@
   - [Using Docker](#using-docker)
     - [Setting up multi data market release for the first time](#setting-up-multi-data-market-release-for-the-first-time)
     - [Running from a previously configured multi data market release](#running-from-a-previously-configured-multi-data-market-release)
-    - [Docker network selection and local collector setup](#docker-network-selection-and-local-collector-setup)
     - [Simulation submissions](#simulation-submissions)
   - [Without Docker](#without-docker)
 - [Monitoring and Debugging](#monitoring-and-debugging)
@@ -81,7 +80,7 @@ An epoch denotes a range of block heights on the EVM-compatible data source bloc
 
 The size of an epoch is configurable. Let that be referred to as `size(E)`
 
-- A [trusted service](https://github.com/PowerLoom/onchain-consensus) keeps track of the head of the chain as it moves ahead, and a marker `h₀` against the max block height from the last released epoch. This makes the beginning of the next epoch, `h₁ = h₀ + 1`
+- A [trusted service](https://github.com/PowerLoom/epoch-manager) keeps track of the head of the chain as it moves ahead, and a marker `h₀` against the max block height from the last released epoch. This makes the beginning of the next epoch, `h₁ = h₀ + 1`
 
 - Once the head of the chain has moved sufficiently ahead so that an epoch can be published, an epoch finalization service takes into account the following factors
     - chain reorganization reports where the reorganized limits are a subset of the epoch qualified to be published
@@ -220,10 +219,12 @@ However, it is recommended to use the Docker image as it is the easiest and most
 
 4. Run the diagnose and cleanup script to check for any previous instances of the lite node, local collector and stale images and networks.
     ```bash
-    ./diagnose.sh
+    ./diagnose.sh -y
     ```
+> [!IMPORTANT]
+> The `-y` flag will automatically answer `yes` to all the prompts and do an automatic cleanup. This is useful and totally recommended.
 
-5. Run `build.sh` to start the snapshotter lite node:
+1. Run `build.sh` to start the snapshotter lite node:
     ```bash
     ./build.sh
     ```
@@ -250,22 +251,6 @@ You will be prompted to choose whether you wish to change the previously configu
 ![Setting up multi data market release for the first time](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step1-Existing.png)
 
 Choose `y` or `n` depending on whether you wish to change them.
-
-#### Docker network selection and local collector setup
-
-The installer automatically tries to resolve the subnet to assign to the Docker network that will run the snapshotter node.
-
-Similarly, the installer also tries to resolve whether it should spawn a new local collector container or not. If it finds an already running collector container, it will not spawn a new one.
-
-**Here is a screenshot of how it looks like if there are no existing collector containers running and there are no previous snapshotter nodes running either.**
-
-![No existing collector containers and no previous snapshotter nodes](snapshotter/static/docs/assets/multiDataMarketSetup/MultiDataMarket-Step2-NoPrev.png)
-
-If the installer does find an existing local collector container, the log will look like the following:
-
-```bash
-🔌 ✅ Local collector found - using existing collector instance
-```
 
 #### Simulation submissions
 
