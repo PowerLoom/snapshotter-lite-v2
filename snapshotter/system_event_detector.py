@@ -391,15 +391,10 @@ class EventDetectorProcess(multiprocessing.Process):
                             }, separators=(',', ':'))  # Minimize JSON size
                         )
 
-                        telegram_message = TelegramSnapshotterReportMessage(
+                        telegram_message = TelegramEpochProcessingReportMessage(
                             chatId=settings.reporting.telegram_chat_id,
                             slotId=settings.slot_id,
                             issue=notification_message,
-                            status=SnapshotterStatus(
-                                projects=[],
-                                totalMissedSubmissions=0,
-                                consecutiveMissedSubmissions=0,
-                            ),
                         )
 
                         await send_telegram_notification_async(

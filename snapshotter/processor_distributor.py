@@ -322,6 +322,11 @@ class ProcessorDistributor:
                 epoch.epochId,
                 failed_preloaders
             )
+
+
+            self.snapshot_worker.status.totalMissedSubmissions += 1
+            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+
             await send_telegram_notification_async(
                 client=self._telegram_httpx_client,
                 message=TelegramSnapshotterReportMessage(
