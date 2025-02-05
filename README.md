@@ -16,7 +16,6 @@
     - [Setting up multi data market release for the first time](#setting-up-multi-data-market-release-for-the-first-time)
     - [Running from a previously configured multi data market release](#running-from-a-previously-configured-multi-data-market-release)
     - [Simulation submissions](#simulation-submissions)
-  - [Without Docker](#without-docker)
 - [Monitoring and Debugging](#monitoring-and-debugging)
   - [Monitoring](#monitoring)
   - [Debugging](#debugging)
@@ -260,34 +259,6 @@ Once all the steps around network selection and local collector setup are comple
 
 To stop the node, you can press `Ctrl+C` in the terminal where the node is running or `docker-compose down` in a new terminal window from the project directory.
 
-
-### Without Docker
-
-> [!IMPORTANT]
-> For the most reliable and well-tested experience, we recommend using the Docker setup. The non-Docker setup is available for advanced users who prefer direct installation.
-
-If you want to run the Snapshotter Lite Node without Docker, you need to make sure that you have Git, and Python 3.10.13 installed on your machine. You can find the installation instructions for your operating system on the [official Python website](https://www.python.org/downloads/).
-
-1. Clone this repository using the following command:
-  ```bash
-  git clone https://github.com/PowerLoom/snapshotter-lite-v2.git powerloom-mainnet
-  ```
-  This will clone the repository into a directory named `powerloom-mainnet`.
-
-2. Change your working directory to the `powerloom-mainnet` directory:
-   ```bash
-   cd powerloom-mainnet
-   ```
-
-3. Run `init.sh` to start the snapshotter lite node:
-   ```bash
-   ./init.sh
-   ```
-
-4. When prompted, enter `SOURCE_RPC_URL`, `SIGNER_ACCOUNT_ADDRESS`, `SIGNER_ACCOUNT_PRIVATE_KEY`, `SLOT_ID` (only required for the first time), this will create a `.env` file in the root directory of the project.
-
-5. Your node should start in background and you should start seeing logs in your terminal.
-6. To stop the node, you can run `pkill -f snapshotter` in a new terminal window.
 
 ## Monitoring and Debugging
 
