@@ -51,7 +51,7 @@ else
 fi
 
 # Test container status
-container_name="snapshotter-lite-local-collector-${SLOT_ID}-${FULL_NAMESPACE}"
+container_name="snapshotter-lite-local-collector-${FULL_NAMESPACE}"
 if ! docker ps | grep -q "$container_name"; then
     echo "❌ Collector container not found: $container_name"
 else

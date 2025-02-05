@@ -35,6 +35,7 @@ safe-pysha3 = "^1.0.4"
 ipfs-cid = "^1.0.0"
 eip712-structs = {git = "https://github.com/powerloom/py-eip712-structs"}
 protobuf = "^5.28.2"
+aiofiles = "^24.1.0"
 
 
 [build-system]
