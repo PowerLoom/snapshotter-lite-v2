@@ -71,7 +71,11 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - custom_network
-    restart: on-failure:10
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 150M
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
