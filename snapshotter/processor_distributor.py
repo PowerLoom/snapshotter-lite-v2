@@ -248,12 +248,8 @@ class ProcessorDistributor:
         preloader_results_dict = {}
         failed_preloaders = set()
 
-        # Determine which preloaders are needed across all projects
-        project_required_preloaders = set()
-        for project_config in self._project_type_config_mapping.values():
-            project_required_preloaders.update(project_config.preload_tasks)
-
-        for preloader_task in project_required_preloaders:
+        # Use the pre-computed set of all preload tasks
+        for preloader_task in self._all_preload_tasks:
             preloader_class = self._preloader_compute_mapping[preloader_task]
             preloader_obj = preloader_class()
             preloader_compute_kwargs = dict(
@@ -316,32 +312,20 @@ class ProcessorDistributor:
                     failed_preloaders.intersection(project_required_preloaders)
                 )
 
+                self.snapshot_worker.status.totalMissedSubmissions += 1
+                self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+
+                await self._send_failure_notifications(
+                    error=Exception(f'Failed preloaders: {failed_preloaders}'),
+                    epoch_id=epoch.epochId,
+                    project_id="Preloaders"
+                )
+
         if failed_preloaders:
             self._logger.warning(
                 'Some preloader tasks failed for epoch {}: {}',
                 epoch.epochId,
                 failed_preloaders
-            )
-
-
-            self.snapshot_worker.status.totalMissedSubmissions += 1
-            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-
-            await send_telegram_notification_async(
-                client=self._telegram_httpx_client,
-                message=TelegramSnapshotterReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=SnapshotterIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                        epochId=str(epoch.epochId),
-                        timeOfReporting=str(time.time()),
-                        projectID=project_type,
-                        extra=json.dumps({'issueDetails': f'Failed preloaders: {failed_preloaders}'}),
-                    ),
-                    status=self.snapshot_worker.status,
-                ),
             )
 
     async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
