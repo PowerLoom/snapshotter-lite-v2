@@ -295,21 +295,20 @@ class ProcessorDistributor:
                     failed_preloaders.intersection(project_required_preloaders)
                 )
 
+                self.snapshot_worker.status.totalMissedSubmissions += 1
+                self.snapshot_worker.status.consecutiveMissedSubmissions += 1
+
+                await self._send_failure_notifications(
+                    error=Exception(f'Failed preloaders: {failed_preloaders}'),
+                    epoch_id=epoch.epochId,
+                    project_id="Preloaders"
+                )
+
         if failed_preloaders:
             self._logger.warning(
                 'Some preloader tasks failed for epoch {}: {}',
                 epoch.epochId,
                 failed_preloaders
-            )
-
-
-            self.snapshot_worker.status.totalMissedSubmissions += 1
-            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-
-            await self._send_failure_notifications(
-                error=Exception(f'Failed preloaders: {failed_preloaders}'),
-                epoch_id=epoch.epochId,
-                project_id="Preloaders"
             )
 
     async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
