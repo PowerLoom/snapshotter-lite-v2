@@ -70,65 +70,6 @@ def sync_notification_callback_result_handler(f: functools.partial):
         logger.debug('Callback or notification result:{}', result)
 
 
-async def send_failure_notifications_async(client: AsyncClient, message: SnapshotterIssue):
-    """
-    Sends failure notifications to the configured reporting services.
-
-    Args:
-        client (AsyncClient): The async HTTP client to use for sending notifications.
-        message (SnapshotterIssue): The message to send to the reporting services.
-
-    Returns:
-        None
-    """
-
-    if settings.reporting.service_url:
-        f = asyncio.ensure_future(
-            client.post(
-                url=urljoin(settings.reporting.service_url, '/reportIssue'),
-                json=message.dict(),
-            ),
-        )
-        f.add_done_callback(misc_notification_callback_result_handler)
-
-    if settings.reporting.slack_url:
-        f = asyncio.ensure_future(
-            client.post(
-                url=settings.reporting.slack_url,
-                json=message.dict(),
-            ),
-        )
-        f.add_done_callback(misc_notification_callback_result_handler)
-
-
-def send_failure_notifications_sync(client: SyncClient, message: SnapshotterIssue):
-    """
-    Sends failure notifications synchronously to to the configured reporting services.
-
-    Args:
-        client (SyncClient): The HTTP client to use for sending notifications.
-        message (SnapshotterIssue): The message to send to the reporting services.
-
-    Returns:
-        None
-    """
-    if settings.reporting.service_url:
-        f = functools.partial(
-            client.post,
-            url=urljoin(settings.reporting.service_url, '/reportIssue'),
-            json=message.dict(),
-        )
-        sync_notification_callback_result_handler(f)
-
-    if settings.reporting.slack_url:
-        f = functools.partial(
-            client.post,
-            url=settings.reporting.slack_url,
-            json=message.dict(),
-        )
-        sync_notification_callback_result_handler(f)
-
-
 async def send_telegram_notification_async(client: AsyncClient, message: TelegramMessage):
     """
     Sends an asynchronous Telegram notification for reporting issues.
