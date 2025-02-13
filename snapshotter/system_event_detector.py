@@ -23,14 +23,10 @@ from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
 from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
-from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
-from urllib.parse import urljoin
-from snapshotter.utils.models.data_models import SnapshotterPing
 from pathlib import Path
 
 
@@ -58,7 +54,6 @@ class EventDetectorProcess(multiprocessing.Process):
         failure_count (int): Counter for consecutive failures
         last_status_check_time (int): Timestamp of last status check
         _initialized (bool): Flag indicating if process has been initialized
-        _last_reporting_service_ping (int): Timestamp of last reporting service ping
         _last_reporting_message_sent (int): Timestamp of last reporting message
         last_notification_time (int): Timestamp of last notification sent
     """
@@ -80,7 +75,6 @@ class EventDetectorProcess(multiprocessing.Process):
         self._last_processed_block = None
 
         # Initialize reporting and notification related attributes
-        self._last_reporting_service_ping = 0
         self._last_reporting_message_sent = 0
         self.notification_cooldown = 300
         self.last_notification_time = 0
@@ -117,15 +111,7 @@ class EventDetectorProcess(multiprocessing.Process):
             self._logger,
         )
 
-        # Initialize HTTP clients for reporting and Telegram notifications
-        self._reporting_httpx_client = httpx.Client(
-            base_url=settings.reporting.service_url,
-            limits=httpx.Limits(
-                max_keepalive_connections=2,
-                max_connections=2,
-                keepalive_expiry=300,
-            ),
-        )
+        # Initialize HTTP client for Telegram notifications
         self._telegram_httpx_client = httpx.Client(
             base_url=settings.reporting.telegram_url,
             limits=httpx.Limits(
@@ -303,8 +289,6 @@ class EventDetectorProcess(multiprocessing.Process):
                 for task in asyncio.all_tasks(self.ev_loop):
                     task.cancel()
                 # Clean up resources with timeout
-                if hasattr(self, '_reporting_httpx_client'):
-                    self._reporting_httpx_client.close()
                 if hasattr(self, '_telegram_httpx_client'):
                     self._telegram_httpx_client.close()
                 self.ev_loop.stop()
@@ -446,29 +430,6 @@ class EventDetectorProcess(multiprocessing.Process):
             if current_time - self.last_status_check_time > 120:
                 await self.check_last_submission()
             try:
-                if settings.reporting.service_url and int(time.time()) - self._last_reporting_service_ping >= 30:
-                    self._last_reporting_service_ping = int(time.time())
-                    try:
-                        response = self._reporting_httpx_client.post(
-                            url=urljoin(settings.reporting.service_url, '/ping'),
-                            json=SnapshotterPing(
-                                instanceID=settings.instance_id,
-                                slotId=settings.slot_id,
-                                dataMarketAddress=settings.data_market,
-                                namespace=settings.namespace,
-                                nodeVersion=settings.node_version,
-                            ).dict(),
-                        )
-                        response.raise_for_status()
-                    except Exception as e:
-                        if settings.logs.trace_enabled:
-                            self._logger.opt(exception=True).error('Error while pinging reporting service: {}', e)
-                        else:
-                            self._logger.error(
-                                'Error while pinging reporting service: {}', e,
-                            )
-                    else:
-                        self._logger.info('Reporting service pinged successfully')
 
                 current_block = await self.rpc_helper.get_current_block_number()
                 self._logger.info('Current block: {}', current_block)
