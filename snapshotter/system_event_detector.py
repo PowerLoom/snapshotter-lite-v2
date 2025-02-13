@@ -54,7 +54,6 @@ class EventDetectorProcess(multiprocessing.Process):
         failure_count (int): Counter for consecutive failures
         last_status_check_time (int): Timestamp of last status check
         _initialized (bool): Flag indicating if process has been initialized
-        _last_reporting_message_sent (int): Timestamp of last reporting message
         last_notification_time (int): Timestamp of last notification sent
     """
 
@@ -75,7 +74,6 @@ class EventDetectorProcess(multiprocessing.Process):
         self._last_processed_block = None
 
         # Initialize reporting and notification related attributes
-        self._last_reporting_message_sent = 0
         self.notification_cooldown = 300
         self.last_notification_time = 0
         self.failure_count = 0
@@ -364,42 +362,11 @@ class EventDetectorProcess(multiprocessing.Process):
                 )
                 self.failure_count += 1
                 self.last_status_check_time = current_time
+                error_message = f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
 
-                # Only send notification if cooldown has elapsed
-                if (current_time - self.last_notification_time) >= self.notification_cooldown and \
-                    (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
-
-                    try:
-                        # Reuse existing client from app state
-                        if not self._telegram_httpx_client:
-                            self._logger.error('Telegram client not initialized')
-                            return
-
-                        notification_message = SnapshotterIssue(
-                            instanceID=settings.instance_id,
-                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                            projectID='',
-                            epochId='',
-                            timeOfReporting=str(current_time),
-                            extra=json.dumps({
-                                'issueDetails': f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
-                            }, separators=(',', ':'))  # Minimize JSON size
-                        )
-
-                        telegram_message = TelegramEpochProcessingReportMessage(
-                            chatId=settings.reporting.telegram_chat_id,
-                            slotId=settings.slot_id,
-                            issue=notification_message,
-                        )
-
-                        await send_telegram_notification_async(
-                            client=self._telegram_httpx_client,
-                            message=telegram_message,
-                        )
-                        self.last_notification_time = current_time
-
-                    except Exception as e:
-                        self._logger.error('Error sending Telegram notification: {}', e)
+                await self._send_telegram_epoch_processing_notification(
+                    error=Exception(error_message)
+                )
 
             else:
                 self._logger.info(
@@ -457,11 +424,9 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                if int(time.time()) - self._last_reporting_message_sent >= 600:
-                    self._last_reporting_message_sent = int(time.time())
-                    await self._send_telegram_epoch_processing_notification(
-                        error=e,
-                    )
+                await self._send_telegram_epoch_processing_notification(
+                    error=e,
+                )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
                 continue
@@ -500,11 +465,9 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                if int(time.time()) - self._last_reporting_message_sent >= 600:
-                    self._last_reporting_message_sent = int(time.time())
-                    await self._send_telegram_epoch_processing_notification(
-                        error=e,
-                    )
+                await self._send_telegram_epoch_processing_notification(
+                    error=e,
+                )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
                 continue
@@ -547,22 +510,36 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during HTTP requests
         """
-        telegram_message = TelegramEpochProcessingReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=SnapshotterIssue(
-                instanceID=settings.instance_id,
-                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                projectID='',
-                epochId='',
-                timeOfReporting=str(time.time()),
-                extra=json.dumps({'issueDetails': f'Error : {error}'}),
-            ),
-        )
-        await send_telegram_notification_async(
-            client=self._telegram_httpx_client,
-            message=telegram_message,
-        )
+
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
+            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
+
+            if not self._telegram_httpx_client:
+                self._logger.error('Telegram client not initialized')
+                return
+
+            try:
+                telegram_message = TelegramEpochProcessingReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=SnapshotterIssue(
+                        instanceID=settings.instance_id,
+                        issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                        projectID='',
+                        epochId='',
+                        timeOfReporting=str(time.time()),
+                        extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                    ),
+                )
+
+                await send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
+
+                self.last_notification_time = int(time.time())
+            except Exception as e:
+                self._logger.error('Error sending Telegram notification: {}', e)
     
     def run(self):
         """
