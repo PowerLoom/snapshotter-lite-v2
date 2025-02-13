@@ -76,7 +76,7 @@ class ProcessorDistributor:
         self.snapshot_worker = SnapshotAsyncWorker()
 
         self.last_notification_time = 0
-        self.notification_cooldown = 300
+        self.notification_cooldown = settings.reporting.notification_cooldown
 
     async def _init_rpc_helper(self):
         """

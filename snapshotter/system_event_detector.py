@@ -78,7 +78,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
         # Initialize reporting and notification related attributes
         self._last_reporting_service_ping = 0
-        self.notification_cooldown = 300
+        self.notification_cooldown = settings.reporting.notification_cooldown
         self.last_notification_time = 0
         self.failure_count = 0
         self.last_status_check_time = int(time.time())
