@@ -73,6 +73,9 @@ class ProcessorDistributor:
         self._snapshotter_enabled = True
         self.snapshot_worker = SnapshotAsyncWorker()
 
+        self.last_notification_time = 0
+        self.notification_cooldown = 300
+
     async def _init_rpc_helper(self):
         """
         Initializes the RpcHelper instance if it is not already initialized.
@@ -381,23 +384,35 @@ class ProcessorDistributor:
         epoch_id: str,
         project_id: str,
     ):
-        notification_message = SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=str(epoch_id),
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : {error}'}),
-        )
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
+            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
 
-        telegram_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=notification_message,
-            status=self.snapshot_worker.status,
-        )
+            if not self._telegram_httpx_client:
+                self._logger.error('Telegram client not initialized')
+                return
 
-        await send_telegram_notification_async(
-            client=self._telegram_httpx_client,
-            message=telegram_message,
-        )
+            try:
+                notification_message = SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch_id),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                )
+
+                telegram_message = TelegramSnapshotterReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=notification_message,
+                    status=self.snapshot_worker.status,
+                )
+
+                await send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
+                self.last_notification_time = int(time.time())
+
+            except Exception as e:
+                self._logger.error('Error sending Telegram notification: {}', e)
