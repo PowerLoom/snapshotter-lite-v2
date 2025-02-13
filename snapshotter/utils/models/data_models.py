@@ -126,14 +126,6 @@ class ProjectStatus(BaseModel):
     missedSubmissions: int = 0
 
 
-class SnapshotterPing(BaseModel):
-    instanceID: str
-    slotId: int
-    nodeVersion: str
-    dataMarketAddress: str
-    namespace: str
-
-
 class SnapshotterStatus(BaseModel):
     totalSuccessfulSubmissions: int = 0
     totalIncorrectSubmissions: int = 0
