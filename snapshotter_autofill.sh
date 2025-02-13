@@ -54,6 +54,10 @@ if [ "$TELEGRAM_CHAT_ID" ]; then
     echo "Found TELEGRAM_CHAT_ID ${TELEGRAM_CHAT_ID}";
 fi
 
+if [ "$TELEGRAM_NOTIFICATION_COOLDOWN" ]; then
+    echo "Found TELEGRAM_NOTIFICATION_COOLDOWN ${TELEGRAM_NOTIFICATION_COOLDOWN}";
+fi
+
 if [ "$WEB3_STORAGE_TOKEN" ]; then
     echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
 fi
@@ -77,7 +81,7 @@ export web3_storage_token="${WEB3_STORAGE_TOKEN:-}"
 export local_collector_port="${LOCAL_COLLECTOR_PORT:-50051}"
 export telegram_reporting_url="${TELEGRAM_REPORTING_URL:-}"
 export telegram_chat_id="${TELEGRAM_CHAT_ID:-}"
-
+export telegram_notification_cooldown="${TELEGRAM_NOTIFICATION_COOLDOWN:-}"
 
 # If IPFS_URL is empty, clear IPFS API key and secret
 if [ -z "$IPFS_URL" ]; then
@@ -94,6 +98,7 @@ echo "Using data market contract: ${DATA_MARKET_CONTRACT}"
 echo "Using web3 storage token: ${web3_storage_token}"
 echo "Using telegram reporting url: ${telegram_reporting_url}"
 echo "Using telegram chat id: ${telegram_chat_id}"
+echo "Using telegram notification cooldown: ${telegram_notification_cooldown}"
 
 sed -i'.backup' "s#relevant-namespace#$namespace#" config/settings.json
 
@@ -122,5 +127,6 @@ sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.
 
 sed -i'.backup' "s#https://telegram-reporting-url#$telegram_reporting_url#" config/settings.json
 sed -i'.backup' "s#telegram-chat-id#$telegram_chat_id#" config/settings.json
+sed -i'.backup' "s#telegram-notification-cooldown#$telegram_notification_cooldown#" config/settings.json
 
 echo 'settings has been populated!'
