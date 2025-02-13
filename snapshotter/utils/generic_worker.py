@@ -17,7 +17,6 @@ from eth_utils.encoding import big_endian_to_int
 from grpclib.client import Channel
 from httpx import AsyncClient
 from httpx import AsyncHTTPTransport
-from httpx import Client
 from httpx import Limits
 from httpx import Timeout
 from ipfs_cid import cid_sha256_hash
@@ -256,12 +255,7 @@ class GenericAsyncWorker:
                 self.logger.error(
                     f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}',
                 )
-                # send telegram notification
-                await self._send_failure_notifications(
-                    error=e,
-                    epoch_id=str(epoch_id),
-                    project_id=project_id,
-                )
+                raise
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
