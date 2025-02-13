@@ -292,7 +292,8 @@ class ProcessorDistributor:
         for project_type, project_config in self._project_type_config_mapping.items():
             # Check if all required preloaders for this project succeeded
             project_required_preloaders = set(project_config.preload_tasks)
-            if not failed_preloaders.intersection(project_required_preloaders):
+            project_failed_preloaders = failed_preloaders.intersection(project_required_preloaders)
+            if not project_failed_preloaders:
                 project_preloader_results = {
                     task: preloader_results_dict[task]
                     for task in project_required_preloaders
@@ -309,16 +310,17 @@ class ProcessorDistributor:
                     'Skipping project type {} for epoch {} due to failed preloader tasks: {}',
                     project_type,
                     epoch.epochId,
-                    failed_preloaders.intersection(project_required_preloaders)
+                    project_failed_preloaders
                 )
 
+                # Update counters for each skipped project
                 self.snapshot_worker.status.totalMissedSubmissions += 1
                 self.snapshot_worker.status.consecutiveMissedSubmissions += 1
 
                 await self._send_failure_notifications(
-                    error=Exception(f'Failed preloaders: {failed_preloaders}'),
+                    error=Exception(f'Failed preloaders for {project_type}: {project_failed_preloaders}'),
                     epoch_id=epoch.epochId,
-                    project_id="Preloaders"
+                    project_id=project_type
                 )
 
         if failed_preloaders:
