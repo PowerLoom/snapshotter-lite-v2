@@ -249,12 +249,7 @@ class GenericAsyncWorker:
                 self.logger.error(
                     f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}',
                 )
-                # send telegram notification
-                await self._send_failure_notifications(
-                    error=e,
-                    epoch_id=str(epoch_id),
-                    project_id=project_id,
-                )
+                raise
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
