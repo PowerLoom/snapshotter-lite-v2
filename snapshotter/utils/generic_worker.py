@@ -405,12 +405,6 @@ class GenericAsyncWorker:
         """
         Initializes the HTTPX client and transport objects for making HTTP requests.
         """
-        self._telegram_httpx_client = AsyncClient(
-            base_url=settings.reporting.telegram_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
-        )
         self._web3_storage_upload_transport = AsyncHTTPTransport(
             limits=Limits(
                 max_connections=200,
