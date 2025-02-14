@@ -6,6 +6,10 @@ from typing import Optional
 
 from ipfs_client.main import AsyncIPFSClient
 from ipfs_client.main import AsyncIPFSClientSingleton
+from httpx import AsyncClient
+from httpx import AsyncHTTPTransport
+from httpx import Limits
+from httpx import Timeout
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
@@ -41,6 +45,8 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             self._task_types.append(task_type)
         self._submission_window = 0
         self.status = SnapshotterStatus(projects=[])
+        self.last_notification_time = 0
+        self.notification_cooldown = settings.reporting.notification_cooldown
 
     def _gen_project_id(self, task_type: str, data_source: Optional[str] = None, primary_data_source: Optional[str] = None):
         """
@@ -228,6 +234,17 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         self._ipfs_writer_client = self._ipfs_singleton._ipfs_write_client
         self._ipfs_reader_client = self._ipfs_singleton._ipfs_read_client
 
+    async def _init_telegram_client(self):
+        """
+        Initializes the Telegram client.
+        """
+        self._telegram_httpx_client = AsyncClient(
+            base_url=settings.reporting.telegram_url,
+            timeout=Timeout(timeout=5.0),
+            follow_redirects=False,
+            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
+        )
+
     async def init_worker(self):
         """
         Initializes the worker by initializing project calculation mapping, IPFS client, and other necessary components.
@@ -235,6 +252,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         if not self.initialized:
             await self._init_project_calculation_mapping()
             await self._init_ipfs_client()
+            await self._init_telegram_client()
             await self.init()
 
     async def _send_failure_notifications(
@@ -251,35 +269,47 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             epoch_id (str): The ID of the epoch that missed the snapshot.
             project_id (str): The ID of the project that missed the snapshot.
         """
-        notification_message = SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=str(epoch_id),
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : {error}'}),
-        )
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
+            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
 
-        telegram_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=notification_message,
-            status=self.status,
-        )
+            if not self._telegram_httpx_client:
+                self.logger.error('Telegram client not initialized')
+                return
 
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
+            try:
+                notification_message = SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch_id),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                )
 
-        await asyncio.gather(*tasks)
+                telegram_message = TelegramSnapshotterReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=notification_message,
+                    status=self.status,
+                )
+
+                tasks = [
+                    asyncio.create_task(
+                        send_failure_notifications_async(
+                            client=self._reporting_httpx_client,
+                            message=notification_message,
+                        ),
+                    ),
+                    asyncio.create_task(
+                        send_telegram_notification_async(
+                            client=self._telegram_httpx_client,
+                            message=telegram_message,
+                        ),
+                    ),
+                ]
+
+                await asyncio.gather(*tasks)
+                self.last_notification_time = int(time.time())
+
+            except Exception as e:
+                self.logger.error(f"Error sending failure notifications: {e}")
