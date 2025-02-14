@@ -30,18 +30,10 @@ from tenacity import wait_random_exponential
 from web3 import Web3
 
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.callback_helpers import send_failure_notifications_sync
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
-from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportState
-from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotSubmittedMessage
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.models.proto.snapshot_submission.submission_grpc import SubmissionStub
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import Request
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import SnapshotSubmission
@@ -131,7 +123,6 @@ class GenericAsyncWorker:
         self.protocol_state_contract_address = settings.protocol_state.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
-        self.status = SnapshotterStatus(projects=[])
 
     def _notification_callback_result_handler(self, fut: asyncio.Future):
         """
@@ -336,13 +327,7 @@ class GenericAsyncWorker:
                 'Exception uploading snapshot to IPFS for epoch {}: {}, Error: {},'
                 'sending failure notifications', epoch, snapshot, e,
             )
-            self.status.totalMissedSubmissions += 1
-            self.status.consecutiveMissedSubmissions += 1
-            await self._send_failure_notifications(
-                error=e,
-                epoch_id=str(epoch.epochId),
-                project_id=project_id,
-            )
+            raise
         else:
             # submit to collector
             try:
@@ -352,23 +337,13 @@ class GenericAsyncWorker:
                     'Exception submitting snapshot to collector for epoch {}: {}, Error: {},'
                     'sending failure notifications', epoch, snapshot, e,
                 )
-                self.status.totalMissedSubmissions += 1
-                self.status.consecutiveMissedSubmissions += 1
-                await self._send_failure_notifications(
-                    error=e,
-                    epoch_id=str(epoch.epochId),
-                    project_id=project_id,
-                )
+                raise
             else:
-                # reset consecutive missed snapshots counter
-                self.status.consecutiveMissedSubmissions = 0
-                self.status.totalSuccessfulSubmissions += 1
+                # upload to web3 storage
+                if storage_flag:
+                    asyncio.ensure_future(self._upload_web3_storage(snapshot_bytes))
 
-        # upload to web3 storage
-        if storage_flag:
-            asyncio.ensure_future(self._upload_web3_storage(snapshot_bytes))
-
-        return snapshot_cid
+                return snapshot_cid
 
     async def _init_rpc_helper(self):
         """
@@ -510,50 +485,3 @@ class GenericAsyncWorker:
             await self._init_protocol_meta()
             await self._init_grpc()
         self.initialized = True
-
-    async def _send_failure_notifications(
-        self,
-        error: Exception,
-        epoch_id: str,
-        project_id: str,
-    ):
-        """
-        Sends failure notifications for missed snapshots.
-
-        Args:
-            error (Exception): The error that occurred.
-            epoch_id (str): The ID of the epoch that missed the snapshot.
-            project_id (str): The ID of the project that missed the snapshot.
-        """
-        notification_message = SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=str(epoch_id),
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : {error}'}),
-        )
-
-        telegram_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=notification_message,
-            status=self.status,
-        )
-
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
-
-        await asyncio.gather(*tasks)
