@@ -25,7 +25,8 @@ if [ "$DEV_MODE" != "true" ]; then
     else
         echo "🔔 LOCAL_COLLECTOR_IMAGE_TAG found in .env, using value ${LOCAL_COLLECTOR_IMAGE_TAG}"
     fi 
-    echo "🏗️ Running snapshotter-lite-v2 node image with tag ${IMAGE_TAG}"
+    echo "🏗️ Running snapshotter-lite-v2 node Docker image with tag ${IMAGE_TAG}"
+    echo "🏗️ Running snapshotter-lite-local-collector Docker image with tag ${LOCAL_COLLECTOR_IMAGE_TAG}"
 fi
 
 # Run collector test
