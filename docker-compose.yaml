@@ -32,13 +32,11 @@ services:
       - DATA_MARKET_IN_REQUEST=$DATA_MARKET_IN_REQUEST
     networks:
       - custom_network
+    deploy:
+      resources:
+        limits:
+          memory: 150M
     restart: always
-    healthcheck:
-      test: ["CMD", "test", "-f", "/tmp/sequencer-connection-healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
     container_name: snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
@@ -77,7 +75,11 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - custom_network
-    restart: on-failure:10
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 150M
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
