@@ -12,14 +12,20 @@ fi
 source ".env-${FULL_NAMESPACE}"
 
 if [ "$DEV_MODE" != "true" ]; then
-        # Set image tag based on git branch
-        GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$GIT_BRANCH" = "dockerify" ]; then
+    # Set image tag based on git branch
+    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$GIT_BRANCH" = "dockerify" ]; then
         export IMAGE_TAG="dockerify"
     else
         export IMAGE_TAG="latest"
     fi
-    echo "🏗️ Building image with tag ${IMAGE_TAG}"
+    if [ -z "$LOCAL_COLLECTOR_IMAGE_TAG" ]; then
+        export LOCAL_COLLECTOR_IMAGE_TAG=${IMAGE_TAG}
+        echo "🔔 LOCAL_COLLECTOR_IMAGE_TAG not found in .env, setting to default value ${LOCAL_COLLECTOR_IMAGE_TAG}"
+    else
+        echo "🔔 LOCAL_COLLECTOR_IMAGE_TAG found in .env, using value ${LOCAL_COLLECTOR_IMAGE_TAG}"
+    fi 
+    echo "🏗️ Running snapshotter-lite-v2 node image with tag ${IMAGE_TAG}"
 fi
 
 # Run collector test
