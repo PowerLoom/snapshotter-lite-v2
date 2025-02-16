@@ -169,6 +169,7 @@ if [ -z "$LOCAL_COLLECTOR_PORT" ]; then
     echo "🔔 LOCAL_COLLECTOR_PORT not found in .env, setting to default value ${LOCAL_COLLECTOR_PORT}"
 fi
 
+
 # Set default values for optional environment variables
 if [ -z "$MAX_STREAM_POOL_SIZE" ]; then
     export MAX_STREAM_POOL_SIZE=2
