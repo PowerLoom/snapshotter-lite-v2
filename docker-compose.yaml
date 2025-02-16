@@ -32,6 +32,10 @@ services:
       - DATA_MARKET_IN_REQUEST=$DATA_MARKET_IN_REQUEST
     networks:
       - custom_network
+    deploy:
+      resources:
+        limits:
+          memory: 150M
     restart: always
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
