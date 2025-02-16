@@ -33,12 +33,6 @@ services:
     networks:
       - custom_network
     restart: always
-    healthcheck:
-      test: ["CMD", "test", "-f", "/tmp/sequencer-connection-healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
     container_name: snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
