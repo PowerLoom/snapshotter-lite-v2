@@ -79,7 +79,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 150M
+          memory: 145M
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}
