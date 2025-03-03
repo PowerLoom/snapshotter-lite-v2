@@ -15,7 +15,7 @@ import os
 import aiofiles
 from snapshotter.processor_distributor import ProcessorDistributor
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
+from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
@@ -555,7 +555,7 @@ class EventDetectorProcess(multiprocessing.Process):
                     ),
                 )
 
-                await send_telegram_notification_async(
+                send_telegram_notification_sync(
                     client=self._telegram_httpx_client,
                     message=telegram_message,
                 )
