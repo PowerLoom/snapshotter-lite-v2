@@ -25,21 +25,16 @@ from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
 from snapshotter.utils.models.data_models import PreloaderResult
 from snapshotter.utils.models.data_models import SnapshotFinalizedEvent
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshottersUpdatedEvent
 from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
     _reporting_httpx_client: AsyncClient
-    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -73,9 +68,6 @@ class ProcessorDistributor:
         self._snapshotter_enabled = True
         self.snapshot_worker = SnapshotAsyncWorker()
 
-        self.last_notification_time = 0
-        self.notification_cooldown = settings.reporting.notification_cooldown
-
     async def _init_rpc_helper(self):
         """
         Initializes the RpcHelper instance if it is not already initialized.
@@ -95,12 +87,6 @@ class ProcessorDistributor:
             keepalive_expiry=None,
         )
 
-        self._telegram_httpx_client = AsyncClient(
-            base_url=settings.reporting.telegram_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=transport_limits),
-        )
 
     async def _init_preloader_compute_mapping(self):
         """
@@ -299,11 +285,7 @@ class ProcessorDistributor:
                     project_failed_preloaders
                 )
 
-                # Update counters for each skipped project
-                self.snapshot_worker.status.totalMissedSubmissions += 1
-                self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-
-                await self._send_failure_notifications(
+                await self.snapshot_worker.handle_missed_snapshot(
                     error=Exception(f'Failed preloaders for {project_type}: {project_failed_preloaders}'),
                     epoch_id=epoch.epochId,
                     project_id=project_type
@@ -377,42 +359,3 @@ class ProcessorDistributor:
                 ),
                 type_,
             )
-
-    async def _send_failure_notifications(
-        self,
-        error: Exception,
-        epoch_id: str,
-        project_id: str,
-    ):
-        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
-            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
-
-            if not self._telegram_httpx_client:
-                self._logger.error('Telegram client not initialized')
-                return
-
-            try:
-                notification_message = SnapshotterIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                    projectID=project_id,
-                    epochId=str(epoch_id),
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {error}'}),
-                )
-
-                telegram_message = TelegramSnapshotterReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=notification_message,
-                    status=self.snapshot_worker.status,
-                )
-
-                await send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                )
-                self.last_notification_time = int(time.time())
-
-            except Exception as e:
-                self._logger.error('Error sending Telegram notification: {}', e)
