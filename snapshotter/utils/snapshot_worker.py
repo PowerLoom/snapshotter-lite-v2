@@ -123,9 +123,11 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                     primary_data_source = None
                 else:
                     primary_data_source, data_source = data_sources
-                    project_id = self._gen_project_id(
-                        task_type=task_type, data_source=data_source, primary_data_source=primary_data_source,
-                    )
+
+                project_id = self._gen_project_id(
+                    task_type=task_type, data_source=data_source, primary_data_source=primary_data_source,
+                )
+                
                 try:
                     await self._commit_payload(
                         task_type=task_type,
@@ -165,30 +167,28 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             )
             return
 
-        if not self._submission_window:
-            self._submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._anchor_rpc_helper,
-                state_contract_obj=self.protocol_state_contract,
-                data_market=settings.data_market,
+        try:
+
+            if not self._submission_window:
+                self._submission_window = await get_snapshot_submision_window(
+                    rpc_helper=self._anchor_rpc_helper,
+                    state_contract_obj=self.protocol_state_contract,
+                    data_market=settings.data_market,
+                )
+
+            self.logger.debug(
+                'Got epoch to process for {}: {}',
+                task_type, msg_obj,
             )
 
-        self.logger.debug(
-            'Got epoch to process for {}: {}',
-            task_type, msg_obj,
-        )
-
-        try:
             await self._process(
                 msg_obj=msg_obj,
                 task_type=task_type,
                 preloader_results=preloader_results,
             )
         except Exception as e:
-            self.logger.error(f"Missed snapshot for epoch: {msg_obj.epochId}, task type: {task_type} - Error: {e}")
-            self.status.totalMissedSubmissions += 1
-            self.status.consecutiveMissedSubmissions += 1
-
-            await self._send_failure_notifications(
+            self.logger.error(f"Error processing SnapshotProcessMessage: {msg_obj} for task type: {task_type} - Error: {e}")
+            await self.handle_missed_snapshot(
                 error=e,
                 epoch_id=str(msg_obj.epochId),
                 project_id=self._gen_project_id(
@@ -254,6 +254,15 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             await self._init_ipfs_client()
             await self._init_telegram_client()
             await self.init()
+
+    async def handle_missed_snapshot(self, error: Exception, epoch_id: str, project_id: str):
+        """
+        Handles missed snapshots by sending failure notifications and updating the status.
+        """
+        self.logger.error(f"Missed snapshot for epoch: {epoch_id}, project_id: {project_id} - Error: {error}")
+        self.status.totalMissedSubmissions += 1
+        self.status.consecutiveMissedSubmissions += 1
+        await self._send_failure_notifications(error=error, epoch_id=epoch_id, project_id=project_id)
 
     async def _send_failure_notifications(
         self,
