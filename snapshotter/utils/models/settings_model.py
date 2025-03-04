@@ -50,6 +50,7 @@ class ReportingConfig(BaseModel):
     telegram_url: str
     telegram_chat_id: str
     failure_report_frequency: int
+    notification_cooldown: int
 
 
 class Logs(BaseModel):
