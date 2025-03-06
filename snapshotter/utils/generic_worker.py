@@ -17,7 +17,6 @@ from eth_utils.encoding import big_endian_to_int
 from grpclib.client import Channel
 from httpx import AsyncClient
 from httpx import AsyncHTTPTransport
-from httpx import Client
 from httpx import Limits
 from httpx import Timeout
 from ipfs_cid import cid_sha256_hash
@@ -31,10 +30,7 @@ from tenacity import wait_random_exponential
 from web3 import Web3
 
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.callback_helpers import send_failure_notifications_sync
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
-from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
 from snapshotter.utils.models.data_models import SnapshotterIssue
@@ -111,7 +107,6 @@ def ipfs_upload_retry_state_callback(retry_state: tenacity.RetryCallState):
 class GenericAsyncWorker:
     _rpc_helper: RpcHelper
     _anchor_rpc_helper: RpcHelper
-    _reporting_httpx_client: AsyncClient
     _telegram_httpx_client: AsyncClient
     _web3_storage_upload_transport: AsyncHTTPTransport
     _web3_storage_upload_client: AsyncClient
@@ -438,12 +433,6 @@ class GenericAsyncWorker:
         """
         Initializes the HTTPX client and transport objects for making HTTP requests.
         """
-        self._reporting_httpx_client = AsyncClient(
-            base_url=settings.reporting.service_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
-        )
         self._telegram_httpx_client = AsyncClient(
             base_url=settings.reporting.telegram_url,
             timeout=Timeout(timeout=5.0),
@@ -547,19 +536,7 @@ class GenericAsyncWorker:
             status=self.status,
         )
 
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
-
-        await asyncio.gather(*tasks)
+        await send_telegram_notification_async(
+            client=self._telegram_httpx_client,
+            message=telegram_message,
+        )
