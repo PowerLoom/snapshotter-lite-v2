@@ -37,6 +37,16 @@ get_used_subnets() {
     done
 }
 
+# Parse command line arguments
+AUTO_CLEANUP=false
+while getopts "y" opt; do
+    case $opt in
+        y) AUTO_CLEANUP=true ;;
+        *) echo "Usage: $0 [-y]" >&2
+           exit 1 ;;
+    esac
+done
+
 echo "🔍 Starting PowerLoom Node Diagnostics..."
 
 # Phase 1: System Checks
@@ -63,32 +73,16 @@ if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; 
 fi
 echo -e "${GREEN}✅ Docker Compose is available${NC}"
 
-# Check port availability
-echo -e "\n🔌 Checking default ports..."
-DEFAULT_CORE_API_PORT=8002
-DEFAULT_LOCAL_COLLECTOR_PORT=50051
-
-AVAILABLE_CORE_API_PORT=$(find_next_available_port $DEFAULT_CORE_API_PORT)
-if [ "$AVAILABLE_CORE_API_PORT" != "$DEFAULT_CORE_API_PORT" ]; then
-    echo -e "${YELLOW}⚠️ Port ${DEFAULT_CORE_API_PORT} is in use${NC}"
-    echo -e "${GREEN}✅ Next available Core API port: ${AVAILABLE_CORE_API_PORT}${NC}"
-fi
-
-AVAILABLE_COLLECTOR_PORT=$(find_next_available_port $DEFAULT_LOCAL_COLLECTOR_PORT)
-if [ "$AVAILABLE_COLLECTOR_PORT" != "$DEFAULT_LOCAL_COLLECTOR_PORT" ]; then
-    echo -e "${YELLOW}⚠️ Port ${DEFAULT_LOCAL_COLLECTOR_PORT} is in use${NC}"
-    echo -e "${GREEN}✅ Next available Collector port: ${AVAILABLE_COLLECTOR_PORT}${NC}"
-fi
 
 # Check existing containers and networks
 echo -e "\n🔍 Checking existing PowerLoom containers..."
-EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" --filter "name=autoheal" --filter "name=local-collector" --format "{{.Names}}")
+EXISTING_CONTAINERS=$(docker ps -a --filter "name=snapshotter-lite-v2" --filter "name=powerloom" --filter "name=local-collector" --filter "name=autoheal" --format "{{.Names}}")
 if [ -n "$EXISTING_CONTAINERS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom containers:${NC}"
     echo "$EXISTING_CONTAINERS"
 fi
 
-echo -e "\n🌐 Checking existing PowerLoom networks..."
+echo -e "\n🌐 Checking existing Legacy Docker networks for PowerLoom Snapshotter containers..."
 EXISTING_NETWORKS=$(docker network ls --filter "name=snapshotter-lite-v2" --format "{{.Name}}")
 if [ -n "$EXISTING_NETWORKS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom networks:${NC}"
@@ -96,7 +90,7 @@ if [ -n "$EXISTING_NETWORKS" ]; then
 fi
 
 # Check Docker subnet usage in 172.18.0.0/16 range
-echo -e "\n🌐 Checking Docker subnet usage in 172.18.0.0/16 range..."
+echo -e "\n🌐 Checking Legacy Docker subnet usage in 172.18.0.0/16 range..."
 NETWORK_LIST=$(docker network ls --format '{{.Name}}')
 USED_SUBNETS=$(get_used_subnets "$NETWORK_LIST" | sort -n)
 if [ -n "$USED_SUBNETS" ]; then
@@ -135,7 +129,11 @@ fi
 if [ -n "$EXISTING_DIRS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom deployment directories:${NC}"
     echo "$EXISTING_DIRS"
-    read -p "Would you like to remove these directories? (y/n): " remove_dirs
+    if [ "$AUTO_CLEANUP" = true ]; then
+        remove_dirs="y"
+    else
+        read -p "Would you like to remove these directories? (y/n): " remove_dirs
+    fi
     if [ "$remove_dirs" = "y" ]; then
         echo -e "\n${YELLOW}Removing deployment directories...${NC}"
         echo "$EXISTING_DIRS" | xargs -I {} rm -rf "{}"
@@ -147,32 +145,44 @@ fi
 echo -e "\n🧹 Cleanup Options:"
 
 if [ -n "$EXISTING_CONTAINERS" ]; then
-    read -p "Would you like to stop and remove existing PowerLoom containers? (y/n): " remove_containers
+    if [ "$AUTO_CLEANUP" = true ]; then
+        remove_containers="y"
+    else
+        read -p "Would you like to stop and remove existing PowerLoom containers? (y/n): " remove_containers
+    fi
     if [ "$remove_containers" = "y" ]; then
         echo -e "\n${YELLOW}Stopping running containers... (timeout: 30s per container)${NC}"
-        # Stop containers with timeout and track failures
+        # Stop containers with timeout and track failures in parallel
         STOP_FAILED=false
-        echo "$EXISTING_CONTAINERS" | while read -r container; do
-            # Only try to stop if container is running
+        echo "$EXISTING_CONTAINERS" | xargs -P64 -I {} bash -c '
+            container="$1"
             if docker ps -q --filter "name=$container" | grep -q .; then
                 echo -e "Attempting to stop container ${container}..."
                 if ! timeout 35 docker stop --time 30 "$container" 2>/dev/null; then
-                    STOP_FAILED=true
-                    echo -e "${YELLOW}⚠️ Container ${container} could not be stopped gracefully after 30 seconds${NC}"
+                    echo -e "\033[1;33m⚠️ Container ${container} could not be stopped gracefully after 30 seconds\033[0m"
+                    exit 1
                 fi
             fi
-        done
+        ' -- {} || STOP_FAILED=true
 
         echo -e "\n${YELLOW}Removing containers...${NC}"
-        echo "$EXISTING_CONTAINERS" | while read -r container; do
+        # Remove containers in parallel and track failures
+        REMOVE_FAILED=false
+        echo "$EXISTING_CONTAINERS" | xargs -P64 -I {} bash -c '
+            container="$1"
             echo -e "Removing container ${container}..."
             if ! docker rm -f "$container" 2>/dev/null; then
-                echo -e "${YELLOW}⚠️ Failed to remove container ${container}${NC}"
+                echo -e "\033[1;33m⚠️ Failed to remove container ${container}\033[0m"
+                exit 1
             fi
-        done
+        ' -- {} || REMOVE_FAILED=true
 
-        if [ "$STOP_FAILED" = true ]; then
-            echo -e "${YELLOW}⚠️ Some containers could not be stopped gracefully and were forcefully removed${NC}"
+        if [ "$STOP_FAILED" = true ] || [ "$REMOVE_FAILED" = true ]; then
+            echo -e "${YELLOW}⚠️ Some containers encountered issues during cleanup:${NC}"
+            [ "$STOP_FAILED" = true ] && echo -e "${YELLOW}- Some containers could not be stopped gracefully${NC}"
+            [ "$REMOVE_FAILED" = true ] && echo -e "${YELLOW}- Some containers could not be removed${NC}"
+        else
+            echo -e "${GREEN}✅ All containers successfully cleaned up${NC}"
         fi
     fi
 fi
@@ -183,7 +193,11 @@ EXISTING_SCREENS=$(screen -ls | grep -E 'powerloom-(premainnet|testnet|mainnet)-
 if [ -n "$EXISTING_SCREENS" ]; then
     echo -e "${YELLOW}Found existing PowerLoom screen sessions:${NC}"
     echo "$EXISTING_SCREENS"
-    read -p "Would you like to terminate these screen sessions? (y/n): " kill_screens
+    if [ "$AUTO_CLEANUP" = true ]; then
+        kill_screens="y"
+    else
+        read -p "Would you like to terminate these screen sessions? (y/n): " kill_screens
+    fi
     if [ "$kill_screens" = "y" ]; then
         echo -e "\n${YELLOW}Killing screen sessions...${NC}"
         echo "$EXISTING_SCREENS" | cut -d. -f1 | awk '{print $1}' | xargs -r kill
@@ -192,17 +206,22 @@ if [ -n "$EXISTING_SCREENS" ]; then
 fi
 
 if [ -n "$EXISTING_NETWORKS" ]; then
-    read -p "Would you like to remove existing PowerLoom networks? (y/n): " remove_networks
+    if [ "$AUTO_CLEANUP" = true ]; then
+        remove_networks="y"
+    else
+        read -p "Would you like to remove existing PowerLoom networks? (y/n): " remove_networks
+    fi
     if [ "$remove_networks" = "y" ]; then
         echo -e "\n${YELLOW}Removing networks...${NC}"
         NETWORK_REMOVAL_FAILED=false
         
-        echo "$EXISTING_NETWORKS" | while read -r network; do
+        echo "$EXISTING_NETWORKS" | xargs -P64 -I {} bash -c '
+            network="$1"
             if ! docker network rm "$network" 2>/dev/null; then
-                NETWORK_REMOVAL_FAILED=true
-                echo -e "${RED}❌ Failed to remove network ${network}${NC}"
+                echo -e "\033[0;31m❌ Failed to remove network ${network}\033[0m"
+                exit 1
             fi
-        done
+        ' -- {} || NETWORK_REMOVAL_FAILED=true
         
         if [ "$NETWORK_REMOVAL_FAILED" = true ]; then
             echo -e "\n${YELLOW}⚠️  Warning: Some networks could not be removed due to active endpoints.${NC}"
@@ -219,7 +238,12 @@ if [ "$NETWORK_REMOVAL_FAILED" = true ]; then
     echo -e "\n${YELLOW}Due to network removal failures, a system-wide cleanup is recommended.${NC}"
 fi
 
-read -p "Would you like to remove unused Docker resources (only unused images, networks, and cache)? (y/n): " deep_clean
+# Skip the final system-wide cleanup prompt if AUTO_CLEANUP is true
+if [ "$AUTO_CLEANUP" = true ]; then
+    deep_clean="n"
+else
+    read -p "Would you like to remove unused Docker resources (only unused images, networks, and cache)? (y/n): " deep_clean
+fi
 if [ "$deep_clean" = "y" ]; then
     echo -e "\n${YELLOW}Removing unused Docker resources...${NC}"
     
@@ -233,3 +257,4 @@ if [ "$deep_clean" = "y" ]; then
 fi
 
 echo -e "\n${GREEN}✅ Diagnostic check complete${NC}"
+

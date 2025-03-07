@@ -11,14 +11,30 @@ fi
 # Source the environment file
 source ".env-${FULL_NAMESPACE}"
 
-# Set image tag based on git branch
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$GIT_BRANCH" = "dockerify" ]; then
-    export IMAGE_TAG="dockerify"
-else
-    export IMAGE_TAG="latest"
+if [ "$DEV_MODE" != "true" ]; then
+    # Set image tag based on git branch
+    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$GIT_BRANCH" = "dockerify" ]; then
+        export IMAGE_TAG="dockerify"
+    elif [ "$GIT_BRANCH" = "experimental" ]; then
+        export IMAGE_TAG="experimental"
+    else
+        export IMAGE_TAG="latest"
+    fi
+    if [ -z "$LOCAL_COLLECTOR_IMAGE_TAG" ]; then
+        if [ "$GIT_BRANCH" = "experimental" ] || [ "$GIT_BRANCH" = "dockerify" ]; then
+            # TODO: Change this to use 'experimental' once we have a proper experimental image for local collector
+            export LOCAL_COLLECTOR_IMAGE_TAG="dockerify"
+        else
+            export LOCAL_COLLECTOR_IMAGE_TAG=${IMAGE_TAG}
+        fi
+        echo "🔔 LOCAL_COLLECTOR_IMAGE_TAG not found in .env, setting to default value ${LOCAL_COLLECTOR_IMAGE_TAG}"
+    else
+        echo "🔔 LOCAL_COLLECTOR_IMAGE_TAG found in .env, using value ${LOCAL_COLLECTOR_IMAGE_TAG}"
+    fi 
+    echo "🏗️ Running snapshotter-lite-v2 node Docker image with tag ${IMAGE_TAG}"
+    echo "🏗️ Running snapshotter-lite-local-collector Docker image with tag ${LOCAL_COLLECTOR_IMAGE_TAG}"
 fi
-echo "🏗️ Building image with tag ${IMAGE_TAG}"
 
 # Run collector test
 if [ "$NO_COLLECTOR" = "true" ]; then
@@ -43,41 +59,22 @@ fi
 PROJECT_NAME="snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}"
 PROJECT_NAME_LOWER=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
 FULL_NAMESPACE_LOWER=$(echo "$FULL_NAMESPACE" | tr '[:upper:]' '[:lower:]')
-export CRON_RESTART=${CRON_RESTART:-false}
 
 # Export the lowercase version for docker-compose
 export FULL_NAMESPACE_LOWER
 
-# Check if running in Windows Subsystem for Linux (WSL)
-check_wsl() {
-    if grep -qi microsoft /proc/version; then
-        echo "🐧🪆 Running in WSL environment"
-        return 0  # true in shell
-    fi
-    return 1  # false in shell
-}
-
-# Configure Docker Compose profiles based on WSL environment
-if check_wsl; then
-    # WSL environment - disable autoheal
-    COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
-else
-    # Non-WSL environment - enable autoheal
-    # but first detect if there is already an autoheal container running
-    if docker ps | grep -q "autoheal-snapshotter-lite-v2"; then
-        echo "📦⛑️ Autoheal container already detected in docker ps"
-        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
-    elif [ "$AUTOHEAL_LAUNCH" = "true" ]; then
-        echo "🏴‍☠️⛑️ Autoheal container not detected and autoheal launch flag is true, launching..."
-        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING} --profile autoheal"
-    else
-        echo "🏴‍☠️⛑️ Autoheal container not detected and autoheal launch flag is false, skipping..."
-        COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
-    fi
-fi
+COMPOSE_PROFILES="${COLLECTOR_PROFILE_STRING}"
 
 # Modify the deploy-services call to use the profiles
-./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
-    --project-name "$PROJECT_NAME_LOWER" \
-    --collector-profile "$COMPOSE_PROFILES" \
-    --image-tag "$IMAGE_TAG"
+if [ "$DEV_MODE" == "true" ]; then
+    ./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
+        --project-name "$PROJECT_NAME_LOWER" \
+        --collector-profile "$COMPOSE_PROFILES" \
+        --dev-mode
+else
+    ./deploy-services.sh --env-file ".env-${FULL_NAMESPACE}" \
+        --project-name "$PROJECT_NAME_LOWER" \
+        --collector-profile "$COMPOSE_PROFILES" \
+        --image-tag "$IMAGE_TAG"
+fi
+

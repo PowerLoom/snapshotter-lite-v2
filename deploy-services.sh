@@ -9,11 +9,13 @@ show_help() {
     echo "  -p, --project-name NAME      Set docker compose project name"
     echo "  -c, --collector-profile STR  Set collector profile string"
     echo "  -t, --image-tag TAG         Set docker image tag"
+    echo "  -d, --dev-mode              Enable dev mode"
     echo "  -h, --help                  Show this help message"
     echo
     echo "Examples:"
     echo "  ./deploy-services.sh --env-file .env-pre-mainnet-AAVEV3-ETH"
     echo "  ./deploy-services.sh --project-name snapshotter-lite-v2-123-aavev3"
+    echo "  ./deploy-services.sh --dev-mode"
 }
 
 # Initialize variables
@@ -21,6 +23,7 @@ ENV_FILE=""
 PROJECT_NAME=""
 COLLECTOR_PROFILE=""
 IMAGE_TAG="latest"
+DEV_MODE="false"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -40,6 +43,10 @@ while [[ $# -gt 0 ]]; do
         -t|--image-tag)
             IMAGE_TAG="$2"
             shift 2
+            ;;
+        -d|--dev-mode)
+            DEV_MODE="true"
+            shift
             ;;
         -h|--help)
             show_help
@@ -102,12 +109,24 @@ handle_docker_pull() {
         DOCKER_COMPOSE_CMD="docker compose"
     fi
 
-    # Build compose arguments
-    COMPOSE_ARGS=(
-        --env-file "$ENV_FILE"
-        -p "${PROJECT_NAME:-snapshotter-lite-v2-${FULL_NAMESPACE}}"
-        -f docker-compose.yaml
-    )
+    if [ "$DEV_MODE" = "true" ]; then
+        # Build compose arguments
+        COMPOSE_ARGS=(
+            --env-file "$ENV_FILE"
+            -p "${PROJECT_NAME:-snapshotter-lite-v2-${FULL_NAMESPACE}}"
+            -f docker-compose-dev.yaml
+        )
+
+    else
+        # Build compose arguments
+        COMPOSE_ARGS=(
+            --env-file "$ENV_FILE"
+            -p "${PROJECT_NAME:-snapshotter-lite-v2-${FULL_NAMESPACE}}"
+            -f docker-compose.yaml
+        )
+
+    fi
+
 
     # Add optional profiles
     [ -n "$IPFS_URL" ] && COMPOSE_ARGS+=("--profile" "ipfs")
@@ -117,8 +136,23 @@ handle_docker_pull() {
     export IMAGE_TAG
     export DOCKER_NETWORK_NAME
 
-    # Execute docker compose pull
-    $DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
+    # check if DOCKER_NETWORK_NAME exists otherwise create it, it's a bridge network
+    if ! docker network ls | grep -q "$DOCKER_NETWORK_NAME"; then
+        echo "🔄 Creating docker network $DOCKER_NETWORK_NAME"
+        docker network create --driver bridge "$DOCKER_NETWORK_NAME"
+    fi
+
+    if [ "$DEV_MODE" = "true" ]; then
+        echo "🏗️ Building docker image for snapshotter-lite-v2"
+        ./build-docker.sh
+        echo "🏗️ Building docker image for snapshotter-lite-local-collector"
+        cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh
+    else
+        # Execute docker compose pull
+        echo "🔄 Pulling docker images"
+        echo $DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
+        $DOCKER_COMPOSE_CMD "${COMPOSE_ARGS[@]}" pull
+    fi
 
     rm -f "$DOCKER_PULL_LOCK"
 }
