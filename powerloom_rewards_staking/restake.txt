@@ -1,0 +1,14 @@
+
+Thu Mar  6 00:00:07 UTC 2025 - Exit Code: 0
+Staking rewards claim and restake successful! Transaction hash: 0xfe3897f088174b6e4f3235a75261412c06e0a05feffee226e1acf984fffa4fef
+Powerloom Node Reward Claim successful! Transaction hash: 0x63ca2efcb24b42b4e83fe64f8937c8c7c1e3976fd8f5cf3a8c2ccdea465c0cfa
+An unexpected error occurred in node reward claim: name 'log_topic' is not defined
+SUCCESS: Staking Claim and Restaking successful! Node Claim failed.
+
+
+Fri Mar  7 00:00:07 UTC 2025 - Exit Code: 0
+An error occurred in Staking claim and restake: execution reverted: No rewards to claim
+Powerloom Node Claim successful! Transaction hash: 0x6e22a3e255daf93632ffcf7f23a7a57c76108c7dc514ab6c6cce8d7529f88af3
+Node reward restaking successful! Transaction hash: 0x495b2121b04f8f9b933c9eb2286c47a79d60870f4cdafae998e7a2277d771fd9
+SUCCESS: Node Claim and Restaking successful! Staking Claim failed.
+
