@@ -136,11 +136,11 @@ class ProcessorDistributor:
             self._logger = logger.bind(
                 module='ProcessDistributor',
             )
-            self._anchor_rpc_helper = RpcHelper(
+            self._old_anchor_rpc_helper = RpcHelper(
                 rpc_settings=settings.old_anchor_chain_rpc,
             )
             protocol_abi = read_json_file(settings.old_protocol_state.abi, self._logger)
-            self._protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            self._protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=to_checksum_address(
                     settings.old_protocol_state.address,
                 ),
@@ -192,26 +192,26 @@ class ProcessorDistributor:
         if not self._projects_list:
             with open(settings.protocol_state.abi, 'r') as f:
                 abi_dict = json.load(f)
-            protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=Web3.to_checksum_address(
-                    settings.protocol_state.address,
+                    settings.old_protocol_state.address,
                 ),
                 abi=abi_dict,
             )
             self._source_chain_epoch_size = await get_source_chain_epoch_size(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
                 data_market=Web3.to_checksum_address(settings.old_data_market),
             )
 
             self._source_chain_id = await get_source_chain_id(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
                 data_market=Web3.to_checksum_address(settings.old_data_market),
             )
 
             submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
                 data_market=Web3.to_checksum_address(settings.old_data_market),
             )

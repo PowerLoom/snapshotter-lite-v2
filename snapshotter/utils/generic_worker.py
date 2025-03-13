@@ -536,10 +536,10 @@ class GenericAsyncWorker:
     async def _init_protocol_meta(self):
         # TODO: combine these into a single call
         try:
-            source_block_time = await self._anchor_rpc_helper.web3_call(
+            source_block_time = await self._old_anchor_rpc_helper.web3_call(
                 [
-                    self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
-                        Web3.to_checksum_address(settings.data_market),
+                    self.old_protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                        Web3.to_checksum_address(settings.old_data_market),
                     ),
                 ],
             )
@@ -553,8 +553,8 @@ class GenericAsyncWorker:
             self._source_chain_block_time = source_block_time / 10 ** 4
             self.logger.debug('Set source chain block time to {}', self._source_chain_block_time)
         try:
-            epoch_size = await self._anchor_rpc_helper.web3_call(
-                [self.protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market))],
+            epoch_size = await self._old_anchor_rpc_helper.web3_call(
+                [self.old_protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market))],
             )
         except Exception as e:
             self.logger.exception(

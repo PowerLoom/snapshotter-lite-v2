@@ -200,7 +200,7 @@ class EventDetectorProcess(multiprocessing.Process):
         Returns:
             Contract: The protocol state contract instance
         """
-        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return self.contract
         else:
             return self.old_contract
