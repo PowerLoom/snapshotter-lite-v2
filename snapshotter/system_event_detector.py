@@ -89,7 +89,6 @@ class EventDetectorProcess(multiprocessing.Process):
         self.latest_epoch_id = - 1
 
         self._initialized = False
-        self.use_new_rpc = False
 
     async def init(self):
         """
@@ -276,7 +275,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 'event_abi': self.event_abi,
             },
         )
-
+        self._logger.info('Events: {}', events_log)
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
@@ -462,7 +461,7 @@ class EventDetectorProcess(multiprocessing.Process):
         If the current epoch ID is greater than the switch RPC at epoch ID, it returns the data market address from the new RPC.
         Otherwise, it returns the data market address from the old RPC.
         """
-        if self.latest_epoch_id > settings.switch_rpc_at_epoch_id:
+        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
             return settings.data_market
         else:
             return settings.old_data_market
