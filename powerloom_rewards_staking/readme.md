@@ -40,6 +40,11 @@ This Python script interacts with the Powerloom blockchain to claim staking rewa
    ADDRESS_INPUT=your_wallet_address_here
    ```
 
+- `ADDRESS_INPUT`: Your wallet address that you purchased the node with.
+- `SENDER_PK`: The private key of the wallet address.
+- `NODESTAKING_ADDRESS`: The address of the NodeStaking contract. Found on the Powerloom network.
+- `POWERLOOM_NODES_ADDRESS`: The address of the PowerloomNodes contract. Found on the Powerloom network.
+
 ## Usage
 
 Run the script with:
@@ -50,17 +55,26 @@ python claimrestake.py
 ## How It Works
 
 ### `staking_rewards_claim_and_deposit()`
-- Connects to the Ethereum blockchain using Web3.
+- Connects to the Powerloom blockchain using Web3.
 - Calls `claimRewardsAndDeposit()` on the staking contract.
 - Signs and sends the transaction.
 - Waits for transaction confirmation.
 - If successful, prints the transaction hash.
 
 ### `node_rewards_claim()`
-- Calls `claimRewards(user_address)` on the Powerloom node contract.
-- Extracts the reward amount from event logs.
-- Deposits the claimed amount into the staking contract.
-- Prints transaction details.
+- Connects to the Powerloom blockchain using Web3.
+- Calls `claimRewards(user_address)` on the Powerloom node contract, passing the user's address.
+- Retrieves the transaction receipt to check for success.
+- If successful, prints the transaction hash.
+
+### `restake_node_rewards()`
+- Connects to the Powerloom blockchain using Web3.
+- Examines the logs of the `claimRewards` transaction receipt.
+- Decodes the event data to extract the deposit value.
+- Calls the `deposit()` function on the staking contract with the extracted value.
+- Signs and sends the transaction.
+- Waits for transaction confirmation.
+- If successful, prints the transaction hash.
 
 ## Expected Output
 
