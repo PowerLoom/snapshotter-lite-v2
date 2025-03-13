@@ -14,13 +14,13 @@ async def main():
     If snapshotting is not allowed, sets the active status key in Redis to False and exits with code 1.
     """
     # Load protocol state ABI
-    protocol_abi = read_json_file(settings.protocol_state.abi)
-    print('abi file ', settings.protocol_state.abi)
-    print('Contract address: ', settings.protocol_state.address)
+    protocol_abi = read_json_file(settings.old_protocol_state.abi)
+    print('abi file ', settings.old_protocol_state.abi)
+    print('Contract address: ', settings.old_protocol_state.address)
 
-    w3 = Web3(Web3.HTTPProvider(settings.anchor_chain_rpc.full_nodes[0].url))
+    w3 = Web3(Web3.HTTPProvider(settings.old_anchor_chain_rpc.full_nodes[0].url))
 
-    protocol_state_contract = w3.eth.contract(address=settings.protocol_state.address, abi=protocol_abi)
+    protocol_state_contract = w3.eth.contract(address=settings.old_protocol_state.address, abi=protocol_abi)
     # get snapshotter address from private key
     snapshotter_address = w3.eth.account.from_key(settings.signer_private_key).address
     print('Extracted snapshotter address from private key: ', snapshotter_address)

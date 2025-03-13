@@ -18,6 +18,11 @@ if [ -z "$PROST_RPC_URL" ]; then
     exit 1;
 fi
 
+if [ -z "$OLD_PROST_RPC_URL" ]; then
+    echo "OLD_PROST_RPC_URL not found, please set this in your .env!";
+    exit 1;
+fi
+
 if [ -z "$SLOT_ID" ]; then
     echo "SLOT_ID not found, please set this in your .env!";
     exit 1;
@@ -25,6 +30,11 @@ fi
 
 if [ -z "$PROTOCOL_STATE_CONTRACT" ]; then
     echo "PROTOCOL_STATE_CONTRACT not found, please set this in your .env!";
+    exit 1;
+fi
+
+if [ -z "$PROTOCOL_STATE_CONTRACT_OLD" ]; then
+    echo "PROTOCOL_STATE_CONTRACT_OLD not found, please set this in your .env!";
     exit 1;
 fi
 
@@ -98,9 +108,11 @@ fi
 
 echo "Using FULL_NAMESPACE: ${namespace}"
 echo "Using Prost RPC URL: ${PROST_RPC_URL}"
+echo "Using Old Prost RPC URL: ${OLD_PROST_RPC_URL}"
 echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
 echo "Using protocol state contract: ${PROTOCOL_STATE_CONTRACT}"
+echo "Using protocol state contract old: ${PROTOCOL_STATE_CONTRACT_OLD}"
 echo "Using data market contract: ${DATA_MARKET_CONTRACT}"
 echo "Using slack reporting url: ${slack_reporting_url}"
 echo "Using powerloom reporting url: ${powerloom_reporting_url}"
@@ -116,6 +128,7 @@ sed -i'.backup' "s#slot-id#$SLOT_ID#" config/settings.json
 sed -i'.backup' "s#https://rpc-url#$SOURCE_RPC_URL#" config/settings.json
 
 sed -i'.backup' "s#https://prost-rpc-url#$PROST_RPC_URL#" config/settings.json
+sed -i'.backup' "s#https://old-prost-rpc-url#$OLD_PROST_RPC_URL#" config/settings.json
 
 sed -i'.backup' "s#web3-storage-token#$web3_storage_token#" config/settings.json
 sed -i'.backup' "s#ipfs-writer-url#$ipfs_url#" config/settings.json
@@ -127,7 +140,9 @@ sed -i'.backup' "s#ipfs-reader-key#$ipfs_api_key#" config/settings.json
 sed -i'.backup' "s#ipfs-reader-secret#$ipfs_api_secret#" config/settings.json
 
 sed -i'.backup' "s#protocol-state-contract#$PROTOCOL_STATE_CONTRACT#" config/settings.json
+sed -i'.backup' "s#protocol-state-contract-old#$PROTOCOL_STATE_CONTRACT_OLD#" config/settings.json
 sed -i'.backup' "s#data-market-contract#$DATA_MARKET_CONTRACT#" config/settings.json
+sed -i'.backup' "s#old-data-market-contract#$OLD_DATA_MARKET_CONTRACT#" config/settings.json
 sed -i'.backup' "s#https://slack-reporting-url#$slack_reporting_url#" config/settings.json
 
 sed -i'.backup' "s#https://powerloom-reporting-url#$powerloom_reporting_url#" config/settings.json

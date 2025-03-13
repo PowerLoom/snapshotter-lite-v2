@@ -70,7 +70,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         """
         try:
             task_processor = self._project_calculation_mapping[task_type]
-
+            
             snapshots = await task_processor.compute(
                 msg_obj=msg_obj,
                 rpc_helper=self._rpc_helper,

@@ -78,12 +78,14 @@ fi
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
     DATA_MARKET_CONTRACT="0xdE95f6d0D1A7B8411fCbfc60d5c2C5Df69d667a9"
+    OLD_DATA_MARKET_CONTRACT="0xdE95f6d0D1A7B8411fCbfc60d5c2C5Df69d667a9"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
     DATA_MARKET_CONTRACT="0xC53ad4C6A8A978fC4A91F08A21DcE847f5Bc0E27"
+    OLD_DATA_MARKET_CONTRACT="0xC53ad4C6A8A978fC4A91F08A21DcE847f5Bc0E27"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
@@ -91,8 +93,10 @@ fi
 
 # Set protocol values
 export PROTOCOL_STATE_CONTRACT="0x670E0Cf8c8dF15B326D5E2Db4982172Ff8504909"
-export PROST_RPC_URL="https://rpc.powerloom.network"
-export PROST_CHAIN_ID=7865
+export PROTOCOL_STATE_CONTRACT_OLD="0x670E0Cf8c8dF15B326D5E2Db4982172Ff8504909"
+export PROST_RPC_URL="https://rpc-v2.powerloom.network"
+export OLD_PROST_RPC_URL="https://rpc.powerloom.network"
+export PROST_CHAIN_ID=7869
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
@@ -115,7 +119,9 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
 
     # Update env file
     sed -i".backup" "s#<data-market-contract>#$DATA_MARKET_CONTRACT#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<old-data-market-contract>#$OLD_DATA_MARKET_CONTRACT#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<protocol-state-contract>#$PROTOCOL_STATE_CONTRACT#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<protocol-state-contract-old>#$PROTOCOL_STATE_CONTRACT_OLD#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<snapshot-config-repo-branch>#$SNAPSHOT_CONFIG_REPO_BRANCH#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<snapshotter-compute-repo-branch>#$SNAPSHOTTER_COMPUTE_REPO_BRANCH#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<powerloom-chain>#$POWERLOOM_CHAIN#" ".env-${FULL_NAMESPACE}"
@@ -128,6 +134,7 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<old-prost-rpc-url>#$OLD_PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
