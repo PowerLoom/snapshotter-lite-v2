@@ -72,7 +72,6 @@ class ProcessorDistributor:
                 self._all_preload_tasks.add(preload_task)
 
         self._snapshotter_enabled = True
-        self._snapshotter_active = True
         self.snapshot_worker = SnapshotAsyncWorker()
 
     async def _init_rpc_helper(self):
@@ -137,18 +136,19 @@ class ProcessorDistributor:
             self._logger = logger.bind(
                 module='ProcessDistributor',
             )
-            self._anchor_rpc_helper = RpcHelper(
-                rpc_settings=settings.anchor_chain_rpc,
+            self._old_anchor_rpc_helper = RpcHelper(
+                rpc_settings=settings.old_anchor_chain_rpc,
             )
-            protocol_abi = read_json_file(settings.protocol_state.abi, self._logger)
-            self._protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            protocol_abi = read_json_file(settings.protocol_state_old.abi, self._logger)
+            self._logger.info('Protocol state old address: {}', settings.protocol_state_old.address)
+            self._protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=to_checksum_address(
-                    settings.protocol_state.address,
+                    settings.protocol_state_old.address,
                 ),
                 abi=protocol_abi,
             )
             try:
-                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.data_market)).call()
+                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.old_data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for source chain block time: {}',
@@ -159,7 +159,7 @@ class ProcessorDistributor:
                 self._logger.debug('Set source chain block time to {}', self._source_chain_block_time)
 
             try:
-                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market)).call()
+                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for epoch size: {}',
@@ -169,24 +169,14 @@ class ProcessorDistributor:
                 self._epoch_size = epoch_size
 
             try:
-                self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.data_market)).call()
+                self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.old_data_market)).call()
 
-                task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
-                    Web3.to_checksum_address(settings.data_market),
-                    settings.slot_id,
-                    self._current_day,
-                ).call()
-                if task_completion_status:
-                    self._snapshotter_active = False
-                else:
-                    self._snapshotter_active = True
             except Exception as e:
+                self._logger.info("{} {}".format(self._protocol_state_contract, settings.old_data_market))
                 self._logger.error(
                     'Exception in querying protocol state for user task status for day {}',
                     e,
                 )
-                self._snapshotter_active = False
-            self._logger.info('Snapshotter active: {}', self._snapshotter_active)
 
             await self._init_httpx_client()
             await self._init_rpc_helper()
@@ -204,28 +194,28 @@ class ProcessorDistributor:
         if not self._projects_list:
             with open(settings.protocol_state.abi, 'r') as f:
                 abi_dict = json.load(f)
-            protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=Web3.to_checksum_address(
-                    settings.protocol_state.address,
+                    settings.protocol_state_old.address,
                 ),
                 abi=abi_dict,
             )
             self._source_chain_epoch_size = await get_source_chain_epoch_size(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.data_market),
+                data_market=Web3.to_checksum_address(settings.old_data_market),
             )
 
             self._source_chain_id = await get_source_chain_id(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.data_market),
+                data_market=Web3.to_checksum_address(settings.old_data_market),
             )
 
             submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._anchor_rpc_helper,
+                rpc_helper=self._old_anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.data_market),
+                data_market=Web3.to_checksum_address(settings.old_data_market),
             )
             self._submission_window = submission_window
 
@@ -393,12 +383,10 @@ class ProcessorDistributor:
 
         elif type_ == 'DayStartedEvent':
             self._logger.info('Day started event received, setting active status to True')
-            self._snapshotter_active = True
             self._current_day += 1
 
         elif type_ == 'DailyTaskCompletedEvent':
             self._logger.info('Daily task completed event received, setting active status to False')
-            self._snapshotter_active = False
 
         else:
             self._logger.error(

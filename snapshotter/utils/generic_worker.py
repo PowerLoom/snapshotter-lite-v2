@@ -128,8 +128,10 @@ class GenericAsyncWorker:
         """
         self._running_callback_tasks: Dict[str, asyncio.Task] = dict()
         self.protocol_state_contract = None
+        self.protocol_state_old_contract = None
 
         self.protocol_state_contract_address = settings.protocol_state.address
+        self.protocol_state_old_contract_address = settings.protocol_state_old.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
         self.status = SnapshotterStatus(projects=[])
@@ -222,7 +224,6 @@ class GenericAsyncWorker:
         snapshot_cid = await _ipfs_writer_client.add_bytes(snapshot)
         return snapshot_cid
 
-
     async def _send_submission_to_collector(self, snapshot_cid, epoch_id, project_id):
         self.logger.debug(
             'Sending submission to collector...',
@@ -239,8 +240,8 @@ class GenericAsyncWorker:
         self.logger.debug(
             'Snapshot submission creation with request: {}', request_msg,
         )
-
-        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket=settings.data_market)
+        data_market = await self._get_data_market_address(epoch_id)
+        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket= data_market)
         self.logger.debug(
             'Snapshot submission created: {}', msg,
         )
@@ -382,6 +383,7 @@ class GenericAsyncWorker:
         """
         self._rpc_helper = RpcHelper(rpc_settings=settings.rpc)
         self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
+        self._old_anchor_rpc_helper = RpcHelper(rpc_settings=settings.old_anchor_chain_rpc)
 
         self.protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
@@ -393,19 +395,77 @@ class GenericAsyncWorker:
             ),
         )
 
+        self.protocol_state_old_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            address=Web3.to_checksum_address(
+                self.protocol_state_old_contract_address,
+            ),
+            abi=read_json_file(
+                settings.protocol_state_old.abi,
+                self.logger,
+            ),
+        )
+
         self._anchor_chain_id = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.chain_id
+        self._old_anchor_chain_id = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.chain_id
         self._keccak_hash = lambda x: sha3.keccak_256(x).digest()
         self._domain_separator = make_domain(
             name='PowerloomProtocolContract', version='0.1', chainId=self._anchor_chain_id,
             verifyingContract=self.protocol_state_contract_address,
+        )
+        self._old_domain_separator = make_domain(
+            name='PowerloomProtocolContract', version='0.1', chainId=self._old_anchor_chain_id,
+            verifyingContract=self.protocol_state_old_contract_address,
         )
         self._private_key = settings.signer_private_key
         if self._private_key.startswith('0x'):
             self._private_key = self._private_key[2:]
         self._identity_private_key = PrivateKey.from_hex(settings.signer_private_key)
 
+    async def _get_domain_separator(self, current_epoch_id: int):
+        """
+        Get the domain separator for the protocol state contract.
+
+        Args:
+            current_epoch_id (int): The current epoch ID
+
+        Returns:
+            bytes: The domain separator
+        """
+        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+            return self._domain_separator
+        else:
+            return self._old_domain_separator
+        
+    async def _get_current_block(self, current_epoch_id: int):
+        """
+        Get the current block for the protocol state contract.
+
+        Args:
+            current_epoch_id (int): The current epoch ID
+
+        Returns:
+            int: The current block number
+        """
+        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+            return await self._anchor_rpc_helper.eth_get_block()
+        else:
+            return await self._old_anchor_rpc_helper.eth_get_block()
+        
+    async def _get_data_market_address(self, current_epoch_id: int):
+        """
+        Get the data market address based on the current epoch ID.
+
+        Returns:
+            str: The data market address
+        """
+        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+            return settings.data_market
+        else:
+            return settings.old_data_market
+
     async def generate_signature(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None):
-        current_block = await self._anchor_rpc_helper.eth_get_block()
+        
+        current_block = await self._get_current_block(epoch_id)
         current_block_number = int(current_block['number'], 16)
         current_block_hash = current_block['hash']
         deadline = current_block_number + settings.protocol_state.deadline_buffer
@@ -418,7 +478,7 @@ class GenericAsyncWorker:
             projectId=project_id,
         )
 
-        signable_bytes = request.signable_bytes(self._domain_separator)
+        signable_bytes = request.signable_bytes(await self._get_domain_separator(epoch_id))
         if not private_key:
             signature = self._identity_private_key.sign_recoverable(signable_bytes, hasher=self._keccak_hash)
         else:
@@ -477,10 +537,10 @@ class GenericAsyncWorker:
     async def _init_protocol_meta(self):
         # TODO: combine these into a single call
         try:
-            source_block_time = await self._anchor_rpc_helper.web3_call(
+            source_block_time = await self._old_anchor_rpc_helper.web3_call(
                 [
-                    self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
-                        Web3.to_checksum_address(settings.data_market),
+                    self.protocol_state_old_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                        Web3.to_checksum_address(settings.old_data_market),
                     ),
                 ],
             )
@@ -494,8 +554,8 @@ class GenericAsyncWorker:
             self._source_chain_block_time = source_block_time / 10 ** 4
             self.logger.debug('Set source chain block time to {}', self._source_chain_block_time)
         try:
-            epoch_size = await self._anchor_rpc_helper.web3_call(
-                [self.protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market))],
+            epoch_size = await self._old_anchor_rpc_helper.web3_call(
+                [self.protocol_state_old_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market))],
             )
         except Exception as e:
             self.logger.exception(

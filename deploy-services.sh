@@ -147,6 +147,7 @@ handle_docker_pull() {
         ./build-docker.sh
         echo "🏗️ Building docker image for snapshotter-lite-local-collector"
         cd ./snapshotter-lite-local-collector/ && chmod +x build-docker.sh && ./build-docker.sh
+        cd ../
     else
         # Execute docker compose pull
         echo "🔄 Pulling docker images"

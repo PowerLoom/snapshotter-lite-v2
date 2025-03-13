@@ -70,7 +70,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         """
         try:
             task_processor = self._project_calculation_mapping[task_type]
-
+            
             snapshots = await task_processor.compute(
                 msg_obj=msg_obj,
                 rpc_helper=self._rpc_helper,
@@ -154,9 +154,9 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
 
         if not self._submission_window:
             self._submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._anchor_rpc_helper,
-                state_contract_obj=self.protocol_state_contract,
-                data_market=settings.data_market,
+                rpc_helper=self._old_anchor_rpc_helper,
+                state_contract_obj=self.protocol_state_old_contract,
+                data_market=settings.old_data_market,
             )
 
         self.logger.debug(
