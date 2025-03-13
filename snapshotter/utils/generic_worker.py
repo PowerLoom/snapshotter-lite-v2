@@ -128,10 +128,10 @@ class GenericAsyncWorker:
         """
         self._running_callback_tasks: Dict[str, asyncio.Task] = dict()
         self.protocol_state_contract = None
-        self.old_protocol_state_contract = None
+        self.protocol_state_old_contract = None
 
         self.protocol_state_contract_address = settings.protocol_state.address
-        self.old_protocol_state_contract_address = settings.protocol_state_old.address
+        self.protocol_state_old_contract_address = settings.protocol_state_old.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
         self.status = SnapshotterStatus(projects=[])
@@ -383,6 +383,7 @@ class GenericAsyncWorker:
         """
         self._rpc_helper = RpcHelper(rpc_settings=settings.rpc)
         self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
+        self._old_anchor_rpc_helper = RpcHelper(rpc_settings=settings.old_anchor_chain_rpc)
 
         self.protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
@@ -394,9 +395,9 @@ class GenericAsyncWorker:
             ),
         )
 
-        self.old_protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+        self.protocol_state_old_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
-                self.old_protocol_state_contract_address,
+                self.protocol_state_old_contract_address,
             ),
             abi=read_json_file(
                 settings.protocol_state_old.abi,
@@ -413,7 +414,7 @@ class GenericAsyncWorker:
         )
         self._old_domain_separator = make_domain(
             name='PowerloomProtocolContract', version='0.1', chainId=self._old_anchor_chain_id,
-            verifyingContract=self.old_protocol_state_contract_address,
+            verifyingContract=self.protocol_state_old_contract_address,
         )
         self._private_key = settings.signer_private_key
         if self._private_key.startswith('0x'):
@@ -538,7 +539,7 @@ class GenericAsyncWorker:
         try:
             source_block_time = await self._old_anchor_rpc_helper.web3_call(
                 [
-                    self.old_protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                    self.protocol_state_old_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
                         Web3.to_checksum_address(settings.old_data_market),
                     ),
                 ],
@@ -554,7 +555,7 @@ class GenericAsyncWorker:
             self.logger.debug('Set source chain block time to {}', self._source_chain_block_time)
         try:
             epoch_size = await self._old_anchor_rpc_helper.web3_call(
-                [self.old_protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market))],
+                [self.protocol_state_old_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market))],
             )
         except Exception as e:
             self.logger.exception(

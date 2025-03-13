@@ -139,10 +139,11 @@ class ProcessorDistributor:
             self._old_anchor_rpc_helper = RpcHelper(
                 rpc_settings=settings.old_anchor_chain_rpc,
             )
-            protocol_abi = read_json_file(settings.old_protocol_state.abi, self._logger)
+            protocol_abi = read_json_file(settings.protocol_state_old.abi, self._logger)
+            self._logger.info('Protocol state old address: {}', settings.protocol_state_old.address)
             self._protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=to_checksum_address(
-                    settings.old_protocol_state.address,
+                    settings.protocol_state_old.address,
                 ),
                 abi=protocol_abi,
             )
@@ -171,6 +172,7 @@ class ProcessorDistributor:
                 self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.old_data_market)).call()
 
             except Exception as e:
+                self._logger.info("{} {}".format(self._protocol_state_contract, settings.old_data_market))
                 self._logger.error(
                     'Exception in querying protocol state for user task status for day {}',
                     e,
@@ -194,7 +196,7 @@ class ProcessorDistributor:
                 abi_dict = json.load(f)
             protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=Web3.to_checksum_address(
-                    settings.old_protocol_state.address,
+                    settings.protocol_state_old.address,
                 ),
                 abi=abi_dict,
             )

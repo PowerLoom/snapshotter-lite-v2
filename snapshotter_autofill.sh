@@ -140,9 +140,9 @@ sed -i'.backup' "s#ipfs-reader-key#$ipfs_api_key#" config/settings.json
 sed -i'.backup' "s#ipfs-reader-secret#$ipfs_api_secret#" config/settings.json
 
 sed -i'.backup' "s#protocol-state-contract#$PROTOCOL_STATE_CONTRACT#" config/settings.json
-sed -i'.backup' "s#protocol-state-contract-old#$PROTOCOL_STATE_CONTRACT_OLD#" config/settings.json
+sed -i'.backup' "s#old-protocol-state#$PROTOCOL_STATE_CONTRACT_OLD#" config/settings.json
 sed -i'.backup' "s#data-market-contract#$DATA_MARKET_CONTRACT#" config/settings.json
-sed -i'.backup' "s#old-data-market-contract#$OLD_DATA_MARKET_CONTRACT#" config/settings.json
+sed -i'.backup' "s#old-datamarket-contract#$OLD_DATA_MARKET_CONTRACT#" config/settings.json
 sed -i'.backup' "s#https://slack-reporting-url#$slack_reporting_url#" config/settings.json
 
 sed -i'.backup' "s#https://powerloom-reporting-url#$powerloom_reporting_url#" config/settings.json

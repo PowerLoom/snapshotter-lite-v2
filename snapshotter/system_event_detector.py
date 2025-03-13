@@ -109,7 +109,6 @@ class EventDetectorProcess(multiprocessing.Process):
         self.rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
         self.old_rpc_helper = RpcHelper(rpc_settings=settings.old_anchor_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
-        self._old_source_rpc_helper = RpcHelper(rpc_settings=settings.old_rpc)
 
         self.processor_distributor = ProcessorDistributor()
 
@@ -201,8 +200,10 @@ class EventDetectorProcess(multiprocessing.Process):
             Contract: The protocol state contract instance
         """
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
+            self._logger.info('Using new RPC for protocol state contract')
             return self.contract
         else:
+            self._logger.info('Using old RPC for protocol state contract')
             return self.old_contract
 
     async def _init_check_and_report(self):
