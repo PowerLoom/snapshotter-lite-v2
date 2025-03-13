@@ -20,4 +20,3 @@ shared-volume
 config
 config-*/
 logs-*/
-powerloom_rewards_staking/restake.sh
