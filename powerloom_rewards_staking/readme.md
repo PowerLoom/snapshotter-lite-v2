@@ -1,6 +1,6 @@
 # Powerloom Node Staking Rewards Claim and Restake
 
-This Python script interacts with the Ethereum blockchain to claim staking rewards and restake them using the Powerloom network smart contracts. It automates the following tasks:
+This Python script interacts with the Powerloom blockchain to claim staking rewards and restake them using the Powerloom smart contracts. It automates the following tasks:
 
 1. **Claiming rewards** from the staking contract.
 2. **Claiming node rewards** from the Powerloom node contract.
@@ -17,8 +17,8 @@ This Python script interacts with the Ethereum blockchain to claim staking rewar
 
 1. Clone this repository:
    ```sh
-   git clone https://github.com/powerloom_rewards_staking.git
-   cd powerloom_rewards_staking
+   git clone https://github.com/halfdoctor/snapshotter-lite-v2.git
+   cd snapshotter-lite-v2/powerloom_rewards_staking
    ```
 2. Create a virtual environment and activate it:
    ```sh
@@ -32,7 +32,7 @@ This Python script interacts with the Ethereum blockchain to claim staking rewar
    ```
 4. Set up the `.env` file:
    ```sh
-   cp .env.example .env
+   cp env.example .env
    ```
    Then update the `.env` file with:
    ```sh
@@ -44,7 +44,7 @@ This Python script interacts with the Ethereum blockchain to claim staking rewar
 
 Run the script with:
 ```sh
-python test.py
+python claimrestake.py
 ```
 
 ## How It Works
@@ -95,4 +95,3 @@ This project is licensed under the MIT License.
 ---
 
 **Note:** Use this script at your own risk. Always verify contract interactions before executing transactions on the blockchain.
-
