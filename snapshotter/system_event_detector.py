@@ -90,6 +90,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
         self._initialized = False
         self._switch_over_completed = False
+        self._epoch_detected_after_switch_over = False
 
     async def init(self):
         """
@@ -305,6 +306,10 @@ class EventDetectorProcess(multiprocessing.Process):
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
+                if contract == self.contract and not self._epoch_detected_after_switch_over:
+                    self._logger.info("Epoch detected after switch over, skipping EpochReleased event")
+                    self._epoch_detected_after_switch_over = True
+
                 data_market_address = await self._get_data_market_address()
                 self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {data_market_address}")
                 
@@ -405,6 +410,10 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during file operations and notifications
         """
         try:
+            if self._switch_over_completed and not self._epoch_detected_after_switch_over:
+                self._logger.info("Switch over completed, skipping last submission check until first epoch is detected!")
+                self.last_status_check_time = int(time.time())
+                return
 
             if self.failure_count >= 3:
                 self._logger.error('Too many failures, exiting...')
