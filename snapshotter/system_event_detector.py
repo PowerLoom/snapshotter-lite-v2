@@ -87,10 +87,8 @@ class EventDetectorProcess(multiprocessing.Process):
         self.failure_count = 0
         self.last_status_check_time = int(time.time())
         self.latest_epoch_id = - 1
-
-        self._initialized = False
         self._switch_over_completed = False
-        self._epoch_detected_after_switch_over = False
+        self._initialized = False
 
     async def init(self):
         """
@@ -185,7 +183,7 @@ class EventDetectorProcess(multiprocessing.Process):
         current_epoch = self.old_contract.functions.currentEpoch(settings.old_data_market).call()
         self._logger.info('Current epoch: {}', current_epoch)
 
-        self.latest_epoch_id = current_epoch[2]
+        self.latest_epoch_id = min(current_epoch[2], settings.switch_rpc_at_epoch_id)
 
         await self.processor_distributor.init()
         # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
@@ -207,15 +205,13 @@ class EventDetectorProcess(multiprocessing.Process):
         """
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             self._logger.info('Using new RPC for protocol state contract')
-            if not self._switch_over_completed:
-                self._switch_over_completed = True
-
+            if current_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
                 self._last_processed_block = None
                 #  send simulation again
                 self._logger.info("Switching to new RPC, sending simulation again")
                 await self._init_check_and_report()
                 await asyncio.sleep(10)
-                
+                self._switch_over_completed = True
             return self.contract
         else:
             self._logger.info('Using old RPC for protocol state contract')
@@ -306,10 +302,6 @@ class EventDetectorProcess(multiprocessing.Process):
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
-                if contract == self.contract and not self._epoch_detected_after_switch_over:
-                    self._logger.info("Epoch detected after switch over, skipping EpochReleased event")
-                    self._epoch_detected_after_switch_over = True
-
                 data_market_address = await self._get_data_market_address()
                 self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {data_market_address}")
                 
@@ -410,8 +402,8 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during file operations and notifications
         """
         try:
-            if self._switch_over_completed and not self._epoch_detected_after_switch_over:
-                self._logger.info("Switch over completed, skipping last submission check until first epoch is detected!")
+            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id:
+                self._logger.info("skipping last submission check until first epoch is detected on the new chain!")
                 self.last_status_check_time = int(time.time())
                 return
 
