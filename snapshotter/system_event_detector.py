@@ -205,14 +205,6 @@ class EventDetectorProcess(multiprocessing.Process):
         """
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             self._logger.info('Using new RPC for protocol state contract')
-            if current_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
-                self._last_processed_block = None
-                self._logger.info('Initializing last processed block to {}', self._last_processed_block)
-                #  send simulation again
-                self._logger.info("Switching to new RPC, sending simulation again")
-                await self._init_check_and_report()
-                await asyncio.sleep(10)
-                self._switch_over_completed = True
             return self.contract
         else:
             self._logger.info('Using old RPC for protocol state contract')
@@ -506,6 +498,26 @@ class EventDetectorProcess(multiprocessing.Process):
         else:
             return settings.old_data_market
 
+    async def _get_current_block_number(self):
+        """
+        Get the current block number from the appropriate RPC helper based on latest epoch ID.
+
+        This method returns the current block number from the appropriate RPC helper based on latest epoch ID.
+        
+        """
+        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
+            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
+                self._last_processed_block = None
+                self._logger.info('Initializing last processed block to {}', self._last_processed_block)
+                #  send simulation again
+                self._logger.info("Switching to new RPC, sending simulation again")
+                await self._init_check_and_report()
+                await asyncio.sleep(10)
+                self._switch_over_completed = True
+            return await self.rpc_helper.get_current_block_number()
+        else:
+            return await self.old_rpc_helper.get_current_block_number()
+
     async def _detect_events(self):
         """
         Main event detection loop that continuously monitors the blockchain for new events.
@@ -558,10 +570,7 @@ class EventDetectorProcess(multiprocessing.Process):
                         self._logger.info('Reporting service pinged successfully')
 
                 # Get current block from the appropriate RPC helper based on latest epoch
-                if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
-                    current_block = await self.rpc_helper.get_current_block_number()
-                else:
-                    current_block = await self.old_rpc_helper.get_current_block_number()
+                current_block = await self._get_current_block_number()
                 
                 self._logger.info('Current block: {}, Latest epoch ID: {}', current_block, self.latest_epoch_id)
 
