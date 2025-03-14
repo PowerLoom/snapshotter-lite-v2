@@ -180,6 +180,11 @@ class EventDetectorProcess(multiprocessing.Process):
             EVENTS_ABI,
         )
 
+        current_epoch = self.old_contract.functions.currentEpoch(settings.old_data_market).call()
+        self._logger.info('Current epoch: {}', current_epoch)
+
+        self.latest_epoch_id = current_epoch[2]
+
         await self.processor_distributor.init()
         # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
         self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
@@ -200,6 +205,13 @@ class EventDetectorProcess(multiprocessing.Process):
         """
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             self._logger.info('Using new RPC for protocol state contract')
+            if current_epoch_id == settings.switch_rpc_at_epoch_id:
+                self._last_processed_block = None
+                #  send simulation again
+                self._logger.info("Switching to new RPC, sending simulation again")
+                await self._init_check_and_report()
+                await asyncio.sleep(10)
+                
             return self.contract
         else:
             self._logger.info('Using old RPC for protocol state contract')
@@ -264,9 +276,17 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during RPC calls and event processing
         """
-
+        # Determine which contract to use based on latest epoch ID
         contract = await self._get_protocol_state_contract(self.latest_epoch_id)
-        events_log = await self.rpc_helper.get_events_logs(
+        
+        # Get the appropriate RPC helper based on the contract
+        rpc_helper = self.rpc_helper if contract == self.contract else self.old_rpc_helper
+        
+        # Log the contract address being used for debugging
+        self._logger.info('Using contract address: {} for event detection', contract.address)
+        
+        # Fetch events from the blockchain
+        events_log = await rpc_helper.get_events_logs(
             **{
                 'contract_address': contract.address,
                 'to_block': to_block,
@@ -275,12 +295,18 @@ class EventDetectorProcess(multiprocessing.Process):
                 'event_abi': self.event_abi,
             },
         )
-        self._logger.info('Events: {}', events_log)
+        
+        self._logger.info('Found {} events in blocks {} to {}', len(events_log), from_block, to_block)
+        self._logger.debug('Raw events: {}', events_log)
+        
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
-                self._logger.info(f"EpochReleased: {log.args.dataMarketAddress}!")
-                if log.args.dataMarketAddress == await self._get_data_market_address():
+                data_market_address = await self._get_data_market_address()
+                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {data_market_address}")
+                
+                if log.args.dataMarketAddress.lower() == data_market_address.lower():
+                    self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
                     event = EpochReleasedEvent(
                         begin=log.args.begin,
                         end=log.args.end,
@@ -289,23 +315,32 @@ class EventDetectorProcess(multiprocessing.Process):
                     )
                     self.latest_epoch_id = max(self.latest_epoch_id, log.args.epochId)
                     events.append((log.event, event))
+                else:
+                    self._logger.info(f"Skipping EpochReleased event for different data market: {log.args.dataMarketAddress}")
 
             elif log.event == 'DayStartedEvent':
+                self._logger.info(f"DayStartedEvent found: Day ID {log.args.dayId}")
                 event = DayStartedEvent(
                     dayId=log.args.dayId,
                     timestamp=log.args.timestamp,
                 )
                 events.append((log.event, event))
+                
             elif log.event == 'DailyTaskCompletedEvent':
-                if log.args.snapshotterAddress == to_checksum_address(settings.instance_id) and\
-                        log.args.slotId == settings.slot_id:
+                snapshotter_address = to_checksum_address(settings.instance_id)
+                self._logger.info(f"DailyTaskCompletedEvent found: Snapshotter {log.args.snapshotterAddress}, Slot {log.args.slotId}")
+                
+                if log.args.snapshotterAddress == snapshotter_address and log.args.slotId == settings.slot_id:
+                    self._logger.info(f"DailyTaskCompletedEvent matched for our snapshotter and slot! Day ID: {log.args.dayId}")
                     event = DailyTaskCompletedEvent(
                         dayId=log.args.dayId,
                         timestamp=log.args.timestamp,
                     )
                     events.append((log.event, event))
+                else:
+                    self._logger.info(f"Skipping DailyTaskCompletedEvent for different snapshotter/slot")
 
-        self._logger.info('Events: {}', events)
+        self._logger.info('Filtered events to process: {}', events)
         return events
 
     def _generic_exit_handler(self, signum, sigframe):
@@ -517,8 +552,13 @@ class EventDetectorProcess(multiprocessing.Process):
                     else:
                         self._logger.info('Reporting service pinged successfully')
 
-                current_block = await self.rpc_helper.get_current_block_number()
-                self._logger.info('Current block: {}', current_block)
+                # Get current block from the appropriate RPC helper based on latest epoch
+                if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
+                    current_block = await self.rpc_helper.get_current_block_number()
+                else:
+                    current_block = await self.old_rpc_helper.get_current_block_number()
+                
+                self._logger.info('Current block: {}, Latest epoch ID: {}', current_block, self.latest_epoch_id)
 
             except Exception as e:
                 self._logger.opt(exception=True).error(
@@ -667,6 +707,7 @@ class EventDetectorProcess(multiprocessing.Process):
         self.ev_loop = asyncio.get_event_loop()
 
         try:
+            self._logger.info("Starting event detection loop")
             self.ev_loop.run_until_complete(
                 self._detect_events(),
             )

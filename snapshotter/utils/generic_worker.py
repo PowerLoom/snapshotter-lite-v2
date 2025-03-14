@@ -431,7 +431,7 @@ class GenericAsyncWorker:
         Returns:
             bytes: The domain separator
         """
-        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return self._domain_separator
         else:
             return self._old_domain_separator
@@ -446,7 +446,7 @@ class GenericAsyncWorker:
         Returns:
             int: The current block number
         """
-        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return await self._anchor_rpc_helper.eth_get_block()
         else:
             return await self._old_anchor_rpc_helper.eth_get_block()
@@ -458,7 +458,7 @@ class GenericAsyncWorker:
         Returns:
             str: The data market address
         """
-        if current_epoch_id > settings.switch_rpc_at_epoch_id:
+        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return settings.data_market
         else:
             return settings.old_data_market
