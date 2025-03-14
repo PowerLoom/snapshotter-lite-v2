@@ -228,7 +228,15 @@ class GenericAsyncWorker:
         self.logger.debug(
             'Sending submission to collector...',
         )
-        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key)
+        use_new_chain = False
+        if epoch_id == 0:
+            # fetch current epoch from old protocol state contract
+            current_epoch = self.protocol_state_old_contract.functions.currentEpoch(settings.old_data_market).call()
+            self.logger.info('Checking current epoch from old protocol state contract for simulation: {}', current_epoch)
+            if current_epoch[2] >= settings.switch_rpc_at_epoch_id:
+                use_new_chain = True
+
+        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key, use_new_chain)
 
         request_msg = Request(
             slotId=request_['slotId'],
@@ -240,8 +248,8 @@ class GenericAsyncWorker:
         self.logger.debug(
             'Snapshot submission creation with request: {}', request_msg,
         )
-        data_market = await self._get_data_market_address(epoch_id)
-        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket= data_market)
+        data_market = await self._get_data_market_address(epoch_id, use_new_chain)
+        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket=data_market)
         self.logger.debug(
             'Snapshot submission created: {}', msg,
         )
@@ -395,7 +403,7 @@ class GenericAsyncWorker:
             ),
         )
 
-        self.protocol_state_old_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+        self.protocol_state_old_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
                 self.protocol_state_old_contract_address,
             ),
@@ -421,7 +429,7 @@ class GenericAsyncWorker:
             self._private_key = self._private_key[2:]
         self._identity_private_key = PrivateKey.from_hex(settings.signer_private_key)
 
-    async def _get_domain_separator(self, current_epoch_id: int):
+    async def _get_domain_separator(self, current_epoch_id: int, use_new_chain: bool = False):
         """
         Get the domain separator for the protocol state contract.
 
@@ -431,12 +439,15 @@ class GenericAsyncWorker:
         Returns:
             bytes: The domain separator
         """
+        if use_new_chain:
+            return self._domain_separator
+
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return self._domain_separator
         else:
             return self._old_domain_separator
         
-    async def _get_current_block(self, current_epoch_id: int):
+    async def _get_current_block(self, current_epoch_id: int, use_new_chain: bool = False):
         """
         Get the current block for the protocol state contract.
 
@@ -446,26 +457,32 @@ class GenericAsyncWorker:
         Returns:
             int: The current block number
         """
+        if use_new_chain:
+            return await self._anchor_rpc_helper.eth_get_block()
+
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return await self._anchor_rpc_helper.eth_get_block()
         else:
             return await self._old_anchor_rpc_helper.eth_get_block()
         
-    async def _get_data_market_address(self, current_epoch_id: int):
+    async def _get_data_market_address(self, current_epoch_id: int, use_new_chain: bool = False):
         """
         Get the data market address based on the current epoch ID.
 
         Returns:
             str: The data market address
         """
+        if use_new_chain:
+            return settings.data_market
+
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             return settings.data_market
         else:
             return settings.old_data_market
 
-    async def generate_signature(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None):
+    async def generate_signature(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None, use_new_chain: bool = False):
         
-        current_block = await self._get_current_block(epoch_id)
+        current_block = await self._get_current_block(epoch_id, use_new_chain)
         current_block_number = int(current_block['number'], 16)
         current_block_hash = current_block['hash']
         deadline = current_block_number + settings.protocol_state.deadline_buffer
@@ -478,7 +495,7 @@ class GenericAsyncWorker:
             projectId=project_id,
         )
 
-        signable_bytes = request.signable_bytes(await self._get_domain_separator(epoch_id))
+        signable_bytes = request.signable_bytes(await self._get_domain_separator(epoch_id, use_new_chain))
         if not private_key:
             signature = self._identity_private_key.sign_recoverable(signable_bytes, hasher=self._keccak_hash)
         else:
