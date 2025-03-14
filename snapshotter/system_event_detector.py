@@ -207,6 +207,7 @@ class EventDetectorProcess(multiprocessing.Process):
             self._logger.info('Using new RPC for protocol state contract')
             if current_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
                 self._last_processed_block = None
+                self._logger.info('Initializing last processed block to {}', self._last_processed_block)
                 #  send simulation again
                 self._logger.info("Switching to new RPC, sending simulation again")
                 await self._init_check_and_report()
@@ -588,7 +589,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
             if self._last_processed_block >= current_block:
                 self._logger.info(
-                    'Last processed block is up to date, sleeping for {} seconds...',
+                    'Last processed block {} is up to date, sleeping for {} seconds...',
+                    self._last_processed_block,
                     settings.rpc.polling_interval,
                 )
                 await asyncio.sleep(settings.rpc.polling_interval)
