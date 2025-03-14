@@ -89,6 +89,7 @@ class EventDetectorProcess(multiprocessing.Process):
         self.latest_epoch_id = - 1
 
         self._initialized = False
+        self._switch_over_completed = False
 
     async def init(self):
         """
@@ -205,7 +206,9 @@ class EventDetectorProcess(multiprocessing.Process):
         """
         if current_epoch_id >= settings.switch_rpc_at_epoch_id:
             self._logger.info('Using new RPC for protocol state contract')
-            if current_epoch_id == settings.switch_rpc_at_epoch_id:
+            if not self._switch_over_completed:
+                self._switch_over_completed = True
+
                 self._last_processed_block = None
                 #  send simulation again
                 self._logger.info("Switching to new RPC, sending simulation again")
