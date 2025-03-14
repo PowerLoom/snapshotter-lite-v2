@@ -80,7 +80,7 @@ class ProcessorDistributor:
         """
         if not self._rpc_helper:
             self._rpc_helper = RpcHelper()
-            self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
+            self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
 
     async def _init_httpx_client(self):
         """
@@ -137,7 +137,7 @@ class ProcessorDistributor:
                 module='ProcessDistributor',
             )
             self._old_anchor_rpc_helper = RpcHelper(
-                rpc_settings=settings.old_anchor_chain_rpc,
+                rpc_settings=settings.prost_chain_rpc,
             )
             protocol_abi = read_json_file(settings.protocol_state_old.abi, self._logger)
             self._logger.info('Protocol state old address: {}', settings.protocol_state_old.address)

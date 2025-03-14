@@ -105,8 +105,8 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during initialization steps
         """
-        self.rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
-        self.old_rpc_helper = RpcHelper(rpc_settings=settings.old_anchor_chain_rpc)
+        self.rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
+        self.old_rpc_helper = RpcHelper(rpc_settings=settings.prost_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
 
         self.processor_distributor = ProcessorDistributor()

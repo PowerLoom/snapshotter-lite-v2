@@ -94,8 +94,8 @@ fi
 # Set protocol values
 export PROTOCOL_STATE_CONTRACT="0xe752bbcbE21572d66889DFBe29439EF096802CE1"
 export PROTOCOL_STATE_CONTRACT_OLD="0x865EFcdA6A4a46177dFddff3BeDa2dbD98a892F3"
-export PROST_RPC_URL="https://rpc-prost1j-emrlsr8nrc.t.conduit.xyz/NSNPvQNa1jvttKWRVUpNtQEHCsrmV5stR"
-export OLD_PROST_RPC_URL="https://rpc-powerloom-devnet-0vzgsnoeop.t.conduit.xyz/EKcEcEDE6m3WWxPNHiAZC3a9vTQnSdgQD"
+export POWERLOOM_RPC_URL="https://rpc-prost1j-emrlsr8nrc.t.conduit.xyz"
+export PROST_RPC_URL="https://rpc-devnet.powerloom.io"
 export PROST_CHAIN_ID=11170
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
@@ -134,12 +134,36 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
-    sed -i".backup" "s#<old-prost-rpc-url>#$OLD_PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<powerloom-rpc-url>#$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
+    # Check if POWERLOOM_RPC_URL exists in the file, if not add it, otherwise update it
+    if grep -q "POWERLOOM_RPC_URL=" ".env-${FULL_NAMESPACE}"; then
+        sed -i".backup" "s#POWERLOOM_RPC_URL=.*#POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    else
+        # Check if the file ends with a newline, if not add one before appending
+        if [ -s ".env-${FULL_NAMESPACE}" ] && [ "$(tail -c 1 ".env-${FULL_NAMESPACE}" | wc -l)" -eq 0 ]; then
+            echo "" >> ".env-${FULL_NAMESPACE}"
+        fi
+        echo "POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL" >> ".env-${FULL_NAMESPACE}"
+    fi
+
+    # Delete DATA_MARKET_CONTRACT=* from env file and add DATA_MARKET_CONTRACT, and OLD_DATA_MARKET_CONTRACT
+    sed -i".backup" '/^DATA_MARKET_CONTRACT=/d' ".env-${FULL_NAMESPACE}"
+    sed -i".backup" '/^OLD_DATA_MARKET_CONTRACT=/d' ".env-${FULL_NAMESPACE}"
+    
+    # Ensure file ends with newline before appending
+    if [ -s ".env-${FULL_NAMESPACE}" ] && [ "$(tail -c 1 ".env-${FULL_NAMESPACE}" | wc -l)" -eq 0 ]; then
+        echo "" >> ".env-${FULL_NAMESPACE}"
+    fi
+    
+    # Add the contract addresses on new lines
+    echo "DATA_MARKET_CONTRACT=$DATA_MARKET_CONTRACT" >> ".env-${FULL_NAMESPACE}"
+    
+    echo "OLD_DATA_MARKET_CONTRACT=$OLD_DATA_MARKET_CONTRACT" >> ".env-${FULL_NAMESPACE}"
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else

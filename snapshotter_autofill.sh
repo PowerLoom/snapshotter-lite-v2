@@ -18,8 +18,8 @@ if [ -z "$PROST_RPC_URL" ]; then
     exit 1;
 fi
 
-if [ -z "$OLD_PROST_RPC_URL" ]; then
-    echo "OLD_PROST_RPC_URL not found, please set this in your .env!";
+if [ -z "$POWERLOOM_RPC_URL" ]; then
+    echo "POWERLOOM_RPC_URL not found, please set this in your .env!";
     exit 1;
 fi
 
@@ -108,7 +108,7 @@ fi
 
 echo "Using FULL_NAMESPACE: ${namespace}"
 echo "Using Prost RPC URL: ${PROST_RPC_URL}"
-echo "Using Old Prost RPC URL: ${OLD_PROST_RPC_URL}"
+echo "Using Powerloom RPC URL: ${POWERLOOM_RPC_URL}"
 echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
 echo "Using protocol state contract: ${PROTOCOL_STATE_CONTRACT}"
@@ -128,7 +128,7 @@ sed -i'.backup' "s#slot-id#$SLOT_ID#" config/settings.json
 sed -i'.backup' "s#https://rpc-url#$SOURCE_RPC_URL#" config/settings.json
 
 sed -i'.backup' "s#https://prost-rpc-url#$PROST_RPC_URL#" config/settings.json
-sed -i'.backup' "s#https://old-prost-rpc-url#$OLD_PROST_RPC_URL#" config/settings.json
+sed -i'.backup' "s#https://powerloom-rpc-url#$POWERLOOM_RPC_URL#" config/settings.json
 
 sed -i'.backup' "s#web3-storage-token#$web3_storage_token#" config/settings.json
 sed -i'.backup' "s#ipfs-writer-url#$ipfs_url#" config/settings.json

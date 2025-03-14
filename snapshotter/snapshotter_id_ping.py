@@ -18,7 +18,7 @@ async def main():
     print('abi file ', settings.protocol_state_old.abi)
     print('Contract address: ', settings.protocol_state_old.address)
 
-    w3 = Web3(Web3.HTTPProvider(settings.old_anchor_chain_rpc.full_nodes[0].url))
+    w3 = Web3(Web3.HTTPProvider(settings.prost_chain_rpc.full_nodes[0].url))
 
     protocol_state_contract = w3.eth.contract(address=settings.protocol_state_old.address, abi=protocol_abi)
     # get snapshotter address from private key
