@@ -305,6 +305,11 @@ class EventDetectorProcess(multiprocessing.Process):
                 
                 if log.args.dataMarketAddress.lower() == data_market_address.lower():
                     self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
+                    if log.args.epochId == settings.switch_rpc_at_epoch_id:
+                        self._logger.info("✅Switched to new RPC, sending simulation again")
+                        await self._init_check_and_report()
+                        await asyncio.sleep(10)
+
                     event = EpochReleasedEvent(
                         begin=log.args.begin,
                         end=log.args.end,
@@ -400,7 +405,7 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during file operations and notifications
         """
         try:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id:
+            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1:
                 self._logger.info("⌛ Waiting for Epoch Release on the new chain...")
                 self.last_status_check_time = int(time.time())
                 return
@@ -513,11 +518,6 @@ class EventDetectorProcess(multiprocessing.Process):
         if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
             if self.latest_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
                 self._last_processed_block = None
-                self._logger.info('Initializing last processed block to {}', self._last_processed_block)
-                #  send simulation again
-                self._logger.info("Switching to new RPC, sending simulation again")
-                await self._init_check_and_report()
-                await asyncio.sleep(10)
                 self._switch_over_completed = True
             return await self.rpc_helper.get_current_block_number()
         else:
