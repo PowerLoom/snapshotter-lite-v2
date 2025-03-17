@@ -104,12 +104,16 @@ class Settings(BaseModel):
     preloaders_config_path: str
     simulation_submission_url: str
     protocol_state: EventContract
+    protocol_state_old: EventContract
     data_market: str
+    old_data_market: str
     relayer: Relayer
     ipfs: IPFSConfig
     web3storage: Web3Storage
-    anchor_chain_rpc: RPCConfigBase
+    powerloom_chain_rpc: RPCConfigBase
+    prost_chain_rpc: RPCConfigBase
     node_version: str
+    switch_rpc_at_epoch_id: int
 
 
 # Projects related models

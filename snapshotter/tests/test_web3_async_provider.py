@@ -13,9 +13,9 @@ from snapshotter.utils.rpc import RpcHelper
 async def test_web3_async_call():
     with open('snapshotter/tests/static/abi/storage_contract.json') as f:
         contract_abi = json.load(f)
-    rpc_helper = RpcHelper(settings.anchor_chain_rpc)
+    rpc_helper = RpcHelper(settings.powerloom_chain_rpc)
     await rpc_helper.init()
-    sync_w3_client = Web3(HTTPProvider(settings.anchor_chain_rpc.full_nodes[0].url))
+    sync_w3_client = Web3(HTTPProvider(settings.powerloom_chain_rpc.full_nodes[0].url))
     contract_obj = sync_w3_client.eth.contract(
         address=to_checksum_address('0x31b554545279DBB438FC66c55A449263a6b56dB5'),
         abi=contract_abi,

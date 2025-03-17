@@ -9,7 +9,6 @@ handle_exit() {
     
     echo "Container exited with code $EXIT_CODE. Restarting in $ACTUAL_DELAY seconds..."
     sleep $ACTUAL_DELAY
-    exec "$0" "$@"  # Restart the script
 }
 
 # Always run bootstrap
@@ -44,7 +43,6 @@ poetry run python -m snapshotter.snapshotter_id_ping
 ret_status=$?
 
 if [ $ret_status -ne 0 ]; then
-    echo "Snapshotter identity check failed on protocol smart contract"
     exit 1
 fi
 
