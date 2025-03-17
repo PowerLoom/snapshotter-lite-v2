@@ -278,7 +278,7 @@ class EventDetectorProcess(multiprocessing.Process):
 
         if contract != self.contract:
             if self.latest_epoch_id != -1 and settings.switch_rpc_at_epoch_id - self.latest_epoch_id > 1:
-                self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id)
+                self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id - 1)
         
         # Log the contract address being used for debugging
         self._logger.info('Using contract address: {} for event detection', contract.address)
@@ -518,6 +518,7 @@ class EventDetectorProcess(multiprocessing.Process):
         if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
             if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1 and not self._switch_over_completed:
                 self._last_processed_block = None
+                self._logger.info("✅ Switched to new chain, will wait for Epoch release now!")
                 self._switch_over_completed = True
             return await self.rpc_helper.get_current_block_number()
         else:
