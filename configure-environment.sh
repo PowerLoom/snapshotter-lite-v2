@@ -59,6 +59,7 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+export DATA_MARKET_CONTRACT_NUMBER="2"
 # Data market selection
 if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
     DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
