@@ -306,7 +306,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 if log.args.dataMarketAddress.lower() == data_market_address.lower():
                     self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
                     if log.args.epochId == settings.switch_rpc_at_epoch_id:
-                        self._logger.info("✅Switched to new RPC, sending simulation again")
+                        self._logger.info("✅Switched to new chain, sending simulation again!")
                         await self._init_check_and_report()
                         await asyncio.sleep(10)
 
