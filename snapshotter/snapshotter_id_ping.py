@@ -20,7 +20,7 @@ async def main():
 
     w3 = Web3(Web3.HTTPProvider(settings.prost_chain_rpc.full_nodes[0].url))
     try:
-        block_number = await w3.eth.get_block_number()
+        block_number = w3.eth.get_block_number()
         print(f"✅ Successfully fetched the latest block number {block_number}. Your ISP is supported!")
     except Exception as e:
         print("❌ Failed to fetch the latest block number. Your ISP/VPS region is not supported ⛔️")

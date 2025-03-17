@@ -269,11 +269,16 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during RPC calls and event processing
         """
+
         # Determine which contract to use based on latest epoch ID
         contract = await self._get_protocol_state_contract(self.latest_epoch_id)
         
         # Get the appropriate RPC helper based on the contract
         rpc_helper = self.rpc_helper if contract == self.contract else self.old_rpc_helper
+
+        if contract != self.contract:
+            if self.latest_epoch_id != -1 and self.latest_epoch_id - settings.switch_rpc_at_epoch_id < 0:
+                self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id)
         
         # Log the contract address being used for debugging
         self._logger.info('Using contract address: {} for event detection', contract.address)
@@ -396,7 +401,7 @@ class EventDetectorProcess(multiprocessing.Process):
         """
         try:
             if self.latest_epoch_id == settings.switch_rpc_at_epoch_id:
-                self._logger.info("skipping last submission check until first epoch is detected on the new chain!")
+                self._logger.info("⌛ Waiting for Epoch Release on the new chain...")
                 self.last_status_check_time = int(time.time())
                 return
 
