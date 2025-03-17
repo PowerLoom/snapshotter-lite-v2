@@ -233,7 +233,7 @@ class GenericAsyncWorker:
             # fetch current epoch from old protocol state contract
             current_epoch = self.protocol_state_old_contract.functions.currentEpoch(settings.old_data_market).call()
             self.logger.info('Checking current epoch from old protocol state contract for simulation: {}', current_epoch)
-            if current_epoch[2] >= settings.switch_rpc_at_epoch_id:
+            if current_epoch[2] >= settings.switch_rpc_at_epoch_id - 1:
                 use_new_chain = True
 
         request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key, use_new_chain)

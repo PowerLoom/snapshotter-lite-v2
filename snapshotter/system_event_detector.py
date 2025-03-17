@@ -183,7 +183,7 @@ class EventDetectorProcess(multiprocessing.Process):
         current_epoch = self.old_contract.functions.currentEpoch(settings.old_data_market).call()
         self._logger.info('Current epoch: {}', current_epoch)
 
-        self.latest_epoch_id = min(current_epoch[2], settings.switch_rpc_at_epoch_id)
+        self.latest_epoch_id = min(current_epoch[2], settings.switch_rpc_at_epoch_id - 1)
 
         await self.processor_distributor.init()
         # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
@@ -203,7 +203,7 @@ class EventDetectorProcess(multiprocessing.Process):
         Returns:
             Contract: The protocol state contract instance
         """
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
+        if current_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
             self._logger.info('Using new RPC for protocol state contract')
             return self.contract
         else:
@@ -277,7 +277,7 @@ class EventDetectorProcess(multiprocessing.Process):
         rpc_helper = self.rpc_helper if contract == self.contract else self.old_rpc_helper
 
         if contract != self.contract:
-            if self.latest_epoch_id != -1 and self.latest_epoch_id - settings.switch_rpc_at_epoch_id < 0:
+            if self.latest_epoch_id != -1 and settings.switch_rpc_at_epoch_id - self.latest_epoch_id > 1:
                 self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id)
         
         # Log the contract address being used for debugging
@@ -503,7 +503,7 @@ class EventDetectorProcess(multiprocessing.Process):
         If the current epoch ID is greater than the switch RPC at epoch ID, it returns the data market address from the new RPC.
         Otherwise, it returns the data market address from the old RPC.
         """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
+        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
             return settings.data_market
         else:
             return settings.old_data_market
@@ -515,8 +515,8 @@ class EventDetectorProcess(multiprocessing.Process):
         This method returns the current block number from the appropriate RPC helper based on latest epoch ID.
         
         """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id and not self._switch_over_completed:
+        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
+            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1 and not self._switch_over_completed:
                 self._last_processed_block = None
                 self._switch_over_completed = True
             return await self.rpc_helper.get_current_block_number()
