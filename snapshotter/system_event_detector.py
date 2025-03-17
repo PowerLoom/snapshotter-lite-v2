@@ -295,7 +295,6 @@ class EventDetectorProcess(multiprocessing.Process):
         )
         
         self._logger.info('Found {} events in blocks {} to {}', len(events_log), from_block, to_block)
-        self._logger.debug('Raw events: {}', events_log)
         
         events = []
         for log in events_log:
