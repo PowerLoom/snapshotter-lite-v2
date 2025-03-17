@@ -96,7 +96,6 @@ export PROTOCOL_STATE_CONTRACT="0xe752bbcbE21572d66889DFBe29439EF096802CE1"
 export PROTOCOL_STATE_CONTRACT_OLD="0x865EFcdA6A4a46177dFddff3BeDa2dbD98a892F3"
 export POWERLOOM_RPC_URL="https://rpc-prost1j-emrlsr8nrc.t.conduit.xyz"
 export PROST_RPC_URL="https://rpc-devnet.powerloom.io"
-export PROST_CHAIN_ID=11170
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
@@ -135,7 +134,6 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<powerloom-rpc-url>#$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
-    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
