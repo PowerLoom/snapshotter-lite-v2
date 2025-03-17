@@ -19,6 +19,12 @@ async def main():
     print('Contract address: ', settings.protocol_state_old.address)
 
     w3 = Web3(Web3.HTTPProvider(settings.prost_chain_rpc.full_nodes[0].url))
+    try:
+        block_number = await w3.eth.get_block_number()
+        print(f"✅ Successfully fetched the latest block number {block_number}. Your ISP is supported!")
+    except Exception as e:
+        print("❌ Failed to fetch the latest block number. Your ISP/VPS region is not supported ⛔️")
+        sys.exit(1)
 
     protocol_state_contract = w3.eth.contract(address=settings.protocol_state_old.address, abi=protocol_abi)
     # get snapshotter address from private key
@@ -30,9 +36,9 @@ async def main():
     ).call()
 
     if allowed_snapshotters is True or allowed_snapshotters:
-        print('Snapshotter identity found in allowed snapshotters...')
+        print('✅ Snapshotter identity found in allowed snapshotters...')
     else:
-        print('Snapshotter identity not found in allowed snapshotters...')
+        print('❌ Snapshotter identity check failed on protocol smart contract')
         sys.exit(1)
 
     # Check slot ID mapping
