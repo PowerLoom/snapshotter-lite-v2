@@ -76,17 +76,6 @@ class ProcessorDistributor:
             self._rpc_helper = RpcHelper()
             self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
 
-    async def _init_httpx_client(self):
-        """
-        Initializes the HTTPX clients with the specified settings.
-        """
-        
-        transport_limits = Limits(
-            max_connections=100,
-            max_keepalive_connections=50,
-            keepalive_expiry=None,
-        )
-
 
     async def _init_preloader_compute_mapping(self):
         """
@@ -160,7 +149,6 @@ class ProcessorDistributor:
                     e,
                 )
 
-            await self._init_httpx_client()
             await self._init_rpc_helper()
             await self._load_projects_metadata()
             await self._init_preloader_compute_mapping()
