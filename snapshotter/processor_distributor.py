@@ -33,7 +33,6 @@ from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
 
@@ -93,12 +92,6 @@ class ProcessorDistributor:
             keepalive_expiry=None,
         )
 
-        self._reporting_httpx_client = AsyncClient(
-            base_url=settings.reporting.service_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=transport_limits),
-        )
         self._telegram_httpx_client = AsyncClient(
             base_url=settings.reporting.telegram_url,
             timeout=Timeout(timeout=5.0),
@@ -238,12 +231,8 @@ class ProcessorDistributor:
         preloader_results_dict = {}
         failed_preloaders = set()
 
-        # Determine which preloaders are needed across all projects
-        project_required_preloaders = set()
-        for project_config in self._project_type_config_mapping.values():
-            project_required_preloaders.update(project_config.preload_tasks)
-
-        for preloader_task in project_required_preloaders:
+        # Use the pre-computed set of all preload tasks
+        for preloader_task in self._all_preload_tasks:
             preloader_class = self._preloader_compute_mapping[preloader_task]
             preloader_obj = preloader_class()
             preloader_compute_kwargs = dict(
@@ -317,21 +306,10 @@ class ProcessorDistributor:
             self.snapshot_worker.status.totalMissedSubmissions += 1
             self.snapshot_worker.status.consecutiveMissedSubmissions += 1
 
-            await send_telegram_notification_async(
-                client=self._telegram_httpx_client,
-                message=TelegramSnapshotterReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=SnapshotterIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                        epochId=str(epoch.epochId),
-                        timeOfReporting=str(time.time()),
-                        projectID=project_type,
-                        extra=json.dumps({'issueDetails': f'Failed preloaders: {failed_preloaders}'}),
-                    ),
-                    status=self.snapshot_worker.status,
-                ),
+            await self._send_failure_notifications(
+                error=Exception(f'Failed preloaders: {failed_preloaders}'),
+                epoch_id=epoch.epochId,
+                project_id="Preloaders"
             )
 
     async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
@@ -418,19 +396,7 @@ class ProcessorDistributor:
             status=self.snapshot_worker.status,
         )
 
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
-
-        await asyncio.gather(*tasks)
+        await send_telegram_notification_async(
+            client=self._telegram_httpx_client,
+            message=telegram_message,
+        )
