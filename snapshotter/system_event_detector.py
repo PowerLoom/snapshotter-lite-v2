@@ -430,22 +430,6 @@ class EventDetectorProcess(multiprocessing.Process):
 
         self.last_status_check_time = current_time
 
-    async def _get_current_block_number(self):
-        """
-        Get the current block number from the appropriate RPC helper based on latest epoch ID.
-
-        This method returns the current block number from the appropriate RPC helper based on latest epoch ID.
-        
-        """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1 and not self._switch_over_completed:
-                self._last_processed_block = None
-                self._logger.info("✅ Switched to new chain, will wait for Epoch release now!")
-                self._switch_over_completed = True
-            return await self.rpc_helper.get_current_block_number()
-        else:
-            return await self.old_rpc_helper.get_current_block_number()
-
     async def _detect_events(self):
         """
         Main event detection loop that continuously monitors the blockchain for new events.
@@ -500,7 +484,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 # Get current block from the appropriate RPC helper based on latest epoch
                 current_block = await self.rpc_helper.get_current_block_number()
                 
-                self._logger.info('Current block: {}, Latest epoch ID: {}', current_block, self.latest_epoch_id)
+                self._logger.info('Current block: {}', current_block)
 
             except Exception as e:
                 self._logger.opt(exception=True).error(

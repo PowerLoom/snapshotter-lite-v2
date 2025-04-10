@@ -137,7 +137,7 @@ class ProcessorDistributor:
                 module='ProcessDistributor',
             )
             self._anchor_rpc_helper = RpcHelper(
-                rpc_settings=settings.prost_chain_rpc,
+                rpc_settings=settings.powerloom_chain_rpc,
             )
             protocol_abi = read_json_file(settings.protocol_state.abi, self._logger)
             self._logger.info('Protocol state address: {}', settings.protocol_state.address)
