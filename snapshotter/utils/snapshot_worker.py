@@ -301,22 +301,11 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                     status=self.status,
                 )
 
-                tasks = [
-                    asyncio.create_task(
-                        send_failure_notifications_async(
-                            client=self._reporting_httpx_client,
-                            message=notification_message,
-                        ),
-                    ),
-                    asyncio.create_task(
-                        send_telegram_notification_async(
-                            client=self._telegram_httpx_client,
-                            message=telegram_message,
-                        ),
-                    ),
-                ]
+                await send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
 
-                await asyncio.gather(*tasks)
                 self.last_notification_time = int(time.time())
 
             except Exception as e:
