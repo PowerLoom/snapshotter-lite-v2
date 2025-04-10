@@ -86,8 +86,6 @@ class EventDetectorProcess(multiprocessing.Process):
         self.last_notification_time = 0
         self.failure_count = 0
         self.last_status_check_time = int(time.time())
-        self.latest_epoch_id = - 1
-        self._switch_over_completed = False
         self._initialized = False
 
     async def init(self):
@@ -106,7 +104,6 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during initialization steps
         """
         self.rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
-        self.old_rpc_helper = RpcHelper(rpc_settings=settings.prost_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
 
         self.processor_distributor = ProcessorDistributor()
@@ -116,11 +113,6 @@ class EventDetectorProcess(multiprocessing.Process):
         # Load contract ABI from settings
         self.contract_abi = read_json_file(
             settings.protocol_state.abi,
-            self._logger,
-        )
-
-        self.old_contract_abi = read_json_file(
-            settings.protocol_state_old.abi,
             self._logger,
         )
 
@@ -151,14 +143,6 @@ class EventDetectorProcess(multiprocessing.Process):
             abi=self.contract_abi,
         )
 
-        self.old_contract_address = settings.protocol_state_old.address
-        self.old_contract = self.old_rpc_helper.get_current_node()['web3_client'].eth.contract(
-            address=Web3.to_checksum_address(
-                self.old_contract_address,
-            ),
-            abi=self.old_contract_abi,
-        )
-
         with open('last_successful_submission.txt', 'w') as f:
             f.write(str(int(time.time())))
 
@@ -180,35 +164,11 @@ class EventDetectorProcess(multiprocessing.Process):
             EVENTS_ABI,
         )
 
-        current_epoch = self.old_contract.functions.currentEpoch(settings.old_data_market).call()
-        self._logger.info('Current epoch: {}', current_epoch)
-
-        self.latest_epoch_id = min(current_epoch[2], settings.switch_rpc_at_epoch_id - 1)
-
         await self.processor_distributor.init()
         # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
         self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
         await self._init_check_and_report()
         await asyncio.sleep(60)
-
-    async def _get_protocol_state_contract(self, current_epoch_id: int):
-        """
-        Get the protocol state contract instance.
-
-        This method returns the protocol state contract instance based on the current node.
-
-        Args:
-            current_epoch_id (int): The current epoch ID
-
-        Returns:
-            Contract: The protocol state contract instance
-        """
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            self._logger.info('Using new RPC for protocol state contract')
-            return self.contract
-        else:
-            self._logger.info('Using old RPC for protocol state contract')
-            return self.old_contract
 
     async def _init_check_and_report(self):
         """
@@ -269,24 +229,10 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during RPC calls and event processing
         """
-
-        # Determine which contract to use based on latest epoch ID
-        contract = await self._get_protocol_state_contract(self.latest_epoch_id)
-        
-        # Get the appropriate RPC helper based on the contract
-        rpc_helper = self.rpc_helper if contract == self.contract else self.old_rpc_helper
-
-        if contract != self.contract:
-            if self.latest_epoch_id != -1 and settings.switch_rpc_at_epoch_id - self.latest_epoch_id > 1:
-                self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id - 1)
-        
-        # Log the contract address being used for debugging
-        self._logger.info('Using contract address: {} for event detection', contract.address)
-        
         # Fetch events from the blockchain
-        events_log = await rpc_helper.get_events_logs(
+        events_log = await self.rpc_helper.get_events_logs(
             **{
-                'contract_address': contract.address,
+                'contract_address': self.contract.address,
                 'to_block': to_block,
                 'from_block': from_block,
                 'topics': [self.event_sig],
@@ -299,15 +245,10 @@ class EventDetectorProcess(multiprocessing.Process):
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
-                data_market_address = await self._get_data_market_address()
-                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {data_market_address}")
+                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {settings.data_market}")
                 
-                if log.args.dataMarketAddress.lower() == data_market_address.lower():
+                if log.args.dataMarketAddress.lower() == settings.data_market.lower():
                     self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
-                    if log.args.epochId == settings.switch_rpc_at_epoch_id:
-                        self._logger.info("✅Switched to new chain, sending simulation again!")
-                        await self._init_check_and_report()
-                        await asyncio.sleep(10)
 
                     event = EpochReleasedEvent(
                         begin=log.args.begin,
@@ -315,7 +256,6 @@ class EventDetectorProcess(multiprocessing.Process):
                         epochId=log.args.epochId,
                         timestamp=log.args.timestamp,
                     )
-                    self.latest_epoch_id = max(self.latest_epoch_id, log.args.epochId)
                     events.append((log.event, event))
                 else:
                     self._logger.info(f"Skipping EpochReleased event for different data market: {log.args.dataMarketAddress}")
@@ -404,10 +344,6 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during file operations and notifications
         """
         try:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1:
-                self._logger.info("⌛ Waiting for Epoch Release on the new chain...")
-                self.last_status_check_time = int(time.time())
-                return
 
             if self.failure_count >= 3:
                 self._logger.error('Too many failures, exiting...')
@@ -493,19 +429,6 @@ class EventDetectorProcess(multiprocessing.Process):
             self.last_status_check_time = int(time.time())
 
         self.last_status_check_time = current_time
-    
-    async def _get_data_market_address(self):
-        """
-        Get the data market address based on the current epoch ID.
-
-        This method returns the data market address based on the current epoch ID.
-        If the current epoch ID is greater than the switch RPC at epoch ID, it returns the data market address from the new RPC.
-        Otherwise, it returns the data market address from the old RPC.
-        """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            return settings.data_market
-        else:
-            return settings.old_data_market
 
     async def _get_current_block_number(self):
         """
@@ -558,7 +481,7 @@ class EventDetectorProcess(multiprocessing.Process):
                             json=SnapshotterPing(
                                 instanceID=settings.instance_id,
                                 slotId=settings.slot_id,
-                                dataMarketAddress=await self._get_data_market_address(),
+                                dataMarketAddress=settings.data_market,
                                 namespace=settings.namespace,
                                 nodeVersion=settings.node_version,
                             ).dict(),
@@ -575,7 +498,7 @@ class EventDetectorProcess(multiprocessing.Process):
                         self._logger.info('Reporting service pinged successfully')
 
                 # Get current block from the appropriate RPC helper based on latest epoch
-                current_block = await self._get_current_block_number()
+                current_block = await self.rpc_helper.get_current_block_number()
                 
                 self._logger.info('Current block: {}, Latest epoch ID: {}', current_block, self.latest_epoch_id)
 
