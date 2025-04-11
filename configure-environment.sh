@@ -132,6 +132,18 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
+
+    # Check if POWERLOOM_RPC_URL exists in the file, if not add it, otherwise update it
+    if grep -q "POWERLOOM_RPC_URL=" ".env-${FULL_NAMESPACE}"; then
+        sed -i".backup" "s#POWERLOOM_RPC_URL=.*#POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    else
+        # Check if the file ends with a newline, if not add one before appending
+        if [ -s ".env-${FULL_NAMESPACE}" ] && [ "$(tail -c 1 ".env-${FULL_NAMESPACE}" | wc -l)" -eq 0 ]; then
+            echo "" >> ".env-${FULL_NAMESPACE}"
+        fi
+        echo "POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL" >> ".env-${FULL_NAMESPACE}"
+    fi
+
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
