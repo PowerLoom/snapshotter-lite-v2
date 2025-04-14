@@ -133,6 +133,12 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
 
+    # override DATA_MARKET_CONTRACT if DATA_MARKET_CONTRACT_NUMBER is set to 2
+    if [ "$DATA_MARKET_CONTRACT_NUMBER" = "2" ]; then
+        echo "🔔 Overriding DATA_MARKET_CONTRACT to use Uniswap V2 contract address"
+        sed -i".backup" "s#DATA_MARKET_CONTRACT=.*#DATA_MARKET_CONTRACT=0x21cb57C1f2352ad215a463DD867b838749CD3b8f#" ".env-${FULL_NAMESPACE}"
+    fi
+
     # Check if POWERLOOM_RPC_URL exists in the file, if not add it, otherwise update it
     if grep -q "POWERLOOM_RPC_URL=" ".env-${FULL_NAMESPACE}"; then
         sed -i".backup" "s#POWERLOOM_RPC_URL=.*#POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
