@@ -73,21 +73,6 @@ class ExternalAPIAuth(BaseModel):
     apiSecret: str = ''
 
 
-class Web3Storage(BaseModel):
-    upload_snapshots: bool
-    url: str
-    upload_url_suffix: str
-    api_token: str
-    timeout: int
-    max_idle_conns: int
-    idle_conn_timeout: int
-
-
-class Relayer(BaseModel):
-    host: str
-    endpoint: str
-
-
 class Settings(BaseModel):
     namespace: str
     core_api: CoreAPI
@@ -101,12 +86,9 @@ class Settings(BaseModel):
     logs: Logs
     projects_config_path: str
     preloaders_config_path: str
-    simulation_submission_url: str
     protocol_state: EventContract
     data_market: str
-    relayer: Relayer
     ipfs: IPFSConfig
-    web3storage: Web3Storage
     powerloom_chain_rpc: RPCConfigBase
     node_version: str
 
