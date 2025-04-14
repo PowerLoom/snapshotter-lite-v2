@@ -58,10 +58,6 @@ if [ "$TELEGRAM_NOTIFICATION_COOLDOWN" ]; then
     echo "Found TELEGRAM_NOTIFICATION_COOLDOWN ${TELEGRAM_NOTIFICATION_COOLDOWN}";
 fi
 
-if [ "$WEB3_STORAGE_TOKEN" ]; then
-    echo "Found WEB3_STORAGE_TOKEN ${WEB3_STORAGE_TOKEN}";
-fi
-
 if [ "$FULL_NAMESPACE" ]; then
     echo "Found FULL_NAMESPACE ${FULL_NAMESPACE}";
 else
@@ -77,7 +73,6 @@ export namespace="${FULL_NAMESPACE:-namespace_hash}"
 export ipfs_url="${IPFS_URL:-}"
 export ipfs_api_key="${IPFS_API_KEY:-}"
 export ipfs_api_secret="${IPFS_API_SECRET:-}"
-export web3_storage_token="${WEB3_STORAGE_TOKEN:-}"
 export local_collector_port="${LOCAL_COLLECTOR_PORT:-50051}"
 export telegram_reporting_url="${TELEGRAM_REPORTING_URL:-}"
 export telegram_chat_id="${TELEGRAM_CHAT_ID:-}"
@@ -95,7 +90,6 @@ echo "Using IPFS URL: ${ipfs_url}"
 echo "Using IPFS API KEY: ${ipfs_api_key}"
 echo "Using protocol state contract: ${PROTOCOL_STATE_CONTRACT}"
 echo "Using data market contract: ${DATA_MARKET_CONTRACT}"
-echo "Using web3 storage token: ${web3_storage_token}"
 echo "Using telegram reporting url: ${telegram_reporting_url}"
 echo "Using telegram chat id: ${telegram_chat_id}"
 echo "Using telegram notification cooldown: ${telegram_notification_cooldown}"
@@ -109,7 +103,6 @@ sed -i'.backup' "s#https://rpc-url#$SOURCE_RPC_URL#" config/settings.json
 
 sed -i'.backup' "s#https://powerloom-rpc-url#$POWERLOOM_RPC_URL#" config/settings.json
 
-sed -i'.backup' "s#web3-storage-token#$web3_storage_token#" config/settings.json
 sed -i'.backup' "s#ipfs-writer-url#$ipfs_url#" config/settings.json
 sed -i'.backup' "s#ipfs-writer-key#$ipfs_api_key#" config/settings.json
 sed -i'.backup' "s#ipfs-writer-secret#$ipfs_api_secret#" config/settings.json
