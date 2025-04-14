@@ -1,20 +1,33 @@
 import importlib
+import json
+import time
+import asyncio
 from typing import Optional
 
 from ipfs_client.main import AsyncIPFSClient
 from ipfs_client.main import AsyncIPFSClientSingleton
+from httpx import AsyncClient
+from httpx import AsyncHTTPTransport
+from httpx import Limits
+from httpx import Timeout
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
+from snapshotter.utils.callback_helpers import send_telegram_notification_async
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.generic_worker import GenericAsyncWorker
+from snapshotter.utils.models.data_models import SnapshotterIssue
+from snapshotter.utils.models.data_models import SnapshotterReportState
+from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
+from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 
 
 class SnapshotAsyncWorker(GenericAsyncWorker):
     _ipfs_singleton: AsyncIPFSClientSingleton
     _ipfs_writer_client: AsyncIPFSClient
     _ipfs_reader_client: AsyncIPFSClient
+    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -31,6 +44,9 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             task_type = project_config.project_type
             self._task_types.append(task_type)
         self._submission_window = 0
+        self.status = SnapshotterStatus(projects=[])
+        self.last_notification_time = 0
+        self.notification_cooldown = settings.reporting.notification_cooldown
 
     def _gen_project_id(self, task_type: str, data_source: Optional[str] = None, primary_data_source: Optional[str] = None):
         """
@@ -90,17 +106,8 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 'Exception processing callback for epoch: {}, Error: {},'
                 'sending failure notifications', msg_obj, e,
             )
+            raise
 
-            self.status.totalMissedSubmissions += 1
-            self.status.consecutiveMissedSubmissions += 1
-
-            await self._send_failure_notifications(
-                error=e,
-                epoch_id=str(msg_obj.epochId),
-                project_id=self._gen_project_id(
-                    task_type=task_type,
-                ),
-            )
         else:
 
             if not snapshots:
@@ -120,14 +127,21 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 project_id = self._gen_project_id(
                     task_type=task_type, data_source=data_source, primary_data_source=primary_data_source,
                 )
-                await self._commit_payload(
-                    task_type=task_type,
-                    _ipfs_writer_client=self._ipfs_writer_client,
-                    project_id=project_id,
-                    epoch=msg_obj,
-                    snapshot=snapshot,
-                    storage_flag=settings.web3storage.upload_snapshots,
-                )
+                
+                try:
+                    await self._commit_payload(
+                        task_type=task_type,
+                        _ipfs_writer_client=self._ipfs_writer_client,
+                        project_id=project_id,
+                        epoch=msg_obj,
+                        snapshot=snapshot
+                    )
+                except Exception as e:
+                    self.logger.opt(exception=True).error(
+                        'Exception committing snapshot payload for epoch: {}, Error: {},'
+                        'sending failure notifications', msg_obj, e,
+                    )
+                    raise
 
     async def process_task(self, msg_obj: SnapshotProcessMessage, task_type: str, preloader_results: dict):
         """
@@ -152,23 +166,38 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             )
             return
 
-        if not self._submission_window:
-            self._submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._old_anchor_rpc_helper,
-                state_contract_obj=self.protocol_state_old_contract,
-                data_market=settings.old_data_market,
+        try:
+
+            if not self._submission_window:
+                self._submission_window = await get_snapshot_submision_window(
+                    rpc_helper=self._anchor_rpc_helper,
+                    state_contract_obj=self.protocol_state_contract,
+                    data_market=settings.data_market,
+                )
+
+            self.logger.debug(
+                'Got epoch to process for {}: {}',
+                task_type, msg_obj,
             )
 
-        self.logger.debug(
-            'Got epoch to process for {}: {}',
-            task_type, msg_obj,
-        )
-
-        await self._process(
-            msg_obj=msg_obj,
-            task_type=task_type,
-            preloader_results=preloader_results,
-        )
+            await self._process(
+                msg_obj=msg_obj,
+                task_type=task_type,
+                preloader_results=preloader_results,
+            )
+        except Exception as e:
+            self.logger.error(f"Error processing SnapshotProcessMessage: {msg_obj} for task type: {task_type} - Error: {e}")
+            await self.handle_missed_snapshot(
+                error=e,
+                epoch_id=str(msg_obj.epochId),
+                project_id=self._gen_project_id(
+                    task_type=task_type,
+                ),
+            )
+        else:
+            # reset consecutive missed snapshots counter
+            self.status.consecutiveMissedSubmissions = 0
+            self.status.totalSuccessfulSubmissions += 1
 
     async def _init_project_calculation_mapping(self):
         """
@@ -204,6 +233,17 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         self._ipfs_writer_client = self._ipfs_singleton._ipfs_write_client
         self._ipfs_reader_client = self._ipfs_singleton._ipfs_read_client
 
+    async def _init_telegram_client(self):
+        """
+        Initializes the Telegram client.
+        """
+        self._telegram_httpx_client = AsyncClient(
+            base_url=settings.reporting.telegram_url,
+            timeout=Timeout(timeout=5.0),
+            follow_redirects=False,
+            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
+        )
+
     async def init_worker(self):
         """
         Initializes the worker by initializing project calculation mapping, IPFS client, and other necessary components.
@@ -211,4 +251,62 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         if not self.initialized:
             await self._init_project_calculation_mapping()
             await self._init_ipfs_client()
+            await self._init_telegram_client()
             await self.init()
+
+    async def handle_missed_snapshot(self, error: Exception, epoch_id: str, project_id: str):
+        """
+        Handles missed snapshots by sending failure notifications and updating the status.
+        """
+        self.logger.error(f"Missed snapshot for epoch: {epoch_id}, project_id: {project_id} - Error: {error}")
+        self.status.totalMissedSubmissions += 1
+        self.status.consecutiveMissedSubmissions += 1
+        await self._send_failure_notifications(error=error, epoch_id=epoch_id, project_id=project_id)
+
+    async def _send_failure_notifications(
+        self,
+        error: Exception,
+        epoch_id: str,
+        project_id: str,
+    ):
+        """
+        Sends failure notifications for missed snapshots.
+
+        Args:
+            error (Exception): The error that occurred.
+            epoch_id (str): The ID of the epoch that missed the snapshot.
+            project_id (str): The ID of the project that missed the snapshot.
+        """
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
+            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
+
+            if not self._telegram_httpx_client:
+                self.logger.error('Telegram client not initialized')
+                return
+
+            try:
+                notification_message = SnapshotterIssue(
+                    instanceID=settings.instance_id,
+                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                    projectID=project_id,
+                    epochId=str(epoch_id),
+                    timeOfReporting=str(time.time()),
+                    extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                )
+
+                telegram_message = TelegramSnapshotterReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=notification_message,
+                    status=self.status,
+                )
+
+                await send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
+
+                self.last_notification_time = int(time.time())
+
+            except Exception as e:
+                self.logger.error(f"Error sending failure notifications: {e}")

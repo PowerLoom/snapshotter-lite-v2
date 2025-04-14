@@ -15,7 +15,7 @@ import os
 import aiofiles
 from snapshotter.processor_distributor import ProcessorDistributor
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
+from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
@@ -23,14 +23,10 @@ from snapshotter.utils.models.data_models import DailyTaskCompletedEvent
 from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
 from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
-from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
-from urllib.parse import urljoin
-from snapshotter.utils.models.data_models import SnapshotterPing
 from pathlib import Path
 
 
@@ -58,8 +54,6 @@ class EventDetectorProcess(multiprocessing.Process):
         failure_count (int): Counter for consecutive failures
         last_status_check_time (int): Timestamp of last status check
         _initialized (bool): Flag indicating if process has been initialized
-        _last_reporting_service_ping (int): Timestamp of last reporting service ping
-        _last_reporting_message_sent (int): Timestamp of last reporting message
         last_notification_time (int): Timestamp of last notification sent
     """
 
@@ -80,14 +74,10 @@ class EventDetectorProcess(multiprocessing.Process):
         self._last_processed_block = None
 
         # Initialize reporting and notification related attributes
-        self._last_reporting_service_ping = 0
-        self._last_reporting_message_sent = 0
-        self.notification_cooldown = 300
+        self.notification_cooldown = settings.reporting.notification_cooldown
         self.last_notification_time = 0
         self.failure_count = 0
         self.last_status_check_time = int(time.time())
-        self.latest_epoch_id = - 1
-        self._switch_over_completed = False
         self._initialized = False
 
     async def init(self):
@@ -106,7 +96,6 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during initialization steps
         """
         self.rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
-        self.old_rpc_helper = RpcHelper(rpc_settings=settings.prost_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
 
         self.processor_distributor = ProcessorDistributor()
@@ -119,20 +108,7 @@ class EventDetectorProcess(multiprocessing.Process):
             self._logger,
         )
 
-        self.old_contract_abi = read_json_file(
-            settings.protocol_state_old.abi,
-            self._logger,
-        )
-
-        # Initialize HTTP clients for reporting and Telegram notifications
-        self._reporting_httpx_client = httpx.Client(
-            base_url=settings.reporting.service_url,
-            limits=httpx.Limits(
-                max_keepalive_connections=2,
-                max_connections=2,
-                keepalive_expiry=300,
-            ),
-        )
+        # Initialize HTTP client for Telegram notifications
         self._telegram_httpx_client = httpx.Client(
             base_url=settings.reporting.telegram_url,
             limits=httpx.Limits(
@@ -149,14 +125,6 @@ class EventDetectorProcess(multiprocessing.Process):
                 self.contract_address,
             ),
             abi=self.contract_abi,
-        )
-
-        self.old_contract_address = settings.protocol_state_old.address
-        self.old_contract = self.old_rpc_helper.get_current_node()['web3_client'].eth.contract(
-            address=Web3.to_checksum_address(
-                self.old_contract_address,
-            ),
-            abi=self.old_contract_abi,
         )
 
         with open('last_successful_submission.txt', 'w') as f:
@@ -180,35 +148,11 @@ class EventDetectorProcess(multiprocessing.Process):
             EVENTS_ABI,
         )
 
-        current_epoch = self.old_contract.functions.currentEpoch(settings.old_data_market).call()
-        self._logger.info('Current epoch: {}', current_epoch)
-
-        self.latest_epoch_id = min(current_epoch[2], settings.switch_rpc_at_epoch_id - 1)
-
         await self.processor_distributor.init()
         # TODO: introduce setting to control simulation snapshot submission if the node has been bootstrapped earlier
         self._logger.info('Initializing SystemEventDetector. Awaiting local collector initialization and bootstrapping for 60 seconds...')
         await self._init_check_and_report()
         await asyncio.sleep(60)
-
-    async def _get_protocol_state_contract(self, current_epoch_id: int):
-        """
-        Get the protocol state contract instance.
-
-        This method returns the protocol state contract instance based on the current node.
-
-        Args:
-            current_epoch_id (int): The current epoch ID
-
-        Returns:
-            Contract: The protocol state contract instance
-        """
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            self._logger.info('Using new RPC for protocol state contract')
-            return self.contract
-        else:
-            self._logger.info('Using old RPC for protocol state contract')
-            return self.old_contract
 
     async def _init_check_and_report(self):
         """
@@ -269,24 +213,10 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during RPC calls and event processing
         """
-
-        # Determine which contract to use based on latest epoch ID
-        contract = await self._get_protocol_state_contract(self.latest_epoch_id)
-        
-        # Get the appropriate RPC helper based on the contract
-        rpc_helper = self.rpc_helper if contract == self.contract else self.old_rpc_helper
-
-        if contract != self.contract:
-            if self.latest_epoch_id != -1 and settings.switch_rpc_at_epoch_id - self.latest_epoch_id > 1:
-                self._logger.info("ℹ️ Using the old chain, will switch over to the new chain in {} epochs", settings.switch_rpc_at_epoch_id - self.latest_epoch_id - 1)
-        
-        # Log the contract address being used for debugging
-        self._logger.info('Using contract address: {} for event detection', contract.address)
-        
         # Fetch events from the blockchain
-        events_log = await rpc_helper.get_events_logs(
+        events_log = await self.rpc_helper.get_events_logs(
             **{
-                'contract_address': contract.address,
+                'contract_address': self.contract.address,
                 'to_block': to_block,
                 'from_block': from_block,
                 'topics': [self.event_sig],
@@ -299,15 +229,10 @@ class EventDetectorProcess(multiprocessing.Process):
         events = []
         for log in events_log:
             if log.event == 'EpochReleased':
-                data_market_address = await self._get_data_market_address()
-                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {data_market_address}")
+                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {settings.data_market}")
                 
-                if log.args.dataMarketAddress.lower() == data_market_address.lower():
+                if log.args.dataMarketAddress.lower() == settings.data_market.lower():
                     self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
-                    if log.args.epochId == settings.switch_rpc_at_epoch_id:
-                        self._logger.info("✅Switched to new chain, sending simulation again!")
-                        await self._init_check_and_report()
-                        await asyncio.sleep(10)
 
                     event = EpochReleasedEvent(
                         begin=log.args.begin,
@@ -315,7 +240,6 @@ class EventDetectorProcess(multiprocessing.Process):
                         epochId=log.args.epochId,
                         timestamp=log.args.timestamp,
                     )
-                    self.latest_epoch_id = max(self.latest_epoch_id, log.args.epochId)
                     events.append((log.event, event))
                 else:
                     self._logger.info(f"Skipping EpochReleased event for different data market: {log.args.dataMarketAddress}")
@@ -374,8 +298,6 @@ class EventDetectorProcess(multiprocessing.Process):
                 for task in asyncio.all_tasks(self.ev_loop):
                     task.cancel()
                 # Clean up resources with timeout
-                if hasattr(self, '_reporting_httpx_client'):
-                    self._reporting_httpx_client.close()
                 if hasattr(self, '_telegram_httpx_client'):
                     self._telegram_httpx_client.close()
                 self.ev_loop.stop()
@@ -404,10 +326,6 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during file operations and notifications
         """
         try:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1:
-                self._logger.info("⌛ Waiting for Epoch Release on the new chain...")
-                self.last_status_check_time = int(time.time())
-                return
 
             if self.failure_count >= 3:
                 self._logger.error('Too many failures, exiting...')
@@ -444,42 +362,11 @@ class EventDetectorProcess(multiprocessing.Process):
                 )
                 self.failure_count += 1
                 self.last_status_check_time = current_time
+                error_message = f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
 
-                # Only send notification if cooldown has elapsed
-                if (current_time - self.last_notification_time) >= self.notification_cooldown and \
-                    (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
-
-                    try:
-                        # Reuse existing client from app state
-                        if not self._telegram_httpx_client:
-                            self._logger.error('Telegram client not initialized')
-                            return
-
-                        notification_message = SnapshotterIssue(
-                            instanceID=settings.instance_id,
-                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                            projectID='',
-                            epochId='',
-                            timeOfReporting=str(current_time),
-                            extra=json.dumps({
-                                'issueDetails': f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
-                            }, separators=(',', ':'))  # Minimize JSON size
-                        )
-
-                        telegram_message = TelegramEpochProcessingReportMessage(
-                            chatId=settings.reporting.telegram_chat_id,
-                            slotId=settings.slot_id,
-                            issue=notification_message,
-                        )
-
-                        await send_telegram_notification_async(
-                            client=self._telegram_httpx_client,
-                            message=telegram_message,
-                        )
-                        self.last_notification_time = current_time
-
-                    except Exception as e:
-                        self._logger.error('Error sending Telegram notification: {}', e)
+                await self._send_telegram_epoch_processing_notification(
+                    error=Exception(error_message)
+                )
 
             else:
                 self._logger.info(
@@ -493,35 +380,6 @@ class EventDetectorProcess(multiprocessing.Process):
             self.last_status_check_time = int(time.time())
 
         self.last_status_check_time = current_time
-    
-    async def _get_data_market_address(self):
-        """
-        Get the data market address based on the current epoch ID.
-
-        This method returns the data market address based on the current epoch ID.
-        If the current epoch ID is greater than the switch RPC at epoch ID, it returns the data market address from the new RPC.
-        Otherwise, it returns the data market address from the old RPC.
-        """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            return settings.data_market
-        else:
-            return settings.old_data_market
-
-    async def _get_current_block_number(self):
-        """
-        Get the current block number from the appropriate RPC helper based on latest epoch ID.
-
-        This method returns the current block number from the appropriate RPC helper based on latest epoch ID.
-        
-        """
-        if self.latest_epoch_id >= settings.switch_rpc_at_epoch_id - 1:
-            if self.latest_epoch_id == settings.switch_rpc_at_epoch_id - 1 and not self._switch_over_completed:
-                self._last_processed_block = None
-                self._logger.info("✅ Switched to new chain, will wait for Epoch release now!")
-                self._switch_over_completed = True
-            return await self.rpc_helper.get_current_block_number()
-        else:
-            return await self.old_rpc_helper.get_current_block_number()
 
     async def _detect_events(self):
         """
@@ -550,34 +408,11 @@ class EventDetectorProcess(multiprocessing.Process):
             if current_time - self.last_status_check_time > 120:
                 await self.check_last_submission()
             try:
-                if settings.reporting.service_url and int(time.time()) - self._last_reporting_service_ping >= 30:
-                    self._last_reporting_service_ping = int(time.time())
-                    try:
-                        response = self._reporting_httpx_client.post(
-                            url=urljoin(settings.reporting.service_url, '/ping'),
-                            json=SnapshotterPing(
-                                instanceID=settings.instance_id,
-                                slotId=settings.slot_id,
-                                dataMarketAddress=await self._get_data_market_address(),
-                                namespace=settings.namespace,
-                                nodeVersion=settings.node_version,
-                            ).dict(),
-                        )
-                        response.raise_for_status()
-                    except Exception as e:
-                        if settings.logs.trace_enabled:
-                            self._logger.opt(exception=True).error('Error while pinging reporting service: {}', e)
-                        else:
-                            self._logger.error(
-                                'Error while pinging reporting service: {}', e,
-                            )
-                    else:
-                        self._logger.info('Reporting service pinged successfully')
 
                 # Get current block from the appropriate RPC helper based on latest epoch
-                current_block = await self._get_current_block_number()
+                current_block = await self.rpc_helper.get_current_block_number()
                 
-                self._logger.info('Current block: {}, Latest epoch ID: {}', current_block, self.latest_epoch_id)
+                self._logger.info('Current block: {}', current_block)
 
             except Exception as e:
                 self._logger.opt(exception=True).error(
@@ -589,11 +424,9 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                if int(time.time()) - self._last_reporting_message_sent >= 600:
-                    self._last_reporting_message_sent = int(time.time())
-                    await self._send_telegram_epoch_processing_notification(
-                        error=e,
-                    )
+                await self._send_telegram_epoch_processing_notification(
+                    error=e,
+                )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
                 continue
@@ -632,11 +465,9 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                if int(time.time()) - self._last_reporting_message_sent >= 600:
-                    self._last_reporting_message_sent = int(time.time())
-                    await self._send_telegram_epoch_processing_notification(
-                        error=e,
-                    )
+                await self._send_telegram_epoch_processing_notification(
+                    error=e,
+                )
 
                 await asyncio.sleep(settings.rpc.polling_interval)
                 continue
@@ -679,22 +510,36 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during HTTP requests
         """
-        telegram_message = TelegramEpochProcessingReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=SnapshotterIssue(
-                instanceID=settings.instance_id,
-                issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                projectID='',
-                epochId='',
-                timeOfReporting=str(time.time()),
-                extra=json.dumps({'issueDetails': f'Error : {error}'}),
-            ),
-        )
-        await send_telegram_notification_async(
-            client=self._telegram_httpx_client,
-            message=telegram_message,
-        )
+
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
+            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
+
+            if not self._telegram_httpx_client:
+                self._logger.error('Telegram client not initialized')
+                return
+
+            try:
+                telegram_message = TelegramEpochProcessingReportMessage(
+                    chatId=settings.reporting.telegram_chat_id,
+                    slotId=settings.slot_id,
+                    issue=SnapshotterIssue(
+                        instanceID=settings.instance_id,
+                        issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                        projectID='',
+                        epochId='',
+                        timeOfReporting=str(time.time()),
+                        extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                    ),
+                )
+
+                send_telegram_notification_sync(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
+
+                self.last_notification_time = int(time.time())
+            except Exception as e:
+                self._logger.error('Error sending Telegram notification: {}', e)
     
     def run(self):
         """

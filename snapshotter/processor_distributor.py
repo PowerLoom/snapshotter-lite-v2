@@ -5,12 +5,7 @@ from collections import defaultdict
 from typing import Union
 
 from eth_utils.address import to_checksum_address
-from httpx import AsyncClient
-from httpx import AsyncHTTPTransport
-from httpx import Limits
-from httpx import Timeout
 from web3 import Web3
-import time
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
@@ -25,22 +20,15 @@ from snapshotter.utils.models.data_models import DayStartedEvent
 from snapshotter.utils.models.data_models import EpochReleasedEvent
 from snapshotter.utils.models.data_models import PreloaderResult
 from snapshotter.utils.models.data_models import SnapshotFinalizedEvent
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.data_models import SnapshottersUpdatedEvent
 from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.rpc import RpcHelper
 from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
 
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
-    _reporting_httpx_client: AsyncClient
-    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -82,29 +70,6 @@ class ProcessorDistributor:
             self._rpc_helper = RpcHelper()
             self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
 
-    async def _init_httpx_client(self):
-        """
-        Initializes the HTTPX clients with the specified settings.
-        """
-        
-        transport_limits = Limits(
-            max_connections=100,
-            max_keepalive_connections=50,
-            keepalive_expiry=None,
-        )
-
-        self._reporting_httpx_client = AsyncClient(
-            base_url=settings.reporting.service_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=transport_limits),
-        )
-        self._telegram_httpx_client = AsyncClient(
-            base_url=settings.reporting.telegram_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=transport_limits),
-        )
 
     async def _init_preloader_compute_mapping(self):
         """
@@ -136,19 +101,19 @@ class ProcessorDistributor:
             self._logger = logger.bind(
                 module='ProcessDistributor',
             )
-            self._old_anchor_rpc_helper = RpcHelper(
-                rpc_settings=settings.prost_chain_rpc,
+            self._anchor_rpc_helper = RpcHelper(
+                rpc_settings=settings.powerloom_chain_rpc,
             )
-            protocol_abi = read_json_file(settings.protocol_state_old.abi, self._logger)
-            self._logger.info('Protocol state old address: {}', settings.protocol_state_old.address)
-            self._protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            protocol_abi = read_json_file(settings.protocol_state.abi, self._logger)
+            self._logger.info('Protocol state address: {}', settings.protocol_state.address)
+            self._protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=to_checksum_address(
-                    settings.protocol_state_old.address,
+                    settings.protocol_state.address,
                 ),
                 abi=protocol_abi,
             )
             try:
-                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.old_data_market)).call()
+                source_block_time = self._protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(Web3.to_checksum_address(settings.data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for source chain block time: {}',
@@ -159,7 +124,7 @@ class ProcessorDistributor:
                 self._logger.debug('Set source chain block time to {}', self._source_chain_block_time)
 
             try:
-                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market)).call()
+                epoch_size = self._protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market)).call()
             except Exception as e:
                 self._logger.error(
                     'Exception in querying protocol state for epoch size: {}',
@@ -169,16 +134,15 @@ class ProcessorDistributor:
                 self._epoch_size = epoch_size
 
             try:
-                self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.old_data_market)).call()
+                self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.data_market)).call()
 
             except Exception as e:
-                self._logger.info("{} {}".format(self._protocol_state_contract, settings.old_data_market))
+                self._logger.info("{} {}".format(self._protocol_state_contract, settings.data_market))
                 self._logger.error(
                     'Exception in querying protocol state for user task status for day {}',
                     e,
                 )
 
-            await self._init_httpx_client()
             await self._init_rpc_helper()
             await self._load_projects_metadata()
             await self._init_preloader_compute_mapping()
@@ -194,28 +158,28 @@ class ProcessorDistributor:
         if not self._projects_list:
             with open(settings.protocol_state.abi, 'r') as f:
                 abi_dict = json.load(f)
-            protocol_state_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
+            protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=Web3.to_checksum_address(
-                    settings.protocol_state_old.address,
+                    settings.protocol_state.address,
                 ),
                 abi=abi_dict,
             )
             self._source_chain_epoch_size = await get_source_chain_epoch_size(
-                rpc_helper=self._old_anchor_rpc_helper,
+                rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.old_data_market),
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
 
             self._source_chain_id = await get_source_chain_id(
-                rpc_helper=self._old_anchor_rpc_helper,
+                rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.old_data_market),
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
 
             submission_window = await get_snapshot_submision_window(
-                rpc_helper=self._old_anchor_rpc_helper,
+                rpc_helper=self._anchor_rpc_helper,
                 state_contract_obj=protocol_state_contract,
-                data_market=Web3.to_checksum_address(settings.old_data_market),
+                data_market=Web3.to_checksum_address(settings.data_market),
             )
             self._submission_window = submission_window
 
@@ -238,12 +202,8 @@ class ProcessorDistributor:
         preloader_results_dict = {}
         failed_preloaders = set()
 
-        # Determine which preloaders are needed across all projects
-        project_required_preloaders = set()
-        for project_config in self._project_type_config_mapping.values():
-            project_required_preloaders.update(project_config.preload_tasks)
-
-        for preloader_task in project_required_preloaders:
+        # Use the pre-computed set of all preload tasks
+        for preloader_task in self._all_preload_tasks:
             preloader_class = self._preloader_compute_mapping[preloader_task]
             preloader_obj = preloader_class()
             preloader_compute_kwargs = dict(
@@ -286,7 +246,8 @@ class ProcessorDistributor:
         for project_type, project_config in self._project_type_config_mapping.items():
             # Check if all required preloaders for this project succeeded
             project_required_preloaders = set(project_config.preload_tasks)
-            if not failed_preloaders.intersection(project_required_preloaders):
+            project_failed_preloaders = failed_preloaders.intersection(project_required_preloaders)
+            if not project_failed_preloaders:
                 project_preloader_results = {
                     task: preloader_results_dict[task]
                     for task in project_required_preloaders
@@ -303,7 +264,13 @@ class ProcessorDistributor:
                     'Skipping project type {} for epoch {} due to failed preloader tasks: {}',
                     project_type,
                     epoch.epochId,
-                    failed_preloaders.intersection(project_required_preloaders)
+                    project_failed_preloaders
+                )
+
+                await self.snapshot_worker.handle_missed_snapshot(
+                    error=Exception(f'Failed preloaders for {project_type}: {project_failed_preloaders}'),
+                    epoch_id=epoch.epochId,
+                    project_id=project_type
                 )
 
         if failed_preloaders:
@@ -311,27 +278,6 @@ class ProcessorDistributor:
                 'Some preloader tasks failed for epoch {}: {}',
                 epoch.epochId,
                 failed_preloaders
-            )
-
-
-            self.snapshot_worker.status.totalMissedSubmissions += 1
-            self.snapshot_worker.status.consecutiveMissedSubmissions += 1
-
-            await send_telegram_notification_async(
-                client=self._telegram_httpx_client,
-                message=TelegramSnapshotterReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=SnapshotterIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                        epochId=str(epoch.epochId),
-                        timeOfReporting=str(time.time()),
-                        projectID=project_type,
-                        extra=json.dumps({'issueDetails': f'Failed preloaders: {failed_preloaders}'}),
-                    ),
-                    status=self.snapshot_worker.status,
-                ),
             )
 
     async def _distribute_callbacks_snapshotting(self, project_type: str, epoch: EpochBase, preloader_results: dict):
@@ -395,42 +341,3 @@ class ProcessorDistributor:
                 ),
                 type_,
             )
-
-    async def _send_failure_notifications(
-        self,
-        error: Exception,
-        epoch_id: str,
-        project_id: str,
-    ):
-        notification_message = SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=str(epoch_id),
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : {error}'}),
-        )
-
-        telegram_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=notification_message,
-            status=self.snapshot_worker.status,
-        )
-
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
-
-        await asyncio.gather(*tasks)

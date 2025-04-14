@@ -1,11 +1,9 @@
 import asyncio
 import json
-import sys
 import time
 from typing import Dict
 from typing import Union
 import grpclib
-import httpx
 import sha3
 import tenacity
 from coincurve import PrivateKey
@@ -15,11 +13,6 @@ from eip712_structs import String
 from eip712_structs import Uint
 from eth_utils.encoding import big_endian_to_int
 from grpclib.client import Channel
-from httpx import AsyncClient
-from httpx import AsyncHTTPTransport
-from httpx import Client
-from httpx import Limits
-from httpx import Timeout
 from ipfs_cid import cid_sha256_hash
 from ipfs_client.dag import IPFSAsyncClientError
 from ipfs_client.main import AsyncIPFSClient
@@ -31,18 +24,10 @@ from tenacity import wait_random_exponential
 from web3 import Web3
 
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
-from snapshotter.utils.callback_helpers import send_failure_notifications_sync
-from snapshotter.utils.callback_helpers import send_telegram_notification_async
-from snapshotter.utils.callback_helpers import send_telegram_notification_sync
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
-from snapshotter.utils.models.data_models import SnapshotterIssue
-from snapshotter.utils.models.data_models import SnapshotterReportState
-from snapshotter.utils.models.data_models import SnapshotterStatus
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
 from snapshotter.utils.models.message_models import SnapshotSubmittedMessage
-from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
 from snapshotter.utils.models.proto.snapshot_submission.submission_grpc import SubmissionStub
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import Request
 from snapshotter.utils.models.proto.snapshot_submission.submission_pb2 import SnapshotSubmission
@@ -58,38 +43,6 @@ class EIPRequest(EIP712Struct):
     snapshotCid = String()
     epochId = Uint()
     projectId = String()
-
-
-def web3_storage_retry_state_callback(retry_state: tenacity.RetryCallState):
-    """
-    Callback function to handle retry attempts for web3 storage upload.
-
-    Args:
-        retry_state (tenacity.RetryCallState): The current state of the retry call.
-
-    Returns:
-        None
-    """
-    if retry_state and retry_state.outcome.failed:
-        logger.warning(
-            f'Encountered web3 storage upload exception: {retry_state.outcome.exception()} | args: {retry_state.args}, kwargs:{retry_state.kwargs}',
-        )
-
-
-def relayer_submit_retry_state_callback(retry_state: tenacity.RetryCallState):
-    """
-    Callback function to handle retry attempts for relayer submit.
-
-    Args:
-        retry_state (tenacity.RetryCallState): The current state of the retry call.
-
-    Returns:
-        None
-    """
-    if retry_state and retry_state.outcome.failed:
-        logger.warning(
-            f'Encountered relayer submit exception: {retry_state.outcome.exception()} | args: {retry_state.args}, kwargs:{retry_state.kwargs}',
-        )
 
 
 def ipfs_upload_retry_state_callback(retry_state: tenacity.RetryCallState):
@@ -111,10 +64,6 @@ def ipfs_upload_retry_state_callback(retry_state: tenacity.RetryCallState):
 class GenericAsyncWorker:
     _rpc_helper: RpcHelper
     _anchor_rpc_helper: RpcHelper
-    _reporting_httpx_client: AsyncClient
-    _telegram_httpx_client: AsyncClient
-    _web3_storage_upload_transport: AsyncHTTPTransport
-    _web3_storage_upload_client: AsyncClient
     _grpc_channel: Channel
     _grpc_stub: SubmissionStub
 
@@ -128,13 +77,10 @@ class GenericAsyncWorker:
         """
         self._running_callback_tasks: Dict[str, asyncio.Task] = dict()
         self.protocol_state_contract = None
-        self.protocol_state_old_contract = None
 
         self.protocol_state_contract_address = settings.protocol_state.address
-        self.protocol_state_old_contract_address = settings.protocol_state_old.address
         self.initialized = False
         self.logger = logger.bind(module='GenericAsyncWorker')
-        self.status = SnapshotterStatus(projects=[])
 
     def _notification_callback_result_handler(self, fut: asyncio.Future):
         """
@@ -175,38 +121,6 @@ class GenericAsyncWorker:
     @retry(
         wait=wait_random_exponential(multiplier=1, max=10),
         stop=stop_after_attempt(5),
-        retry=tenacity.retry_if_not_exception_type(httpx.HTTPStatusError),
-        after=web3_storage_retry_state_callback,
-    )
-    async def _upload_web3_storage(self, snapshot: bytes):
-        """
-        Uploads the given snapshot to web3 storage.
-
-        Args:
-            snapshot (bytes): The snapshot to upload.
-
-        Returns:
-            None
-
-        Raises:
-            HTTPError: If the upload fails.
-        """
-        web3_storage_settings = settings.web3storage
-        # if no api token is provided, skip
-        if not web3_storage_settings.api_token:
-            return
-        files = {'file': snapshot}
-        r = await self._web3_storage_upload_client.post(
-            url=f'{web3_storage_settings.url}{web3_storage_settings.upload_url_suffix}',
-            files=files,
-        )
-        r.raise_for_status()
-        resp = r.json()
-        self.logger.info('Uploaded snapshot to web3 storage: {} | Response: {}', snapshot, resp)
-
-    @retry(
-        wait=wait_random_exponential(multiplier=1, max=10),
-        stop=stop_after_attempt(5),
         retry=tenacity.retry_if_not_exception_type(IPFSAsyncClientError),
         after=ipfs_upload_retry_state_callback,
     )
@@ -228,15 +142,7 @@ class GenericAsyncWorker:
         self.logger.debug(
             'Sending submission to collector...',
         )
-        use_new_chain = False
-        if epoch_id == 0:
-            # fetch current epoch from old protocol state contract
-            current_epoch = self.protocol_state_old_contract.functions.currentEpoch(settings.old_data_market).call()
-            self.logger.info('Checking current epoch from old protocol state contract for simulation: {}', current_epoch)
-            if current_epoch[2] >= settings.switch_rpc_at_epoch_id - 1:
-                use_new_chain = True
-
-        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key, use_new_chain)
+        request_, signature, current_block_hash = await self.generate_signature(snapshot_cid, epoch_id, project_id, settings.slot_id, settings.signer_private_key)
 
         request_msg = Request(
             slotId=request_['slotId'],
@@ -248,8 +154,7 @@ class GenericAsyncWorker:
         self.logger.debug(
             'Snapshot submission creation with request: {}', request_msg,
         )
-        data_market = await self._get_data_market_address(epoch_id, use_new_chain)
-        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket=data_market)
+        msg = SnapshotSubmission(request=request_msg, signature=signature.hex(), header=current_block_hash, dataMarket=settings.data_market, nodeVersion=settings.node_version)
         self.logger.debug(
             'Snapshot submission created: {}', msg,
         )
@@ -265,12 +170,7 @@ class GenericAsyncWorker:
                 self.logger.error(
                     f'Probable exception in _send_submission_to_collector while sending snapshot to local collector {msg}: {e}',
                 )
-                # send telegram notification
-                await self._send_failure_notifications(
-                    error=e,
-                    epoch_id=str(epoch_id),
-                    project_id=project_id,
-                )
+                raise
         else:
             self.logger.info('In _send_submission_to_collector successfully sent snapshot to local collector {msg}')
 
@@ -320,11 +220,9 @@ class GenericAsyncWorker:
                 SnapshotSubmittedMessage
             ],
             snapshot: BaseModel,
-            storage_flag: bool,
     ):
         """
-        Commits the given snapshot to IPFS and web3 storage (if enabled), and sends messages to the event detector and relayer
-        dispatch queues.
+        Commits the given snapshot to IPFS and sends messages to the event detector dispatch queues.
 
         Args:
             task_type (str): The type of task being committed.
@@ -333,7 +231,6 @@ class GenericAsyncWorker:
             epoch (Union[SnapshotProcessMessage, SnapshotSubmittedMessage,
             SnapshotSubmittedMessageLite]): The epoch the snapshot belongs to.
             snapshot (BaseModel): The snapshot to commit.
-            storage_flag (bool): Whether to upload the snapshot to web3 storage.
 
         Returns:
             snapshot_cid (str): The CID of the uploaded snapshot.
@@ -351,13 +248,7 @@ class GenericAsyncWorker:
                 'Exception uploading snapshot to IPFS for epoch {}: {}, Error: {},'
                 'sending failure notifications', epoch, snapshot, e,
             )
-            self.status.totalMissedSubmissions += 1
-            self.status.consecutiveMissedSubmissions += 1
-            await self._send_failure_notifications(
-                error=e,
-                epoch_id=str(epoch.epochId),
-                project_id=project_id,
-            )
+            raise
         else:
             # submit to collector
             try:
@@ -367,23 +258,9 @@ class GenericAsyncWorker:
                     'Exception submitting snapshot to collector for epoch {}: {}, Error: {},'
                     'sending failure notifications', epoch, snapshot, e,
                 )
-                self.status.totalMissedSubmissions += 1
-                self.status.consecutiveMissedSubmissions += 1
-                await self._send_failure_notifications(
-                    error=e,
-                    epoch_id=str(epoch.epochId),
-                    project_id=project_id,
-                )
+                raise
             else:
-                # reset consecutive missed snapshots counter
-                self.status.consecutiveMissedSubmissions = 0
-                self.status.totalSuccessfulSubmissions += 1
-
-        # upload to web3 storage
-        if storage_flag:
-            asyncio.ensure_future(self._upload_web3_storage(snapshot_bytes))
-
-        return snapshot_cid
+                return snapshot_cid
 
     async def _init_rpc_helper(self):
         """
@@ -391,7 +268,6 @@ class GenericAsyncWorker:
         """
         self._rpc_helper = RpcHelper(rpc_settings=settings.rpc)
         self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
-        self._old_anchor_rpc_helper = RpcHelper(rpc_settings=settings.prost_chain_rpc)
 
         self.protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
             address=Web3.to_checksum_address(
@@ -403,86 +279,20 @@ class GenericAsyncWorker:
             ),
         )
 
-        self.protocol_state_old_contract = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
-            address=Web3.to_checksum_address(
-                self.protocol_state_old_contract_address,
-            ),
-            abi=read_json_file(
-                settings.protocol_state_old.abi,
-                self.logger,
-            ),
-        )
-
         self._anchor_chain_id = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.chain_id
-        self._old_anchor_chain_id = self._old_anchor_rpc_helper.get_current_node()['web3_client'].eth.chain_id
         self._keccak_hash = lambda x: sha3.keccak_256(x).digest()
         self._domain_separator = make_domain(
             name='PowerloomProtocolContract', version='0.1', chainId=self._anchor_chain_id,
             verifyingContract=self.protocol_state_contract_address,
-        )
-        self._old_domain_separator = make_domain(
-            name='PowerloomProtocolContract', version='0.1', chainId=self._old_anchor_chain_id,
-            verifyingContract=self.protocol_state_old_contract_address,
         )
         self._private_key = settings.signer_private_key
         if self._private_key.startswith('0x'):
             self._private_key = self._private_key[2:]
         self._identity_private_key = PrivateKey.from_hex(settings.signer_private_key)
 
-    async def _get_domain_separator(self, current_epoch_id: int, use_new_chain: bool = False):
-        """
-        Get the domain separator for the protocol state contract.
-
-        Args:
-            current_epoch_id (int): The current epoch ID
-
-        Returns:
-            bytes: The domain separator
-        """
-        if use_new_chain:
-            return self._domain_separator
-
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
-            return self._domain_separator
-        else:
-            return self._old_domain_separator
+    async def generate_signature(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None):
         
-    async def _get_current_block(self, current_epoch_id: int, use_new_chain: bool = False):
-        """
-        Get the current block for the protocol state contract.
-
-        Args:
-            current_epoch_id (int): The current epoch ID
-
-        Returns:
-            int: The current block number
-        """
-        if use_new_chain:
-            return await self._anchor_rpc_helper.eth_get_block()
-
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
-            return await self._anchor_rpc_helper.eth_get_block()
-        else:
-            return await self._old_anchor_rpc_helper.eth_get_block()
-        
-    async def _get_data_market_address(self, current_epoch_id: int, use_new_chain: bool = False):
-        """
-        Get the data market address based on the current epoch ID.
-
-        Returns:
-            str: The data market address
-        """
-        if use_new_chain:
-            return settings.data_market
-
-        if current_epoch_id >= settings.switch_rpc_at_epoch_id:
-            return settings.data_market
-        else:
-            return settings.old_data_market
-
-    async def generate_signature(self, snapshot_cid, epoch_id, project_id, slot_id=None, private_key=None, use_new_chain: bool = False):
-        
-        current_block = await self._get_current_block(epoch_id, use_new_chain)
+        current_block = await self._anchor_rpc_helper.eth_get_block()
         current_block_number = int(current_block['number'], 16)
         current_block_hash = current_block['hash']
         deadline = current_block_number + settings.protocol_state.deadline_buffer
@@ -495,7 +305,7 @@ class GenericAsyncWorker:
             projectId=project_id,
         )
 
-        signable_bytes = request.signable_bytes(await self._get_domain_separator(epoch_id, use_new_chain))
+        signable_bytes = request.signable_bytes(self._domain_separator)
         if not private_key:
             signature = self._identity_private_key.sign_recoverable(signable_bytes, hasher=self._keccak_hash)
         else:
@@ -511,36 +321,6 @@ class GenericAsyncWorker:
         request_ = {'slotId': request_slot_id, 'deadline': deadline, 'snapshotCid': snapshot_cid, 'epochId': epoch_id, 'projectId': project_id}
         return request_, final_sig, current_block_hash
 
-    async def _init_httpx_client(self):
-        """
-        Initializes the HTTPX client and transport objects for making HTTP requests.
-        """
-        self._reporting_httpx_client = AsyncClient(
-            base_url=settings.reporting.service_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
-        )
-        self._telegram_httpx_client = AsyncClient(
-            base_url=settings.reporting.telegram_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
-        )
-        self._web3_storage_upload_transport = AsyncHTTPTransport(
-            limits=Limits(
-                max_connections=200,
-                max_keepalive_connections=settings.web3storage.max_idle_conns,
-                keepalive_expiry=settings.web3storage.idle_conn_timeout,
-            ),
-        )
-        self._web3_storage_upload_client = AsyncClient(
-            timeout=Timeout(timeout=settings.web3storage.timeout),
-            follow_redirects=False,
-            transport=self._web3_storage_upload_transport,
-            headers={'Authorization': 'Bearer ' + settings.web3storage.api_token},
-        )
-
     async def _init_grpc(self):
         self._grpc_channel = Channel(
             host='snapshotter-lite-local-collector',
@@ -554,10 +334,10 @@ class GenericAsyncWorker:
     async def _init_protocol_meta(self):
         # TODO: combine these into a single call
         try:
-            source_block_time = await self._old_anchor_rpc_helper.web3_call(
+            source_block_time = await self._anchor_rpc_helper.web3_call(
                 [
-                    self.protocol_state_old_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
-                        Web3.to_checksum_address(settings.old_data_market),
+                    self.protocol_state_contract.functions.SOURCE_CHAIN_BLOCK_TIME(
+                        Web3.to_checksum_address(settings.data_market),
                     ),
                 ],
             )
@@ -571,8 +351,8 @@ class GenericAsyncWorker:
             self._source_chain_block_time = source_block_time / 10 ** 4
             self.logger.debug('Set source chain block time to {}', self._source_chain_block_time)
         try:
-            epoch_size = await self._old_anchor_rpc_helper.web3_call(
-                [self.protocol_state_old_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.old_data_market))],
+            epoch_size = await self._anchor_rpc_helper.web3_call(
+                [self.protocol_state_contract.functions.EPOCH_SIZE(Web3.to_checksum_address(settings.data_market))],
             )
         except Exception as e:
             self.logger.exception(
@@ -588,55 +368,7 @@ class GenericAsyncWorker:
         Initializes the worker by initializing the HTTPX client, and RPC helper.
         """
         if not self.initialized:
-            await self._init_httpx_client()
             await self._init_rpc_helper()
             await self._init_protocol_meta()
             await self._init_grpc()
         self.initialized = True
-
-    async def _send_failure_notifications(
-        self,
-        error: Exception,
-        epoch_id: str,
-        project_id: str,
-    ):
-        """
-        Sends failure notifications for missed snapshots.
-
-        Args:
-            error (Exception): The error that occurred.
-            epoch_id (str): The ID of the epoch that missed the snapshot.
-            project_id (str): The ID of the project that missed the snapshot.
-        """
-        notification_message = SnapshotterIssue(
-            instanceID=settings.instance_id,
-            issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-            projectID=project_id,
-            epochId=str(epoch_id),
-            timeOfReporting=str(time.time()),
-            extra=json.dumps({'issueDetails': f'Error : {error}'}),
-        )
-
-        telegram_message = TelegramSnapshotterReportMessage(
-            chatId=settings.reporting.telegram_chat_id,
-            slotId=settings.slot_id,
-            issue=notification_message,
-            status=self.status,
-        )
-
-        tasks = [
-            asyncio.create_task(
-                send_failure_notifications_async(
-                    client=self._reporting_httpx_client,
-                    message=notification_message,
-                ),
-            ),
-            asyncio.create_task(
-                send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                ),
-            ),
-        ]
-
-        await asyncio.gather(*tasks)
