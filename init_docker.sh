@@ -1,5 +1,16 @@
 #!/bin/bash
 
+handle_exit() {
+    EXIT_CODE=$?
+    # Random delay between 1-5 minutes, spread between 30 seconds
+    MIN_DELAY=30
+    MAX_DELAY=300
+    ACTUAL_DELAY=$((MIN_DELAY + RANDOM % (MAX_DELAY - MIN_DELAY + 1)))
+    
+    echo "Container exited with code $EXIT_CODE. Restarting in $ACTUAL_DELAY seconds..."
+    sleep $ACTUAL_DELAY
+}
+
 # Always run bootstrap
 echo "🚀 Running bootstrap..."
 
@@ -32,8 +43,10 @@ poetry run python -m snapshotter.snapshotter_id_ping
 ret_status=$?
 
 if [ $ret_status -ne 0 ]; then
-    echo "Snapshotter identity check failed on protocol smart contract"
     exit 1
 fi
+
+# Set up traps for all possible exit scenarios
+trap 'handle_exit' EXIT HUP INT QUIT ABRT TERM KILL
 
 poetry run python -m snapshotter.system_event_detector

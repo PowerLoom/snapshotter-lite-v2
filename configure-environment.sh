@@ -59,6 +59,7 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+export DATA_MARKET_CONTRACT_NUMBER="2"
 # Data market selection
 if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
     DATA_MARKET_CONTRACT_CHOICE="$DATA_MARKET_CONTRACT_NUMBER"
@@ -77,22 +78,21 @@ fi
 
 if [ "$DATA_MARKET_CONTRACT_CHOICE" = "1" ]; then
     echo "Aave V3 selected"
-    DATA_MARKET_CONTRACT="0xdE95f6d0D1A7B8411fCbfc60d5c2C5Df69d667a9"
+    DATA_MARKET_CONTRACT="0x0000000000000000000000000000000000000000"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
     NAMESPACE="AAVEV3"
 elif [ "$DATA_MARKET_CONTRACT_CHOICE" = "2" ]; then
     echo "Uniswap V2 selected"
-    DATA_MARKET_CONTRACT="0xC53ad4C6A8A978fC4A91F08A21DcE847f5Bc0E27"
+    DATA_MARKET_CONTRACT="0x21cb57C1f2352ad215a463DD867b838749CD3b8f"
     SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
     SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
     NAMESPACE="UNISWAPV2"
 fi
 
 # Set protocol values
-export PROTOCOL_STATE_CONTRACT="0x670E0Cf8c8dF15B326D5E2Db4982172Ff8504909"
-export PROST_RPC_URL="https://rpc.powerloom.network"
-export PROST_CHAIN_ID=7865
+export PROTOCOL_STATE_CONTRACT="0x000AA7d3a6a2556496f363B59e56D9aA1881548F"
+export POWERLOOM_RPC_URL="https://rpc-v2.powerloom.network"
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
@@ -127,12 +127,34 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<signer-account-private-key>#$SIGNER_ACCOUNT_PRIVATE_KEY#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<slot-id>#$SLOT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
-    sed -i".backup" "s#<prost-rpc-url>#$PROST_RPC_URL#" ".env-${FULL_NAMESPACE}"
-    sed -i".backup" "s#<prost-chain-id>#$PROST_CHAIN_ID#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<powerloom-rpc-url>#$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
+
+    # Check if POWERLOOM_RPC_URL exists in the file, if not add it, otherwise update it
+    if grep -q "POWERLOOM_RPC_URL=" ".env-${FULL_NAMESPACE}"; then
+        sed -i".backup" "s#POWERLOOM_RPC_URL=.*#POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
+    else
+        # Check if the file ends with a newline, if not add one before appending
+        if [ -s ".env-${FULL_NAMESPACE}" ] && [ "$(tail -c 1 ".env-${FULL_NAMESPACE}" | wc -l)" -eq 0 ]; then
+            echo "" >> ".env-${FULL_NAMESPACE}"
+        fi
+        echo "POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL" >> ".env-${FULL_NAMESPACE}"
+    fi
+
+    # Check if TELEGRAM_NOTIFICATION_COOLDOWN exists in the file, if not add it, otherwise update it
+    if grep -q "TELEGRAM_NOTIFICATION_COOLDOWN=" ".env-${FULL_NAMESPACE}"; then
+        sed -i".backup" "s#TELEGRAM_NOTIFICATION_COOLDOWN=.*#TELEGRAM_NOTIFICATION_COOLDOWN=300#" ".env-${FULL_NAMESPACE}"
+    else
+        # Check if the file ends with a newline, if not add one before appending
+        if [ -s ".env-${FULL_NAMESPACE}" ] && [ "$(tail -c 1 ".env-${FULL_NAMESPACE}" | wc -l)" -eq 0 ]; then
+            echo "" >> ".env-${FULL_NAMESPACE}"
+        fi
+        echo "TELEGRAM_NOTIFICATION_COOLDOWN=300" >> ".env-${FULL_NAMESPACE}"
+    fi
+
     if [ "$SKIP_CREDENTIAL_UPDATE" = "true" ]; then
         echo "🔔 Skipping credential update prompts due to --skip-credential-update flag"
     else
