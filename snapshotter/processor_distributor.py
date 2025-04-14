@@ -5,12 +5,7 @@ from collections import defaultdict
 from typing import Union
 
 from eth_utils.address import to_checksum_address
-from httpx import AsyncClient
-from httpx import AsyncHTTPTransport
-from httpx import Limits
-from httpx import Timeout
 from web3 import Web3
-import time
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
@@ -34,7 +29,6 @@ from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
-    _reporting_httpx_client: AsyncClient
 
     def __init__(self):
         """

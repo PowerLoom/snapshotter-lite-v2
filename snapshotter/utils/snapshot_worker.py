@@ -27,6 +27,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
     _ipfs_singleton: AsyncIPFSClientSingleton
     _ipfs_writer_client: AsyncIPFSClient
     _ipfs_reader_client: AsyncIPFSClient
+    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -133,8 +134,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                         _ipfs_writer_client=self._ipfs_writer_client,
                         project_id=project_id,
                         epoch=msg_obj,
-                        snapshot=snapshot,
-                        storage_flag=settings.web3storage.upload_snapshots,
+                        snapshot=snapshot
                     )
                 except Exception as e:
                     self.logger.opt(exception=True).error(
