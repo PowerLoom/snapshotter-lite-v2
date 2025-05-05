@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from web3 import Web3
-import sys #import sys
+import sys
 from eth_utils import keccak
 from eth_abi import decode
 
@@ -22,7 +22,7 @@ def staking_rewards_claim_and_deposit(nodestaking_address, rpc_url, private_key)
         ])
 
         nonce = w3.eth.get_transaction_count(wallet_address)
-        gas_price = w3.eth.gas_price        
+        gas_price = w3.eth.gas_price
         gas = contract.functions.claimRewardsAndDeposit().estimate_gas({'from': wallet_address})
         transaction = contract.functions.claimRewardsAndDeposit().build_transaction({
             'gas': gas,
@@ -30,9 +30,9 @@ def staking_rewards_claim_and_deposit(nodestaking_address, rpc_url, private_key)
             'nonce': nonce,
             'from': wallet_address,
         })
-                  
+
         signed_txn = account.sign_transaction(transaction)
-        tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
         tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
         if tx_receipt['status'] == 1:
@@ -77,7 +77,7 @@ def claim_node_rewards(powerloomnode_address, rpc_url, private_key, user_address
         })
 
         signed_txn = account.sign_transaction(transaction)
-        tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
         tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
         if tx_receipt['status'] == 1:
@@ -113,75 +113,113 @@ def restake_node_rewards(nodestaking_address, rpc_url, private_key, tx_receipt):
         }])
 
         event_found = False
-        log_topic = "0xdacbdde355ba930696a362ea6738feb9f8bd52dfb3d81947558fd3217e23e325"
+        log_topic = "dacbdde355ba930696a362ea6738feb9f8bd52dfb3d81947558fd3217e23e325"
 
-        for log in tx_receipt.get("logs", []):
-            if log_topic == log["topics"][0].hex():
-                data_hex = log["data"].hex()
-                decoded_data = decode(["uint256", "uint256"], bytes.fromhex(data_hex[2:]))
-                deposit_value = decoded_data[0]
-                # print(f"Deposit Value: {deposit_value}")
+        if not tx_receipt:
+             return None
+        tx_hash_hex = tx_receipt.transactionHash.hex() if isinstance(tx_receipt.transactionHash, bytes) else str(tx_receipt.transactionHash)
+        logs_in_receipt = tx_receipt.get("logs", [])
 
-                nonce = w3.eth.get_transaction_count(wallet_address)
-                gas_price = w3.eth.gas_price
-                gas = contract1.functions.deposit().estimate_gas({'from': wallet_address, 'value': deposit_value})
+        for idx, log in enumerate(logs_in_receipt): # Use enumerate for index
+            log_address = log.get('address')
+            log_topics = log.get('topics', [])
+            log_topics_hex = [t.hex() if isinstance(t, bytes) else str(t) for t in log_topics]
 
-                transaction = contract1.functions.deposit().build_transaction({
-                    'gas': gas,
-                    'gasPrice': gas_price,
-                    'nonce': nonce,
-                    'from': wallet_address,
-                    'value': deposit_value,
-                })
+            if log_topics and len(log_topics) > 0: # Check if topics exist and list is not empty
+                topic0 = log_topics[0]
+                log_topic_0_hex = topic0.hex() if isinstance(topic0, bytes) else str(topic0)
 
-                signed_txn = account.sign_transaction(transaction)
-                tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
-                tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+                if log_topic == log_topic_0_hex:
+                    log_data = log.get("data", b"") # Default to empty bytes
+                    data_hex = log_data.hex() if isinstance(log_data, bytes) else str(log_data)
 
-                if tx_receipt['status'] == 1:
-                    print(f"{method_name2} successful! Transaction hash: {tx_hash.hex()}")
-                    return tx_receipt
-                else:
-                    print(f"{method_name2} failed. Transaction hash: {tx_hash.hex()}")
-                    print(f"Transaction receipt: {tx_receipt}")
-                    return None
+                    if data_hex.startswith('0x'):
+                        data_bytes = bytes.fromhex(data_hex[2:])
+                    elif data_hex: # Handle non-empty data without 0x prefix
+                         data_bytes = bytes.fromhex(data_hex)
+                    else: # Handle empty data
+                        continue 
 
-                event_found = True
-                break
+                    try:
+                        decoded_data = decode(["uint256", "uint256"], data_bytes)
+                        deposit_value = decoded_data[0]
+                    except Exception as decode_err:
+                        continue 
+
+                    nonce = w3.eth.get_transaction_count(wallet_address)
+                    gas_price = w3.eth.gas_price
+                    try:
+                        gas = contract1.functions.deposit().estimate_gas({'from': wallet_address, 'value': deposit_value})
+                    except Exception as estimate_err:
+                        continue 
+
+                    transaction = contract1.functions.deposit().build_transaction({
+                        'gas': gas,
+                        'gasPrice': gas_price,
+                        'nonce': nonce,
+                        'from': wallet_address,
+                        'value': deposit_value,
+                    })
+
+                    signed_txn = account.sign_transaction(transaction)
+                    restake_tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+                    restake_tx_hash_hex = restake_tx_hash.hex() if isinstance(restake_tx_hash, bytes) else str(restake_tx_hash)
+                    restake_tx_receipt = w3.eth.wait_for_transaction_receipt(restake_tx_hash)
+
+                    if restake_tx_receipt['status'] == 1:
+                        print(f"{method_name2} successful! Transaction hash: {restake_tx_hash_hex}")
+                        event_found = True 
+                        return restake_tx_receipt # Return the receipt of the successful restake
+                    else:
+                        print(f"{method_name2} failed. Transaction hash: {restake_tx_hash_hex}")
+                        print(f"Transaction receipt: {restake_tx_receipt}")
+                        # If the correct event log led to a failed restake, return None.
+                        return None
 
         if not event_found:
-            print("Node Rewards Claimed event not found in logs.")
+            print("Node Rewards Claimed event not found in logs.") 
             return None
 
     except Exception as e:
         print(f"An unexpected error occurred in node reward restaking: {e}")
+        # Also print traceback for more details during debugging
         return None
 
 if __name__ == "__main__":
     load_dotenv()
 
-    rpc_url = "https://rpc.powerloom.network"
+    rpc_url = os.getenv("POWERLOOM_RPC_URL")
     private_key = os.getenv("SENDER_PK")
-    user_address = os.getenv("ADDRESS_INPUT")
+    user_address = os.getenv("ADDRESS_INPUT") 
     nodestaking_address = os.getenv("NODESTAKING_ADDRESS")
-    powerloomnode_address = os.getenv("POWERLOOM_NODES_ADDRESS")
+    powerloomnode_address = os.getenv("POWERLOOM_NODES_ADDRESS") #
 
-    if not private_key:
-        print("Error: SENDER_PK not set in .env")
+    # Basic check for essential vars for the test
+    if not private_key or not rpc_url or not nodestaking_address:
+        print("Error: SENDER_PK, POWERLOOM_RPC_URL, or NODESTAKING_ADDRESS not set in .env")
         sys.exit(1) #exit with error code
 
+    result1 = None
+    result2 = None
+    result3 = None
     try:
         result1 = staking_rewards_claim_and_deposit(nodestaking_address, rpc_url, private_key)
     except Exception as e:
         print(f"WARNING: Staking rewards claim failed: {e}")
         result1 = None
-
+    
     try:
+        # Need user_address if uncommenting this part
+        user_address = os.getenv("ADDRESS_INPUT")
+        powerloomnode_address = os.getenv("POWERLOOM_NODES_ADDRESS")
+        if not user_address or not powerloomnode_address:
+             print("Error: ADDRESS_INPUT or POWERLOOM_NODES_ADDRESS not set for original logic.")
+             sys.exit(1)
         result2 = claim_node_rewards(powerloomnode_address, rpc_url, private_key, user_address)
     except Exception as e:
         print(f"WARNING: Node rewards claim failed: {e}")
-        result2 = None
-
+        result2 = None 
+    
     if result2: #only try to restake if claim was successful
         try:
             result3 = restake_node_rewards(nodestaking_address, rpc_url, private_key, result2)
@@ -190,7 +228,7 @@ if __name__ == "__main__":
             result3 = None
     else:
         result3 = None
-
+    
     # Final success/failure evaluation
     if result1 and result2 and result3:
         print("SUCCESS: Node Claim, Staking Claim, and Restaking successful!")
