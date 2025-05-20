@@ -96,6 +96,7 @@ export POWERLOOM_RPC_URL="https://rpc-v2.powerloom.network"
 export POWERLOOM_CHAIN=mainnet
 export SOURCE_CHAIN=ETH
 export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+export CONNECTION_REFRESH_INTERVAL_SEC=60
 
 # Environment file management
 if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
@@ -129,6 +130,7 @@ if [ ! -f ".env-${FULL_NAMESPACE}" ]; then
     sed -i".backup" "s#<telegram-chat-id>#$TELEGRAM_CHAT_ID#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<powerloom-rpc-url>#$POWERLOOM_RPC_URL#" ".env-${FULL_NAMESPACE}"
     sed -i".backup" "s#<docker-network-name>#$DOCKER_NETWORK_NAME#" ".env-${FULL_NAMESPACE}"
+    sed -i".backup" "s#<seq-conn-refresh-interval>#$CONNECTION_REFRESH_INTERVAL_SEC#" ".env-${FULL_NAMESPACE}"
     echo "🟢 .env-${FULL_NAMESPACE} file created successfully."
 else
     echo "🟢 .env-${FULL_NAMESPACE} file found."
@@ -148,6 +150,13 @@ else
             echo "" >> ".env-${FULL_NAMESPACE}"
         fi
         echo "POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL" >> ".env-${FULL_NAMESPACE}"
+    fi
+
+    # check if CONNECTION_REFRESH_INTERVAL_SEC exists in the file, if not add it, otherwise update it
+    if grep -q "CONNECTION_REFRESH_INTERVAL_SEC=" ".env-${FULL_NAMESPACE}"; then
+        sed -i".backup" "s#CONNECTION_REFRESH_INTERVAL_SEC=.*#CONNECTION_REFRESH_INTERVAL_SEC=$CONNECTION_REFRESH_INTERVAL_SEC#" ".env-${FULL_NAMESPACE}"
+    else
+        echo "CONNECTION_REFRESH_INTERVAL_SEC=$CONNECTION_REFRESH_INTERVAL_SEC" >> ".env-${FULL_NAMESPACE}"
     fi
 
     # Check if TELEGRAM_NOTIFICATION_COOLDOWN exists in the file, if not add it, otherwise update it
