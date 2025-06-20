@@ -5,10 +5,6 @@ from collections import defaultdict
 from typing import Union
 
 from eth_utils.address import to_checksum_address
-from httpx import AsyncClient
-from httpx import AsyncHTTPTransport
-from httpx import Limits
-from httpx import Timeout
 from web3 import Web3
 import time
 
@@ -34,7 +30,6 @@ from snapshotter.utils.snapshot_worker import SnapshotAsyncWorker
 
 class ProcessorDistributor:
     _anchor_rpc_helper: RpcHelper
-    _reporting_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -76,24 +71,6 @@ class ProcessorDistributor:
         if not self._rpc_helper:
             self._rpc_helper = RpcHelper()
             self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
-
-    async def _init_httpx_client(self):
-        """
-        Initializes the HTTPX clients with the specified settings.
-        """
-        
-        transport_limits = Limits(
-            max_connections=100,
-            max_keepalive_connections=50,
-            keepalive_expiry=None,
-        )
-
-        self._reporting_httpx_client = AsyncClient(
-            base_url=settings.reporting.service_url,
-            timeout=Timeout(timeout=5.0),
-            follow_redirects=False,
-            transport=AsyncHTTPTransport(limits=transport_limits),
-        )
 
     async def _init_preloader_compute_mapping(self):
         """
