@@ -6,7 +6,6 @@ from typing import Union
 
 from eth_utils.address import to_checksum_address
 from web3 import Web3
-import time
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
@@ -61,7 +60,6 @@ class ProcessorDistributor:
                 self._all_preload_tasks.add(preload_task)
 
         self._snapshotter_enabled = True
-        self._snapshotter_active = True
         self.snapshot_worker = SnapshotAsyncWorker()
 
     async def _init_rpc_helper(self):
@@ -70,7 +68,7 @@ class ProcessorDistributor:
         """
         if not self._rpc_helper:
             self._rpc_helper = RpcHelper()
-            self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
+            self._anchor_rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
 
     async def _init_preloader_compute_mapping(self):
         """
@@ -103,9 +101,10 @@ class ProcessorDistributor:
                 module='ProcessDistributor',
             )
             self._anchor_rpc_helper = RpcHelper(
-                rpc_settings=settings.anchor_chain_rpc,
+                rpc_settings=settings.powerloom_chain_rpc,
             )
             protocol_abi = read_json_file(settings.protocol_state.abi, self._logger)
+            self._logger.info('Protocol state address: {}', settings.protocol_state.address)
             self._protocol_state_contract = self._anchor_rpc_helper.get_current_node()['web3_client'].eth.contract(
                 address=to_checksum_address(
                     settings.protocol_state.address,
@@ -136,24 +135,13 @@ class ProcessorDistributor:
             try:
                 self._current_day = self._protocol_state_contract.functions.dayCounter(Web3.to_checksum_address(settings.data_market)).call()
 
-                task_completion_status = self._protocol_state_contract.functions.checkSlotTaskStatusForDay(
-                    Web3.to_checksum_address(settings.data_market),
-                    settings.slot_id,
-                    self._current_day,
-                ).call()
-                if task_completion_status:
-                    self._snapshotter_active = False
-                else:
-                    self._snapshotter_active = True
             except Exception as e:
+                self._logger.info("{} {}".format(self._protocol_state_contract, settings.data_market))
                 self._logger.error(
                     'Exception in querying protocol state for user task status for day {}',
                     e,
                 )
-                self._snapshotter_active = False
-            self._logger.info('Snapshotter active: {}', self._snapshotter_active)
 
-            await self._init_httpx_client()
             await self._init_rpc_helper()
             await self._load_projects_metadata()
             await self._init_preloader_compute_mapping()
@@ -340,12 +328,10 @@ class ProcessorDistributor:
 
         elif type_ == 'DayStartedEvent':
             self._logger.info('Day started event received, setting active status to True')
-            self._snapshotter_active = True
             self._current_day += 1
 
         elif type_ == 'DailyTaskCompletedEvent':
             self._logger.info('Daily task completed event received, setting active status to False')
-            self._snapshotter_active = False
 
         else:
             self._logger.error(

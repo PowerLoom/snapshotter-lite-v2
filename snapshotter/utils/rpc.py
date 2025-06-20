@@ -493,7 +493,8 @@ class RpcHelper(object):
             before_sleep=self._on_node_exception,
         )
         async def f(node_idx):
-
+            if not self._initialized:
+                await self.init()
             node = self._nodes[node_idx]
             rpc_url = node.get('rpc_url')
 

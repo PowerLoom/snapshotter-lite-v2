@@ -1,6 +1,6 @@
 services:
   snapshotter-lite-local-collector:
-    image: ghcr.io/powerloom/snapshotter-lite-local-collector:${IMAGE_TAG}
+    image: ghcr.io/powerloom/snapshotter-lite-local-collector:${LOCAL_COLLECTOR_IMAGE_TAG}
     container_name: snapshotter-lite-local-collector-${FULL_NAMESPACE}
     profiles: ["local-collector"]
     expose:
@@ -10,29 +10,22 @@ services:
     volumes:
       - ./shared-volume:/keys
     environment:
-      - SIGNER_ACCOUNT_ADDRESS=$SIGNER_ACCOUNT_ADDRESS
-      - SIGNER_ACCOUNT_PRIVATE_KEY=$SIGNER_ACCOUNT_PRIVATE_KEY
-      - IPFS_URL=$IPFS_URL
-      - IPFS_API_KEY=$IPFS_API_KEY
-      - IPFS_API_SECRET=$IPFS_API_SECRET
-      - PROTOCOL_STATE_CONTRACT=$PROTOCOL_STATE_CONTRACT
       - DATA_MARKET_CONTRACT=$DATA_MARKET_CONTRACT
-      - PROST_RPC_URL=$PROST_RPC_URL
-      - PROST_CHAIN_ID=$PROST_CHAIN_ID
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
       - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
-      - RELAYER_PRIVATE_KEY=$RELAYER_PRIVATE_KEY
-      - BLOCK_TIME=$BLOCK_TIME
       - MAX_STREAM_POOL_SIZE=$MAX_STREAM_POOL_SIZE
       - STREAM_HEALTH_CHECK_TIMEOUT_MS=$STREAM_HEALTH_CHECK_TIMEOUT_MS
       - STREAM_WRITE_TIMEOUT_MS=$STREAM_WRITE_TIMEOUT_MS
       - MAX_WRITE_RETRIES=$MAX_WRITE_RETRIES
       - MAX_CONCURRENT_WRITES=$MAX_CONCURRENT_WRITES
       - DATA_MARKET_IN_REQUEST=$DATA_MARKET_IN_REQUEST
+      - CONNECTION_REFRESH_INTERVAL_SEC=$CONNECTION_REFRESH_INTERVAL_SEC
     networks:
       - custom_network
-    restart: on-failure:10
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+    restart: always
   snapshotter-lite-v2:
     image: ghcr.io/powerloom/snapshotter-lite-v2:${IMAGE_TAG}
     container_name: snapshotter-lite-v2-${SLOT_ID}-${FULL_NAMESPACE}
@@ -44,16 +37,13 @@ services:
       - FULL_NAMESPACE=$FULL_NAMESPACE
       - SLOT_ID=$SLOT_ID
       - SOURCE_RPC_URL=$SOURCE_RPC_URL
-      - PROST_RPC_URL=$PROST_RPC_URL
+      - POWERLOOM_RPC_URL=$POWERLOOM_RPC_URL
       - IPFS_URL=$IPFS_URL
       - IPFS_API_KEY=$IPFS_API_KEY
       - IPFS_API_SECRET=$IPFS_API_SECRET
       - PROTOCOL_STATE_CONTRACT=$PROTOCOL_STATE_CONTRACT
       - DATA_MARKET_CONTRACT=$DATA_MARKET_CONTRACT
       - LOCAL_COLLECTOR_PORT=$LOCAL_COLLECTOR_PORT
-      - SLACK_REPORTING_URL=$SLACK_REPORTING_URL
-      - POWERLOOM_REPORTING_URL=$POWERLOOM_REPORTING_URL
-      - WEB3_STORAGE_TOKEN=$WEB3_STORAGE_TOKEN
       - NAMESPACE=$NAMESPACE
       - TELEGRAM_REPORTING_URL=$TELEGRAM_REPORTING_URL
       - TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID
@@ -72,7 +62,11 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - custom_network
-    restart: on-failure:10
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 200M
 networks:
   custom_network:
     name: ${DOCKER_NETWORK_NAME}

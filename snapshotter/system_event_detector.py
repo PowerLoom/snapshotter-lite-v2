@@ -27,8 +27,6 @@ from snapshotter.utils.models.data_models import SnapshotterReportState
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.rpc import get_event_sig_and_abi
 from snapshotter.utils.rpc import RpcHelper
-from urllib.parse import urljoin
-from snapshotter.utils.models.data_models import SnapshotterPing
 from pathlib import Path
 
 
@@ -56,7 +54,6 @@ class EventDetectorProcess(multiprocessing.Process):
         failure_count (int): Counter for consecutive failures
         last_status_check_time (int): Timestamp of last status check
         _initialized (bool): Flag indicating if process has been initialized
-        _last_reporting_service_ping (int): Timestamp of last reporting service ping
         last_notification_time (int): Timestamp of last notification sent
     """
 
@@ -77,12 +74,10 @@ class EventDetectorProcess(multiprocessing.Process):
         self._last_processed_block = None
 
         # Initialize reporting and notification related attributes
-        self._last_reporting_service_ping = 0
         self.notification_cooldown = settings.reporting.notification_cooldown
         self.last_notification_time = 0
         self.failure_count = 0
         self.last_status_check_time = int(time.time())
-
         self._initialized = False
 
     async def init(self):
@@ -100,7 +95,7 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during initialization steps
         """
-        self.rpc_helper = RpcHelper(rpc_settings=settings.anchor_chain_rpc)
+        self.rpc_helper = RpcHelper(rpc_settings=settings.powerloom_chain_rpc)
         self._source_rpc_helper = RpcHelper(rpc_settings=settings.rpc)
 
         self.processor_distributor = ProcessorDistributor()
@@ -113,15 +108,7 @@ class EventDetectorProcess(multiprocessing.Process):
             self._logger,
         )
 
-        # Initialize HTTP clients for reporting and Telegram notifications
-        self._reporting_httpx_client = httpx.Client(
-            base_url=settings.reporting.service_url,
-            limits=httpx.Limits(
-                max_keepalive_connections=2,
-                max_connections=2,
-                keepalive_expiry=300,
-            ),
-        )
+        # Initialize HTTP client for Telegram notifications
         self._telegram_httpx_client = httpx.Client(
             base_url=settings.reporting.telegram_url,
             limits=httpx.Limits(
@@ -226,48 +213,60 @@ class EventDetectorProcess(multiprocessing.Process):
         Raises:
             Various exceptions possible during RPC calls and event processing
         """
-
+        # Fetch events from the blockchain
         events_log = await self.rpc_helper.get_events_logs(
             **{
-                'contract_address': self.contract_address,
+                'contract_address': self.contract.address,
                 'to_block': to_block,
                 'from_block': from_block,
                 'topics': [self.event_sig],
                 'event_abi': self.event_abi,
             },
         )
-
+        
+        self._logger.info('Found {} events in blocks {} to {}', len(events_log), from_block, to_block)
+        
         events = []
-        latest_epoch_id = - 1
         for log in events_log:
             if log.event == 'EpochReleased':
-                self._logger.info(f"EpochReleased: {log.args.dataMarketAddress}!")
-                if log.args.dataMarketAddress == settings.data_market:
+                self._logger.info(f"EpochReleased event found: {log.args.dataMarketAddress}, comparing with {settings.data_market}")
+                
+                if log.args.dataMarketAddress.lower() == settings.data_market.lower():
+                    self._logger.info(f"EpochReleased event matched for our data market! Epoch ID: {log.args.epochId}")
+
                     event = EpochReleasedEvent(
                         begin=log.args.begin,
                         end=log.args.end,
                         epochId=log.args.epochId,
                         timestamp=log.args.timestamp,
                     )
-                    latest_epoch_id = max(latest_epoch_id, log.args.epochId)
                     events.append((log.event, event))
+                else:
+                    self._logger.info(f"Skipping EpochReleased event for different data market: {log.args.dataMarketAddress}")
 
             elif log.event == 'DayStartedEvent':
+                self._logger.info(f"DayStartedEvent found: Day ID {log.args.dayId}")
                 event = DayStartedEvent(
                     dayId=log.args.dayId,
                     timestamp=log.args.timestamp,
                 )
                 events.append((log.event, event))
+                
             elif log.event == 'DailyTaskCompletedEvent':
-                if log.args.snapshotterAddress == to_checksum_address(settings.instance_id) and\
-                        log.args.slotId == settings.slot_id:
+                snapshotter_address = to_checksum_address(settings.instance_id)
+                self._logger.info(f"DailyTaskCompletedEvent found: Snapshotter {log.args.snapshotterAddress}, Slot {log.args.slotId}")
+                
+                if log.args.snapshotterAddress == snapshotter_address and log.args.slotId == settings.slot_id:
+                    self._logger.info(f"DailyTaskCompletedEvent matched for our snapshotter and slot! Day ID: {log.args.dayId}")
                     event = DailyTaskCompletedEvent(
                         dayId=log.args.dayId,
                         timestamp=log.args.timestamp,
                     )
                     events.append((log.event, event))
+                else:
+                    self._logger.info(f"Skipping DailyTaskCompletedEvent for different snapshotter/slot")
 
-        self._logger.info('Events: {}', events)
+        self._logger.info('Filtered events to process: {}', events)
         return events
 
     def _generic_exit_handler(self, signum, sigframe):
@@ -299,8 +298,6 @@ class EventDetectorProcess(multiprocessing.Process):
                 for task in asyncio.all_tasks(self.ev_loop):
                     task.cancel()
                 # Clean up resources with timeout
-                if hasattr(self, '_reporting_httpx_client'):
-                    self._reporting_httpx_client.close()
                 if hasattr(self, '_telegram_httpx_client'):
                     self._telegram_httpx_client.close()
                 self.ev_loop.stop()
@@ -411,31 +408,10 @@ class EventDetectorProcess(multiprocessing.Process):
             if current_time - self.last_status_check_time > 120:
                 await self.check_last_submission()
             try:
-                if settings.reporting.service_url and int(time.time()) - self._last_reporting_service_ping >= 30:
-                    self._last_reporting_service_ping = int(time.time())
-                    try:
-                        response = self._reporting_httpx_client.post(
-                            url=urljoin(settings.reporting.service_url, '/ping'),
-                            json=SnapshotterPing(
-                                instanceID=settings.instance_id,
-                                slotId=settings.slot_id,
-                                dataMarketAddress=settings.data_market,
-                                namespace=settings.namespace,
-                                nodeVersion=settings.node_version,
-                            ).dict(),
-                        )
-                        response.raise_for_status()
-                    except Exception as e:
-                        if settings.logs.trace_enabled:
-                            self._logger.opt(exception=True).error('Error while pinging reporting service: {}', e)
-                        else:
-                            self._logger.error(
-                                'Error while pinging reporting service: {}', e,
-                            )
-                    else:
-                        self._logger.info('Reporting service pinged successfully')
 
+                # Get current block from the appropriate RPC helper based on latest epoch
                 current_block = await self.rpc_helper.get_current_block_number()
+                
                 self._logger.info('Current block: {}', current_block)
 
             except Exception as e:
@@ -460,7 +436,8 @@ class EventDetectorProcess(multiprocessing.Process):
 
             if self._last_processed_block >= current_block:
                 self._logger.info(
-                    'Last processed block is up to date, sleeping for {} seconds...',
+                    'Last processed block {} is up to date, sleeping for {} seconds...',
+                    self._last_processed_block,
                     settings.rpc.polling_interval,
                 )
                 await asyncio.sleep(settings.rpc.polling_interval)
@@ -595,6 +572,7 @@ class EventDetectorProcess(multiprocessing.Process):
         self.ev_loop = asyncio.get_event_loop()
 
         try:
+            self._logger.info("Starting event detection loop")
             self.ev_loop.run_until_complete(
                 self._detect_events(),
             )

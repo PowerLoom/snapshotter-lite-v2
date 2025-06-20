@@ -13,7 +13,6 @@ from httpx import Timeout
 
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_failure_notifications_async
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.generic_worker import GenericAsyncWorker
@@ -28,6 +27,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
     _ipfs_singleton: AsyncIPFSClientSingleton
     _ipfs_writer_client: AsyncIPFSClient
     _ipfs_reader_client: AsyncIPFSClient
+    _telegram_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -86,7 +86,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
         """
         try:
             task_processor = self._project_calculation_mapping[task_type]
-
+            
             snapshots = await task_processor.compute(
                 msg_obj=msg_obj,
                 rpc_helper=self._rpc_helper,
@@ -134,8 +134,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                         _ipfs_writer_client=self._ipfs_writer_client,
                         project_id=project_id,
                         epoch=msg_obj,
-                        snapshot=snapshot,
-                        storage_flag=settings.web3storage.upload_snapshots,
+                        snapshot=snapshot
                     )
                 except Exception as e:
                     self.logger.opt(exception=True).error(
@@ -302,22 +301,11 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                     status=self.status,
                 )
 
-                tasks = [
-                    asyncio.create_task(
-                        send_failure_notifications_async(
-                            client=self._reporting_httpx_client,
-                            message=notification_message,
-                        ),
-                    ),
-                    asyncio.create_task(
-                        send_telegram_notification_async(
-                            client=self._telegram_httpx_client,
-                            message=telegram_message,
-                        ),
-                    ),
-                ]
+                await send_telegram_notification_async(
+                    client=self._telegram_httpx_client,
+                    message=telegram_message,
+                )
 
-                await asyncio.gather(*tasks)
                 self.last_notification_time = int(time.time())
 
             except Exception as e:

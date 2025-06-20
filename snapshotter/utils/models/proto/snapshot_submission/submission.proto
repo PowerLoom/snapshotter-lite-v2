@@ -17,6 +17,7 @@ message SnapshotSubmission {
   string signature = 2;
   string header = 3;
   string dataMarket = 4;
+  optional string nodeVersion = 5;
 }
 
 service Submission {

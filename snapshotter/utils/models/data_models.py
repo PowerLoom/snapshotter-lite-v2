@@ -26,8 +26,6 @@ class SnapshotterReportState(Enum):
 class SnapshotterStates(Enum):
     PRELOAD = 'PRELOAD'
     SNAPSHOT_BUILD = 'SNAPSHOT_BUILD'
-    SNAPSHOT_SUBMIT_RELAYER = 'SNAPSHOT_SUBMIT_RELAYER'
-    RELAYER_SEND = 'RELAYER_SEND'
     SNAPSHOT_FINALIZE = 'SNAPSHOT_FINALIZE'
 
 
@@ -124,14 +122,6 @@ class ProjectStatus(BaseModel):
     successfulSubmissions: int = 0
     incorrectSubmissions: int = 0
     missedSubmissions: int = 0
-
-
-class SnapshotterPing(BaseModel):
-    instanceID: str
-    slotId: int
-    nodeVersion: str
-    dataMarketAddress: str
-    namespace: str
 
 
 class SnapshotterStatus(BaseModel):
