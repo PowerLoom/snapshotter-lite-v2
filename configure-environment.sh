@@ -7,6 +7,7 @@ DATA_MARKET_CONTRACT_NUMBER=""
 SKIP_CREDENTIAL_UPDATE=false
 NO_COLLECTOR=false
 OVERRIDE_DEFAULTS_SCRIPT_FLAG=false
+DEVNET_MODE=false
 
 # --- Define Top-Level Fixed Defaults ---
 DEFAULT_POWERLOOM_CHAIN="mainnet"
@@ -18,6 +19,17 @@ DEFAULT_SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
 DEFAULT_SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
 DEFAULT_CONNECTION_REFRESH_INTERVAL_SEC=60
 DEFAULT_TELEGRAM_NOTIFICATION_COOLDOWN=300
+
+# --- Define Top-Level Fixed Defaults for Devnet ---
+DEFAULT_DEVNET_POWERLOOM_CHAIN="devnet"
+DEFAULT_DEVNET_SOURCE_CHAIN="ETH"
+DEFAULT_DEVNET_NAMESPACE="UNISWAPV2"
+DEFAULT_DEVNET_POWERLOOM_RPC_URL="https://rpc-devnet.powerloom.dev"
+DEFAULT_DEVNET_PROTOCOL_STATE_CONTRACT="0x3B5A0FB70ef68B5dd677C7d614dFB89961f97401"
+DEFAULT_DEVNET_SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
+DEFAULT_DEVNET_SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
+DEFAULT_DEVNET_CONNECTION_REFRESH_INTERVAL_SEC=60
+DEFAULT_DEVNET_TELEGRAM_NOTIFICATION_COOLDOWN=300
 
 # --- Initialize Working Configuration Variables from Fixed Defaults ---
 POWERLOOM_CHAIN="$DEFAULT_POWERLOOM_CHAIN"
@@ -84,23 +96,46 @@ update_or_append_var() {
 # Function to detect and select environment files
 detect_and_select_env_file() {
     local existing_env_files=( $(find . -maxdepth 1 -name ".env-*" -type f) )
+    
+    # Filter for devnet files if in devnet mode
+    if [ "$DEVNET_MODE" = "true" ]; then
+        local devnet_env_files=()
+        for file in "${existing_env_files[@]}"; do
+            if [[ "$file" == *"devnet"* ]]; then
+                devnet_env_files+=("$file")
+            fi
+        done
+        existing_env_files=("${devnet_env_files[@]}")
+        
+        if [ ${#existing_env_files[@]} -eq 0 ]; then
+            echo "ℹ️ No devnet environment files found. Will create a new one."
+            return
+        fi
+    fi
+    
     local num_existing_env_files=${#existing_env_files[@]}
     
     if [ "$num_existing_env_files" -eq 1 ]; then
         SELECTED_ENV_FILE="${existing_env_files[0]}"
         echo "ℹ️ Auto-selected existing environment file: $SELECTED_ENV_FILE"
     elif [ "$num_existing_env_files" -gt 1 ]; then
-        echo "Found multiple .env-* files. Please choose which one to use:"
-        for i in "${!existing_env_files[@]}"; do
-            echo "$((i+1))) ${existing_env_files[$i]}"
-        done
-        read -p "Enter number (1-$num_existing_env_files): " file_choice
-        if [[ "$file_choice" =~ ^[0-9]+$ ]] && [ "$file_choice" -ge 1 ] && [ "$file_choice" -le "$num_existing_env_files" ]; then
-            SELECTED_ENV_FILE="${existing_env_files[$((file_choice-1))]}"
-            echo "ℹ️ You selected: $SELECTED_ENV_FILE"
+        if [ "$DEVNET_MODE" = "true" ]; then
+            # In devnet mode, auto-select the first devnet file
+            SELECTED_ENV_FILE="${existing_env_files[0]}"
+            echo "ℹ️ Auto-selected first devnet environment file: $SELECTED_ENV_FILE"
         else
-            echo "❌ Invalid selection. Exiting."
-            exit 1
+            echo "Found multiple .env-* files. Please choose which one to use:"
+            for i in "${!existing_env_files[@]}"; do
+                echo "$((i+1))) ${existing_env_files[$i]}"
+            done
+            read -p "Enter number (1-$num_existing_env_files): " file_choice
+            if [[ "$file_choice" =~ ^[0-9]+$ ]] && [ "$file_choice" -ge 1 ] && [ "$file_choice" -le "$num_existing_env_files" ]; then
+                SELECTED_ENV_FILE="${existing_env_files[$((file_choice-1))]}"
+                echo "ℹ️ You selected: $SELECTED_ENV_FILE"
+            else
+                echo "❌ Invalid selection. Exiting."
+                exit 1
+            fi
         fi
     fi
 
@@ -136,6 +171,10 @@ parse_arguments() {
                 OVERRIDE_DEFAULTS_SCRIPT_FLAG=true
                 shift
                 ;;
+            --devnet)
+                DEVNET_MODE=true
+                shift
+                ;;
             *)
                 shift
                 ;;
@@ -146,18 +185,35 @@ parse_arguments() {
 # Function to get data market configuration
 get_data_market_config() {
     local choice="$1"
+    local is_devnet="${2:-false}"
+    
+    # Define contract addresses
+    local MAINNET_AAVEV3_CONTRACT="0x0000000000000000000000000000000000000000"
+    local MAINNET_UNISWAPV2_CONTRACT="0x21cb57C1f2352ad215a463DD867b838749CD3b8f"
+    local DEVNET_AAVEV3_CONTRACT="0x0000000000000000000000000000000000000000"
+    local DEVNET_UNISWAPV2_CONTRACT="0x8C3fDC3A281BbB8231c9c92712fE670eFA655e5f"
     
     case $choice in
         "1")
-            echo "Aave V3 selected"
-            export DATA_MARKET_CONTRACT="0x0000000000000000000000000000000000000000"
+            if [ "$is_devnet" = "true" ]; then
+                echo "Aave V3 selected for devnet"
+                export DATA_MARKET_CONTRACT="$DEVNET_AAVEV3_CONTRACT"
+            else
+                echo "Aave V3 selected"
+                export DATA_MARKET_CONTRACT="$MAINNET_AAVEV3_CONTRACT"
+            fi
             export SNAPSHOT_CONFIG_REPO_BRANCH="eth_aavev3_lite_v2"
             export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_aavev3_lite"
             export NAMESPACE="AAVEV3"
             ;;
         "2")
-            echo "Uniswap V2 selected"
-            export DATA_MARKET_CONTRACT="0x21cb57C1f2352ad215a463DD867b838749CD3b8f"
+            if [ "$is_devnet" = "true" ]; then
+                echo "Uniswap V2 selected for devnet"
+                export DATA_MARKET_CONTRACT="$DEVNET_UNISWAPV2_CONTRACT"
+            else
+                echo "Uniswap V2 selected"
+                export DATA_MARKET_CONTRACT="$MAINNET_UNISWAPV2_CONTRACT"
+            fi
             export SNAPSHOT_CONFIG_REPO_BRANCH="eth_uniswapv2-lite_v2"
             export SNAPSHOTTER_COMPUTE_REPO_BRANCH="eth_uniswapv2_lite_v2"
             export NAMESPACE="UNISWAPV2"
@@ -296,6 +352,59 @@ handle_override_mode() {
     update_common_config "$ENV_FILE_PATH"
     update_or_append_var "OVERRIDE_DEFAULTS" "true" "$ENV_FILE_PATH"
     echo "✅ $ENV_FILE_PATH configured with overrides."
+}
+
+# Function to handle devnet mode configuration
+handle_devnet_mode() {
+    SETUP_COMPLETE=false
+    echo "🔧 Devnet mode enabled via --devnet flag."
+    
+    # Use devnet defaults
+    export POWERLOOM_CHAIN="$DEFAULT_DEVNET_POWERLOOM_CHAIN"
+    export SOURCE_CHAIN="$DEFAULT_DEVNET_SOURCE_CHAIN"
+    export NAMESPACE="$DEFAULT_DEVNET_NAMESPACE"
+    export POWERLOOM_RPC_URL="$DEFAULT_DEVNET_POWERLOOM_RPC_URL"
+    export PROTOCOL_STATE_CONTRACT="$DEFAULT_DEVNET_PROTOCOL_STATE_CONTRACT"
+    export SNAPSHOT_CONFIG_REPO_BRANCH="$DEFAULT_DEVNET_SNAPSHOT_CONFIG_REPO_BRANCH"
+    export SNAPSHOTTER_COMPUTE_REPO_BRANCH="$DEFAULT_DEVNET_SNAPSHOTTER_COMPUTE_REPO_BRANCH"
+    export CONNECTION_REFRESH_INTERVAL_SEC="$DEFAULT_DEVNET_CONNECTION_REFRESH_INTERVAL_SEC"
+    export TELEGRAM_NOTIFICATION_COOLDOWN="$DEFAULT_DEVNET_TELEGRAM_NOTIFICATION_COOLDOWN"
+    
+    # Use data market contract number if specified, otherwise default to Uniswap V2
+    if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
+        get_data_market_config "$DATA_MARKET_CONTRACT_NUMBER" "true"
+    else
+        # Default to Uniswap V2 for devnet
+        get_data_market_config "2" "true"
+    fi
+    
+    # Determine target environment file
+    export FULL_NAMESPACE="${POWERLOOM_CHAIN}-${NAMESPACE}-${SOURCE_CHAIN}"
+    local target_env_file_for_devnet=".env-${FULL_NAMESPACE}"
+    
+    if [ -n "$ENV_FILE_PATH" ] && [ "$ENV_FILE_PATH" != "$target_env_file_for_devnet" ]; then
+        echo "ℹ️ Switching to devnet configuration: $target_env_file_for_devnet"
+        echo "Previously selected file was: $ENV_FILE_PATH"
+    elif [ -z "$ENV_FILE_PATH" ]; then
+        echo "ℹ️ Creating new devnet configuration: $target_env_file_for_devnet"
+    fi
+    ENV_FILE_PATH="$target_env_file_for_devnet"
+    
+    # Create or update environment file
+    if [ ! -f "$ENV_FILE_PATH" ]; then
+        echo "🟡 $ENV_FILE_PATH file not found, creating one for devnet..."
+        cp env.example "$ENV_FILE_PATH"
+        CLEANUP_ENV_FILE_ON_ABORT=true
+        TARGET_ENV_FILE_FOR_CLEANUP="$ENV_FILE_PATH"
+        prompt_for_credentials "$ENV_FILE_PATH"
+        FILE_WAS_NEWLY_CREATED=true
+    else
+        echo "🟢 $ENV_FILE_PATH found. Will update it with devnet values."
+    fi
+    
+    update_common_config "$ENV_FILE_PATH"
+    update_or_append_var "OVERRIDE_DEFAULTS" "true" "$ENV_FILE_PATH"
+    echo "✅ $ENV_FILE_PATH configured for devnet."
 }
 
 # Function to handle existing environment file
@@ -497,7 +606,9 @@ main() {
     detect_and_select_env_file
     
     # Handle different configuration modes
-    if [ "$OVERRIDE_DEFAULTS_SCRIPT_FLAG" = "true" ]; then
+    if [ "$DEVNET_MODE" = "true" ]; then
+        handle_devnet_mode
+    elif [ "$OVERRIDE_DEFAULTS_SCRIPT_FLAG" = "true" ]; then
         handle_override_mode
     elif [ -n "$ENV_FILE_PATH" ]; then
         handle_existing_env_file
