@@ -4,6 +4,8 @@ from abc import ABC
 from abc import ABCMeta
 from abc import abstractmethod
 from urllib.parse import urljoin
+from datetime import datetime
+from datetime import timezone
 
 from httpx import AsyncClient
 from httpx import Client as SyncClient
@@ -14,10 +16,10 @@ from snapshotter.utils.default_logger import logger
 from snapshotter.utils.models.data_models import PreloaderResult
 from snapshotter.utils.models.message_models import EpochBase
 from snapshotter.utils.models.message_models import SnapshotProcessMessage
-from snapshotter.utils.models.message_models import SnapshotterIssue
 from snapshotter.utils.models.message_models import TelegramEpochProcessingReportMessage
 from snapshotter.utils.models.message_models import TelegramMessage
 from snapshotter.utils.models.message_models import TelegramSnapshotterReportMessage
+from snapshotter.utils.models.message_models import WebhookReportMessage
 from snapshotter.utils.rpc import RpcHelper
 
 # setup logger
@@ -68,6 +70,91 @@ def sync_notification_callback_result_handler(f: functools.partial):
             logger.error('Exception while sending callback or notification: {}', exc)
     else:
         logger.debug('Callback or notification result:{}', result)
+
+
+async def send_webhook_notification_async(client: AsyncClient, message: WebhookReportMessage):
+    """
+    Sends an asynchronous webhook notification for reporting issues.
+
+    This function sends a generic webhook notification that can be used with
+    various services including Zapier, Telegram, Discord, etc.
+
+    Args:
+        client (AsyncClient): The async HTTP client to use for sending notifications.
+        message (WebhookReportMessage): The message to send as a webhook notification.
+
+    Returns:
+        None
+    """
+    if not settings.reporting.webhook_url:
+        return
+
+    f = asyncio.ensure_future(
+        client.post(
+            url=settings.reporting.webhook_url,
+            json=message.dict(),
+        ),
+    )
+    f.add_done_callback(misc_notification_callback_result_handler)
+
+
+def send_webhook_notification_sync(client: SyncClient, message: WebhookReportMessage):
+    """
+    Sends a synchronous webhook notification for reporting issues.
+
+    This function sends a generic webhook notification that can be used with
+    various services including Zapier, Telegram, Discord, etc.
+
+    Args:
+        client (SyncClient): The synchronous HTTP client to use for sending notifications.
+        message (WebhookReportMessage): The message to send as a webhook notification.
+
+    Returns:
+        None
+    """
+    if not settings.reporting.webhook_url:
+        return
+
+    f = functools.partial(
+        client.post,
+        url=settings.reporting.webhook_url,
+        json=message.dict(),
+    )
+    sync_notification_callback_result_handler(f)
+
+
+def create_webhook_message(
+    issue_type: str,
+    project_id: str = "",
+    epoch_id: str = "",
+    issue_details: str = "",
+    status=None
+) -> WebhookReportMessage:
+    """
+    Creates a webhook message for reporting issues.
+
+    Args:
+        issue_type (str): The type of issue being reported
+        project_id (str): The project ID associated with the issue
+        epoch_id (str): The epoch ID associated with the issue
+        issue_details (str): Detailed description of the issue
+        status: The snapshotter status object
+
+    Returns:
+        WebhookReportMessage: The webhook message ready to be sent
+    """
+    return WebhookReportMessage(
+        instanceID=settings.instance_id,
+        issueType=issue_type,
+        projectID=project_id,
+        epochId=epoch_id,
+        timeOfReporting=datetime.now(timezone.utc).isoformat(),
+        slotId=settings.slot_id,
+        status=status,
+        issue=issue_details,
+        chatId=settings.reporting.telegram_chat_id if settings.reporting.telegram_chat_id else None,
+        service=settings.reporting.webhook_service,
+    )
 
 
 async def send_telegram_notification_async(client: AsyncClient, message: TelegramMessage):
