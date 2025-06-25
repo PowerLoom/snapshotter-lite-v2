@@ -58,6 +58,14 @@ if [ "$TELEGRAM_NOTIFICATION_COOLDOWN" ]; then
     echo "Found TELEGRAM_NOTIFICATION_COOLDOWN ${TELEGRAM_NOTIFICATION_COOLDOWN}";
 fi
 
+if [ "$WEBHOOK_URL" ]; then
+    echo "Found WEBHOOK_URL ${WEBHOOK_URL}";
+fi
+
+if [ "$WEBHOOK_SERVICE" ]; then
+    echo "Found WEBHOOK_SERVICE ${WEBHOOK_SERVICE}";
+fi
+
 if [ "$FULL_NAMESPACE" ]; then
     echo "Found FULL_NAMESPACE ${FULL_NAMESPACE}";
 else
@@ -77,6 +85,8 @@ export local_collector_port="${LOCAL_COLLECTOR_PORT:-50051}"
 export telegram_reporting_url="${TELEGRAM_REPORTING_URL:-}"
 export telegram_chat_id="${TELEGRAM_CHAT_ID:-}"
 export telegram_notification_cooldown="${TELEGRAM_NOTIFICATION_COOLDOWN:-}"
+export webhook_url="${WEBHOOK_URL:-}"
+export webhook_service="${WEBHOOK_SERVICE:-telegram}"
 
 # If IPFS_URL is empty, clear IPFS API key and secret
 if [ -z "$IPFS_URL" ]; then
@@ -93,6 +103,8 @@ echo "Using data market contract: ${DATA_MARKET_CONTRACT}"
 echo "Using telegram reporting url: ${telegram_reporting_url}"
 echo "Using telegram chat id: ${telegram_chat_id}"
 echo "Using telegram notification cooldown: ${telegram_notification_cooldown}"
+echo "Using webhook url: ${webhook_url}"
+echo "Using webhook service: ${webhook_service}"
 
 sed -i'.backup' "s#relevant-namespace#$namespace#" config/settings.json
 
@@ -121,5 +133,8 @@ sed -i'.backup' "s#local-collector-port#$local_collector_port#" config/settings.
 sed -i'.backup' "s#https://telegram-reporting-url#$telegram_reporting_url#" config/settings.json
 sed -i'.backup' "s#telegram-chat-id#$telegram_chat_id#" config/settings.json
 sed -i'.backup' "s#telegram-notification-cooldown#$telegram_notification_cooldown#" config/settings.json
+
+sed -i'.backup' "s#webhook-url#$webhook_url#" config/settings.json
+sed -i'.backup' "s#webhook-service#$webhook_service#" config/settings.json
 
 echo 'settings has been populated!'

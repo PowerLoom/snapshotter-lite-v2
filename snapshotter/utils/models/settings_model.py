@@ -45,10 +45,14 @@ class Timeouts(BaseModel):
 
 
 class ReportingConfig(BaseModel):
+    service_url: str
     telegram_url: str
     telegram_chat_id: str
     failure_report_frequency: int
     notification_cooldown: int
+    # New webhook configuration for Zapier/generic webhooks
+    webhook_url: Optional[str] = None
+    webhook_service: str = "telegram"
 
 
 class Logs(BaseModel):
