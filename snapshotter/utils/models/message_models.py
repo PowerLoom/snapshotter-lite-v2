@@ -1,6 +1,7 @@
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -81,6 +82,7 @@ class ProcessHubCommand(BaseModel):
     init_kwargs: Optional[Dict] = dict()
 
 
+# Legacy Telegram message models (kept for backward compatibility)
 class TelegramMessage(BaseModel):
     chatId: str
     slotId: int
@@ -93,3 +95,30 @@ class TelegramEpochProcessingReportMessage(TelegramMessage):
 class TelegramSnapshotterReportMessage(TelegramMessage):
     issue: SnapshotterIssue
     status: SnapshotterStatus
+
+
+class ZapierWebhookMessage(BaseModel):
+    instanceID: str
+    issueType: str
+    projectID: str
+    epochId: Union[int, str]
+    timeOfReporting: str
+    slotId: int
+    status: Optional[SnapshotterStatus] = None
+    issue: str
+    chatId: Optional[str] = None
+    service: str = "telegram"
+
+
+class WebhookReportMessage(BaseModel):
+    """Generic webhook message that can be used for various reporting services"""
+    instanceID: str
+    issueType: str
+    projectID: str
+    epochId: Union[int, str]
+    timeOfReporting: str
+    slotId: int
+    status: Optional[SnapshotterStatus] = None
+    issue: str
+    chatId: Optional[str] = None
+    service: str
