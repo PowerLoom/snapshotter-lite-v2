@@ -15,7 +15,9 @@ import os
 import aiofiles
 from snapshotter.processor_distributor import ProcessorDistributor
 from snapshotter.settings.config import settings
-from snapshotter.utils.callback_helpers import send_telegram_notification_sync
+from snapshotter.utils.callback_helpers import send_telegram_notification_async
+from snapshotter.utils.callback_helpers import send_webhook_notification_async
+from snapshotter.utils.callback_helpers import create_webhook_message
 
 from snapshotter.utils.default_logger import logger
 from snapshotter.utils.file_utils import read_json_file
@@ -109,7 +111,7 @@ class EventDetectorProcess(multiprocessing.Process):
         )
 
         # Initialize HTTP client for Telegram notifications
-        self._telegram_httpx_client = httpx.Client(
+        self._telegram_httpx_client = httpx.AsyncClient(
             base_url=settings.reporting.telegram_url,
             limits=httpx.Limits(
                 max_keepalive_connections=2,
@@ -117,6 +119,16 @@ class EventDetectorProcess(multiprocessing.Process):
                 keepalive_expiry=300,
             ),
         )
+
+        # Initialize HTTP client for webhook notifications
+        if settings.reporting.webhook_url:
+            self._webhook_httpx_client = httpx.AsyncClient(
+                limits=httpx.Limits(
+                    max_keepalive_connections=2,
+                    max_connections=2,
+                    keepalive_expiry=300,
+                ),
+            )
 
         # Initialize contract instance
         self.contract_address = settings.protocol_state.address
@@ -188,9 +200,10 @@ class EventDetectorProcess(multiprocessing.Process):
                 '❌ Simulation event processing failed! Error: {}', e,
             )
             self._logger.info("Please check your config and if issue persists please reach out to the team!")
-            await self._send_telegram_epoch_processing_notification(
+            await self._send_epoch_processing_notification(
                 error=e,
             )
+            time.sleep(10)
             sys.exit(1)
 
     async def get_events(self, from_block: int, to_block: int):
@@ -300,6 +313,8 @@ class EventDetectorProcess(multiprocessing.Process):
                 # Clean up resources with timeout
                 if hasattr(self, '_telegram_httpx_client'):
                     self._telegram_httpx_client.close()
+                if hasattr(self, '_webhook_httpx_client'):
+                    self._webhook_httpx_client.close()
                 self.ev_loop.stop()
                 
             except Exception as e:
@@ -364,7 +379,7 @@ class EventDetectorProcess(multiprocessing.Process):
                 self.last_status_check_time = current_time
                 error_message = f'No successful submission in the last 5 minutes. Last submission: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_timestamp))}'
 
-                await self._send_telegram_epoch_processing_notification(
+                await self._send_epoch_processing_notification(
                     error=Exception(error_message)
                 )
 
@@ -424,7 +439,7 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                await self._send_telegram_epoch_processing_notification(
+                await self._send_epoch_processing_notification(
                     error=e,
                 )
 
@@ -465,7 +480,7 @@ class EventDetectorProcess(multiprocessing.Process):
                     settings.rpc.polling_interval,
                 )
 
-                await self._send_telegram_epoch_processing_notification(
+                await self._send_epoch_processing_notification(
                     error=e,
                 )
 
@@ -493,14 +508,14 @@ class EventDetectorProcess(multiprocessing.Process):
             )
             await asyncio.sleep(settings.rpc.polling_interval)
 
-    async def _send_telegram_epoch_processing_notification(
+    async def _send_epoch_processing_notification(
         self,
         error: Exception,
     ):
         """
-        Send a Telegram notification about epoch processing errors.
+        Send a notification about epoch processing errors.
 
-        This method constructs and sends a detailed error notification via Telegram
+        This method constructs and sends a detailed error notification via webhook or Telegram
         when epoch processing encounters issues. The notification includes instance
         details, error information, and current status.
 
@@ -511,35 +526,55 @@ class EventDetectorProcess(multiprocessing.Process):
             Various exceptions possible during HTTP requests
         """
 
-        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
-            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
-
-            if not self._telegram_httpx_client:
-                self._logger.error('Telegram client not initialized')
-                return
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown:
 
             try:
-                telegram_message = TelegramEpochProcessingReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=SnapshotterIssue(
-                        instanceID=settings.instance_id,
-                        issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
-                        projectID='',
-                        epochId='',
-                        timeOfReporting=str(time.time()),
-                        extra=json.dumps({'issueDetails': f'Error : {error}'}),
-                    ),
-                )
 
-                send_telegram_notification_sync(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                )
+                if not settings.reporting.webhook_url:
+                    self._logger.info('No service URL configured, skipping notification')
+
+                # Send webhook notification if configured
+                if settings.reporting.webhook_url and hasattr(self, '_webhook_httpx_client'):
+                    self._logger.info('Sending webhook notification')
+                    webhook_message = create_webhook_message(
+                        issue_type=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                        issue_details=f'Error: {error}',
+                    )
+
+                    await send_webhook_notification_async(
+                        client=self._webhook_httpx_client,
+                        message=webhook_message,
+                    )
+
+                    self._logger.info('Webhook notification sent')
+
+                # Send legacy Telegram notification if configured
+                elif settings.reporting.telegram_url and settings.reporting.telegram_chat_id:
+                    if not self._telegram_httpx_client:
+                        self._logger.error('Telegram client not initialized')
+                        return
+
+                    telegram_message = TelegramEpochProcessingReportMessage(
+                        chatId=settings.reporting.telegram_chat_id,
+                        slotId=settings.slot_id,
+                        issue=SnapshotterIssue(
+                            instanceID=settings.instance_id,
+                            issueType=SnapshotterReportState.UNHEALTHY_EPOCH_PROCESSING.value,
+                            projectID='',
+                            epochId='',
+                            timeOfReporting=str(time.time()),
+                            extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                        ),
+                    )
+
+                    await send_telegram_notification_async(
+                        client=self._telegram_httpx_client,
+                        message=telegram_message,
+                    )
 
                 self.last_notification_time = int(time.time())
             except Exception as e:
-                self._logger.error('Error sending Telegram notification: {}', e)
+                self._logger.error('Error sending notification: {}', e)
     
     def run(self):
         """

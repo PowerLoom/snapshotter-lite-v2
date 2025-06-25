@@ -14,6 +14,8 @@ from httpx import Timeout
 from snapshotter.settings.config import projects_config
 from snapshotter.settings.config import settings
 from snapshotter.utils.callback_helpers import send_telegram_notification_async
+from snapshotter.utils.callback_helpers import send_webhook_notification_async
+from snapshotter.utils.callback_helpers import create_webhook_message
 from snapshotter.utils.data_utils import get_snapshot_submision_window
 from snapshotter.utils.generic_worker import GenericAsyncWorker
 from snapshotter.utils.models.data_models import SnapshotterIssue
@@ -28,6 +30,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
     _ipfs_writer_client: AsyncIPFSClient
     _ipfs_reader_client: AsyncIPFSClient
     _telegram_httpx_client: AsyncClient
+    _webhook_httpx_client: AsyncClient
 
     def __init__(self):
         """
@@ -180,6 +183,8 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 task_type, msg_obj,
             )
 
+            raise Exception('test-worker')
+
             await self._process(
                 msg_obj=msg_obj,
                 task_type=task_type,
@@ -244,6 +249,17 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
         )
 
+    async def _init_webhook_client(self):
+        """
+        Initializes the webhook client for generic webhook notifications.
+        """
+        if settings.reporting.webhook_url:
+            self._webhook_httpx_client = AsyncClient(
+                timeout=Timeout(timeout=5.0),
+                follow_redirects=False,
+                transport=AsyncHTTPTransport(limits=Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=None)),
+            )
+
     async def init_worker(self):
         """
         Initializes the worker by initializing project calculation mapping, IPFS client, and other necessary components.
@@ -252,6 +268,7 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             await self._init_project_calculation_mapping()
             await self._init_ipfs_client()
             await self._init_telegram_client()
+            await self._init_webhook_client()
             await self.init()
 
     async def handle_missed_snapshot(self, error: Exception, epoch_id: str, project_id: str):
@@ -277,34 +294,46 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
             epoch_id (str): The ID of the epoch that missed the snapshot.
             project_id (str): The ID of the project that missed the snapshot.
         """
-        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown and \
-            (settings.reporting.telegram_url and settings.reporting.telegram_chat_id):
-
-            if not self._telegram_httpx_client:
-                self.logger.error('Telegram client not initialized')
-                return
+        if (int(time.time()) - self.last_notification_time) >= self.notification_cooldown:
 
             try:
-                notification_message = SnapshotterIssue(
-                    instanceID=settings.instance_id,
-                    issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
-                    projectID=project_id,
-                    epochId=str(epoch_id),
-                    timeOfReporting=str(time.time()),
-                    extra=json.dumps({'issueDetails': f'Error : {error}'}),
-                )
+                # Send webhook notification if configured
+                if settings.reporting.webhook_url and hasattr(self, '_webhook_httpx_client') and self._webhook_httpx_client:
+                    webhook_message = create_webhook_message(
+                        issue_type=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                        project_id=project_id,
+                        epoch_id=epoch_id,
+                        issue_details=f'Error: {error}',
+                        status=self.status,
+                    )
 
-                telegram_message = TelegramSnapshotterReportMessage(
-                    chatId=settings.reporting.telegram_chat_id,
-                    slotId=settings.slot_id,
-                    issue=notification_message,
-                    status=self.status,
-                )
+                    await send_webhook_notification_async(
+                        client=self._webhook_httpx_client,
+                        message=webhook_message,
+                    )
 
-                await send_telegram_notification_async(
-                    client=self._telegram_httpx_client,
-                    message=telegram_message,
-                )
+                # Send legacy Telegram notification if configured
+                elif settings.reporting.telegram_url and settings.reporting.telegram_chat_id and self._telegram_httpx_client:
+                    notification_message = SnapshotterIssue(
+                        instanceID=settings.instance_id,
+                        issueType=SnapshotterReportState.MISSED_SNAPSHOT.value,
+                        projectID=project_id,
+                        epochId=str(epoch_id),
+                        timeOfReporting=str(time.time()),
+                        extra=json.dumps({'issueDetails': f'Error : {error}'}),
+                    )
+
+                    telegram_message = TelegramSnapshotterReportMessage(
+                        chatId=settings.reporting.telegram_chat_id,
+                        slotId=settings.slot_id,
+                        issue=notification_message,
+                        status=self.status,
+                    )
+
+                    await send_telegram_notification_async(
+                        client=self._telegram_httpx_client,
+                        message=telegram_message,
+                    )
 
                 self.last_notification_time = int(time.time())
 
