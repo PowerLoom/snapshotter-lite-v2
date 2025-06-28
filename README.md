@@ -278,6 +278,30 @@ You can combine this with other flags:
 
 This is ideal for developers who frequently switch between mainnet and devnet environments.
 
+##### Supported Data Markets on Devnet
+
+The snapshotter lite node supports multiple data markets on devnet:
+
+1. **Uniswap V2** (Default)
+   - Contract: `0x8C3fDC3A281BbB8231c9c92712fE670eFA655e5f`
+   - Branch: `eth_uniswapv2-lite_v2`
+
+2. **Aave V3** 
+   - Contract: `0x4229Ad271d8b11f2AdBDe77099752a534470876b`
+   - Branch: `eth_aavev3_lite_v2`
+
+When running with the `--devnet` flag, you'll be prompted to select a data market. You can also specify it directly:
+
+```bash
+# For Aave V3 on devnet
+./build.sh --devnet --data-market-contract-number 1
+
+# For Uniswap V2 on devnet (default)
+./build.sh --devnet --data-market-contract-number 2
+```
+
+Each data market creates its own environment file (`.env-devnet-<DATAMARKET>-ETH`) to maintain separate configurations.
+
 #### Overriding Default .env Generation
 
 The `build.sh` script provides a mechanism to override the default generation of the `.env` file and customize various configuration parameters. This is useful when you need a specific setup that differs from the standard defaults or an existing `.env` configuration.

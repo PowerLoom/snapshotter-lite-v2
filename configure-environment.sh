@@ -95,23 +95,12 @@ update_or_append_var() {
 
 # Function to detect and select environment files
 detect_and_select_env_file() {
-    local existing_env_files=( $(find . -maxdepth 1 -name ".env-*" -type f) )
-    
     # Filter for devnet files if in devnet mode
     if [ "$DEVNET_MODE" = "true" ]; then
-        local devnet_env_files=()
-        for file in "${existing_env_files[@]}"; do
-            if [[ "$file" == *"devnet"* ]]; then
-                devnet_env_files+=("$file")
-            fi
-        done
-        existing_env_files=("${devnet_env_files[@]}")
-        
-        if [ ${#existing_env_files[@]} -eq 0 ]; then
-            echo "ℹ️ No devnet environment files found. Will create a new one."
-            return
-        fi
+        return
     fi
+    
+    local existing_env_files=( $(find . -maxdepth 1 -name ".env-*" -type f) )
     
     local num_existing_env_files=${#existing_env_files[@]}
     
@@ -119,23 +108,17 @@ detect_and_select_env_file() {
         SELECTED_ENV_FILE="${existing_env_files[0]}"
         echo "ℹ️ Auto-selected existing environment file: $SELECTED_ENV_FILE"
     elif [ "$num_existing_env_files" -gt 1 ]; then
-        if [ "$DEVNET_MODE" = "true" ]; then
-            # In devnet mode, auto-select the first devnet file
-            SELECTED_ENV_FILE="${existing_env_files[0]}"
-            echo "ℹ️ Auto-selected first devnet environment file: $SELECTED_ENV_FILE"
+        echo "Found multiple .env-* files. Please choose which one to use:"
+        for i in "${!existing_env_files[@]}"; do
+            echo "$((i+1))) ${existing_env_files[$i]}"
+        done
+        read -p "Enter number (1-$num_existing_env_files): " file_choice
+        if [[ "$file_choice" =~ ^[0-9]+$ ]] && [ "$file_choice" -ge 1 ] && [ "$file_choice" -le "$num_existing_env_files" ]; then
+            SELECTED_ENV_FILE="${existing_env_files[$((file_choice-1))]}"
+            echo "ℹ️ You selected: $SELECTED_ENV_FILE"
         else
-            echo "Found multiple .env-* files. Please choose which one to use:"
-            for i in "${!existing_env_files[@]}"; do
-                echo "$((i+1))) ${existing_env_files[$i]}"
-            done
-            read -p "Enter number (1-$num_existing_env_files): " file_choice
-            if [[ "$file_choice" =~ ^[0-9]+$ ]] && [ "$file_choice" -ge 1 ] && [ "$file_choice" -le "$num_existing_env_files" ]; then
-                SELECTED_ENV_FILE="${existing_env_files[$((file_choice-1))]}"
-                echo "ℹ️ You selected: $SELECTED_ENV_FILE"
-            else
-                echo "❌ Invalid selection. Exiting."
-                exit 1
-            fi
+            echo "❌ Invalid selection. Exiting."
+            exit 1
         fi
     fi
 
@@ -190,7 +173,7 @@ get_data_market_config() {
     # Define contract addresses
     local MAINNET_AAVEV3_CONTRACT="0x0000000000000000000000000000000000000000"
     local MAINNET_UNISWAPV2_CONTRACT="0x21cb57C1f2352ad215a463DD867b838749CD3b8f"
-    local DEVNET_AAVEV3_CONTRACT="0x0000000000000000000000000000000000000000"
+    local DEVNET_AAVEV3_CONTRACT="0x4229Ad271d8b11f2AdBDe77099752a534470876b"
     local DEVNET_UNISWAPV2_CONTRACT="0x8C3fDC3A281BbB8231c9c92712fE670eFA655e5f"
     
     case $choice in
@@ -374,8 +357,17 @@ handle_devnet_mode() {
     if [ -n "$DATA_MARKET_CONTRACT_NUMBER" ]; then
         get_data_market_config "$DATA_MARKET_CONTRACT_NUMBER" "true"
     else
-        # Default to Uniswap V2 for devnet
-        get_data_market_config "2" "true"
+        echo "🔍 Select a data market contract: "
+        echo "1. Aave V3"
+        echo "2. Uniswap V2 (default)"
+        read DATA_MARKET_CONTRACT_CHOICE
+        
+        # Set default to Uniswap V2 if empty or invalid input
+        if [ -z "$DATA_MARKET_CONTRACT_CHOICE" ] || ! [[ "$DATA_MARKET_CONTRACT_CHOICE" =~ ^[12]$ ]]; then
+            DATA_MARKET_CONTRACT_CHOICE="2"
+            echo "Using default: Uniswap V2"
+        fi
+        get_data_market_config "$DATA_MARKET_CONTRACT_CHOICE" "true"
     fi
     
     # Determine target environment file
