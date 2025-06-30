@@ -183,8 +183,6 @@ class SnapshotAsyncWorker(GenericAsyncWorker):
                 task_type, msg_obj,
             )
 
-            raise Exception('test-worker')
-
             await self._process(
                 msg_obj=msg_obj,
                 task_type=task_type,
